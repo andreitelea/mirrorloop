@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/prototipi/">
     <Project Path="prototipi/ChatTcp/ChatTcp.csproj" />
+    <Project Path="prototipi/ChatUdp/ChatUdp.csproj" />
   </Folder>
 </Solution>
