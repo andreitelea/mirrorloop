@@ -44,7 +44,7 @@ Tutti i numeri sono **big-endian** ("network byte order").
 
 - **flag:** bit 0 = **keyframe** (1 se il frame si decodifica da solo). Gli altri bit sono riservati e vanno lasciati a 0.
 - **istante di cattura:** intero con segno a 64 bit, big-endian, in **microsecondi dal 1° gennaio 1970 UTC**. Serve a misurare la latenza. Ha senso solo se i due orologi sono allineati: è vero sullo stesso PC, mentre tra iPhone e PC andrà gestito (Fase 5).
-- **dati H.264:** **un frame intero** (in gergo *access unit*) in formato **Annex B**, cioè con i codici di inizio `00 00 00 01` davanti a ogni pezzo (*NAL unit*). Ogni keyframe deve includere anche **SPS e PPS**, le "istruzioni per il decoder", così chi si collega a metà trasmissione può partire dal primo keyframe che riceve.
+- **dati H.264:** **un frame intero** (in gergo *access unit*) in formato **Annex B**, cioè con i codici di inizio `00 00 00 01` davanti a ogni pezzo (*NAL unit*). Ogni keyframe deve includere anche **SPS e PPS**, le "istruzioni per il decoder", così chi si collega a metà trasmissione può partire dal primo keyframe che riceve. Gli **AUD** (*Access Unit Delimiter*, NAL di tipo 9) non servono, perché ogni messaggio contiene già un frame intero: il mittente li toglie.
 
 ### Esempio byte per byte
 
