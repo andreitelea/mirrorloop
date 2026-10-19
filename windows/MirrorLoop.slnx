@@ -4,6 +4,7 @@
     <Project Path="prototipi/ChatUdp/ChatUdp.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/MirrorLoop.MediaFoundation/MirrorLoop.MediaFoundation.csproj" />
     <Project Path="src/MirrorLoop.Protocollo/MirrorLoop.Protocollo.csproj" />
     <Project Path="src/MirrorLoop.Ricevitore/MirrorLoop.Ricevitore.csproj" />
   </Folder>
@@ -11,6 +12,7 @@
     <Project Path="strumenti/MittenteTest/MittenteTest.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/MirrorLoop.MediaFoundation.Test/MirrorLoop.MediaFoundation.Test.csproj" />
     <Project Path="test/MirrorLoop.Protocollo.Test/MirrorLoop.Protocollo.Test.csproj" />
     <Project Path="test/MirrorLoop.Ricevitore.Test/MirrorLoop.Ricevitore.Test.csproj" />
   </Folder>

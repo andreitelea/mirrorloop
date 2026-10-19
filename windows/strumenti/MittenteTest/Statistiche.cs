@@ -1,3 +1,5 @@
+using MirrorLoop.MediaFoundation;
+
 namespace MittenteTest;
 
 /// <summary>
@@ -6,11 +8,6 @@ namespace MittenteTest;
 /// </summary>
 public sealed class Statistiche(int fps)
 {
-    // Tipi di NAL unit H.264 che ci interessano (ITU-T H.264, tabella 7-1).
-    private const int NalIdr = 5;
-    private const int NalSps = 7;
-    private const int NalPps = 8;
-
     private long _frame;
     private long _keyframe;
     private long _byteTotali;
@@ -23,8 +20,8 @@ public sealed class Statistiche(int fps)
 
     public void Aggiungi(FrameCompresso f)
     {
-        HashSet<int> tipi = TipiNal(f.DatiH264);
-        bool idr = tipi.Contains(NalIdr);
+        HashSet<int> tipi = AnnexB.TipiNal(f.DatiH264);
+        bool idr = tipi.Contains(AnnexB.NalIdr);
 
         _frame++;
         _byteTotali += f.DatiH264.Length;
@@ -34,7 +31,7 @@ public sealed class Statistiche(int fps)
             _keyframe++;
             _byteKeyframe += f.DatiH264.Length;
             _posizioniKeyframe.Add(f.Numero);
-            if (!tipi.Contains(NalSps) || !tipi.Contains(NalPps))
+            if (!tipi.Contains(AnnexB.NalSps) || !tipi.Contains(AnnexB.NalPps))
                 KeyframeSenzaIstruzioni++;
             if (!idr)
                 _keyframeDichiaratiSenzaIdr++;
@@ -57,23 +54,5 @@ public sealed class Statistiche(int fps)
             Console.WriteLine($"Dimensione media: keyframe {_byteKeyframe / _keyframe / 1024.0:F1} KB, altri {(_byteTotali - _byteKeyframe) / (_frame - _keyframe) / 1024.0:F1} KB");
         Console.WriteLine($"Keyframe senza SPS/PPS: {KeyframeSenzaIstruzioni}");
         Console.WriteLine($"Incoerenze (keyframe senza IDR / IDR non segnalati): {_keyframeDichiaratiSenzaIdr} / {_idrNonDichiarati}");
-    }
-
-    /// <summary>
-    /// Cerca i codici di inizio Annex B (00 00 01, eventualmente preceduto da un altro 00)
-    /// e legge il tipo di ogni NAL unit dai 5 bit bassi del byte successivo.
-    /// </summary>
-    private static HashSet<int> TipiNal(byte[] dati)
-    {
-        var tipi = new HashSet<int>();
-        for (int i = 0; i + 3 < dati.Length; i++)
-        {
-            if (dati[i] == 0 && dati[i + 1] == 0 && dati[i + 2] == 1)
-            {
-                tipi.Add(dati[i + 3] & 0x1F);
-                i += 2;
-            }
-        }
-        return tipi;
     }
 }

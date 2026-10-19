@@ -1,12 +1,12 @@
 using System.Runtime.InteropServices;
 
-namespace MittenteTest;
+namespace MirrorLoop.MediaFoundation;
 
 /// <summary>
 /// Le poche parti di COM che Vortice non espone. GUID e ordine dei metodi presi
 /// dal Windows SDK (codecapi.h, strmif.h, wmcodecdsp.h).
 /// </summary>
-internal static class InteropCom
+public static class InteropCom
 {
     /// <summary>CLSID_CMSH264EncoderMFT: il compressore H.264 software incluso in Windows.</summary>
     public static readonly Guid ClsidCompressoreH264Microsoft = new("6ca50344-051a-4ded-9779-a43305165e35");

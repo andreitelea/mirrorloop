@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MirrorLoop.Protocollo\MirrorLoop.Protocollo.csproj" />
+    <ProjectReference Include="..\MirrorLoop.MediaFoundation\MirrorLoop.MediaFoundation.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

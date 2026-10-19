@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MirrorLoop.Protocollo\MirrorLoop.Protocollo.csproj" />
+    <ProjectReference Include="..\..\src\MirrorLoop.MediaFoundation\MirrorLoop.MediaFoundation.csproj" />
   </ItemGroup>
 
 </Project>
