@@ -2,7 +2,7 @@
 
 App gratuita, senza pubblicità e senza server, che trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete locale, con integrazione in OBS per le dirette.
 
-> **Stato:** in sviluppo (Fase 0 · Fondamenta). Non ancora utilizzabile.
+> **Stato:** in sviluppo (Fase 1 · Video da PC a PC). Non ancora utilizzabile.
 
 ## Come funziona
 
