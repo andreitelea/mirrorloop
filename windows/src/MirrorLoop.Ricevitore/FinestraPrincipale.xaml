@@ -6,7 +6,9 @@
         Background="Black"
         KeyDown="SuTastoPremuto">
     <Grid>
-        <!-- Qui arriverà il video (passo 3b). -->
+        <!-- Il video: riempie la finestra mantenendo le proporzioni (bande nere se servono). -->
+        <Image x:Name="Video" Stretch="Uniform" RenderOptions.BitmapScalingMode="Linear" />
+
         <TextBlock x:Name="TestoStato"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    Foreground="#B0B0B0" FontSize="22" TextAlignment="Center"

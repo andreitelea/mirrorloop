@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace MirrorLoop.Ricevitore;
@@ -13,12 +15,16 @@ public partial class FinestraPrincipale : Window
 
     private readonly CodaFrame _coda = new();
     private readonly StatisticheRicezione _statistiche = new();
+    private readonly StatisticheRicezione _statisticheSchermo = new();
     private readonly RicezioneRete _ricezione;
+    private readonly Riproduzione _riproduzione;
     private readonly CancellationTokenSource _stop = new();
     private readonly DispatcherTimer _timerStatistiche;
     private readonly Stopwatch _dallUltimaLettura = Stopwatch.StartNew();
-    private long _consegnati;
+    private WriteableBitmap? _immagine;
     private long _keyframeTotali;
+    private double _msDecompressione;
+    private double _msConversione;
     private string _stato = "Avvio...";
 
     public FinestraPrincipale()
@@ -27,53 +33,85 @@ public partial class FinestraPrincipale : Window
 
         _ricezione = new RicezioneRete(Porta, _coda, _statistiche);
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
-        _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() =>
-        {
-            _stato = stato;
-            TestoStato.Text = stato;
-        });
+        _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
+
+        _riproduzione = new Riproduzione(_coda);
 
         _timerStatistiche = new DispatcherTimer { Interval = IntervalloStatistiche };
         _timerStatistiche.Tick += (_, _) => AggiornaStatistiche();
         _timerStatistiche.Start();
 
+        // Chiamato prima di ogni aggiornamento dello schermo (di solito 60 volte al secondo).
+        CompositionTarget.Rendering += MostraUltimaImmagine;
+
         _ = _ricezione.EseguiAsync(_stop.Token);
-        _ = Task.Run(ConsumaCoda);
+        _riproduzione.Avvia(_stop.Token);
     }
 
-    /// <summary>
-    /// Segnaposto del decompressore (passo 3b): per ora prende i frame dalla coda e li conta,
-    /// così la coda non si riempie e lo scarto entra in gioco solo se qualcosa rallenta davvero.
-    /// </summary>
-    private void ConsumaCoda()
+    private void CambiaStato(string stato)
     {
-        while (!_stop.IsCancellationRequested)
+        _stato = stato;
+        TestoStato.Text = stato;
+        // Senza mittente non c'è video da mostrare: si torna alla scritta di stato.
+        if (!stato.StartsWith("Collegato"))
         {
-            if (_coda.ProvaPrendi(TimeSpan.FromMilliseconds(200), out _))
-                Interlocked.Increment(ref _consegnati);
+            Video.Source = null;
+            _immagine = null;
+            TestoStato.Visibility = Visibility.Visible;
         }
+    }
+
+    private void MostraUltimaImmagine(object? sender, EventArgs e)
+    {
+        ImmaginePronta? immagine = _riproduzione.PrendiUltima();
+        if (immagine is null)
+            return;
+
+        if (_immagine is null || _immagine.PixelWidth != immagine.Larghezza || _immagine.PixelHeight != immagine.Altezza)
+        {
+            _immagine = new WriteableBitmap(immagine.Larghezza, immagine.Altezza, 96, 96, PixelFormats.Bgr32, null);
+            Video.Source = _immagine;
+            TestoStato.Visibility = Visibility.Collapsed;
+        }
+
+        _immagine.WritePixels(new Int32Rect(0, 0, immagine.Larghezza, immagine.Altezza), immagine.Bgra, immagine.Larghezza * 4, 0);
+
+        // Latenza "fino allo schermo": dal disegno nel mittente a qui. Manca solo l'ultimo tratto,
+        // fino al prossimo aggiornamento del monitor (al massimo circa 16 ms a 60 Hz), non misurabile da qui.
+        double latenzaMs = (Protocollo.Protocollo.AdessoMicrosecondi() - immagine.IstanteCatturaMicrosecondi) / 1000.0;
+        _statisticheSchermo.FrameRicevuto(false, 0, latenzaMs);
+        _msDecompressione = immagine.MsDecompressione;
+        _msConversione = immagine.MsConversione;
+
+        _riproduzione.Restituisci(immagine);
     }
 
     private void AggiornaStatistiche()
     {
-        var s = _statistiche.Leggi();
+        var rete = _statistiche.Leggi();
+        var schermo = _statisticheSchermo.Leggi();
         double secondi = _dallUltimaLettura.Elapsed.TotalSeconds;
         _dallUltimaLettura.Restart();
         // Un keyframe ogni 2 secondi: contarli per mezzo secondo darebbe quasi sempre 0.
-        _keyframeTotali += s.Keyframe;
+        _keyframeTotali += rete.Keyframe;
 
-        string latenza = s.LatenzaMedianaMs is double mediana
-            ? $"{mediana:F1} ms (max {s.LatenzaMassimaMs:F1})"
-            : "—";
+        static string Latenza(StatisticheRicezione.Istantanea s) => s.LatenzaMedianaMs is double mediana
+            ? $"{mediana,6:F1} ms (max {s.LatenzaMassimaMs:F1})"
+            : "     —";
 
         TestoStatistiche.Text =
             $"{_stato}\n" +
-            $"ricevuti     {s.Frame / secondi,6:F1} fps\n" +
-            $"bitrate      {s.Byte * 8 / secondi / 1_000_000,6:F2} Mbit/s\n" +
-            $"keyframe     {_keyframeTotali,6} (totale)\n" +
-            $"latenza rete {latenza}\n" +
-            $"scartati     {_coda.Scartati,6} (totale)\n" +
-            $"consegnati   {Interlocked.Read(ref _consegnati),6} (totale)\n" +
+            $"ricevuti        {rete.Frame / secondi,6:F1} fps\n" +
+            $"mostrati        {schermo.Frame / secondi,6:F1} fps\n" +
+            $"bitrate         {rete.Byte * 8 / secondi / 1_000_000,6:F2} Mbit/s\n" +
+            $"latenza rete    {Latenza(rete)}\n" +
+            $"latenza schermo {Latenza(schermo)}\n" +
+            $"decompressione  {_msDecompressione,6:F1} ms\n" +
+            $"conversione     {_msConversione,6:F1} ms\n" +
+            $"keyframe        {_keyframeTotali,6} (totale)\n" +
+            $"scartati        {_coda.Scartati,6} (totale)\n" +
+            $"non mostrati    {_riproduzione.NonMostrate,6} (totale)\n" +
+            $"errori          {_riproduzione.Errori,6} (totale)\n" +
             "S: mostra/nascondi";
     }
 
@@ -91,6 +129,7 @@ public partial class FinestraPrincipale : Window
     {
         _stop.Cancel();
         _timerStatistiche.Stop();
+        CompositionTarget.Rendering -= MostraUltimaImmagine;
         base.OnClosing(e);
     }
 }

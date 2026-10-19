@@ -11,6 +11,9 @@ public static class InteropCom
     /// <summary>CLSID_CMSH264EncoderMFT: il compressore H.264 software incluso in Windows.</summary>
     public static readonly Guid ClsidCompressoreH264Microsoft = new("6ca50344-051a-4ded-9779-a43305165e35");
 
+    /// <summary>CLSID_CMSH264DecoderMFT: il decompressore H.264 software incluso in Windows.</summary>
+    public static readonly Guid ClsidDecompressoreH264Microsoft = new("62CE7E72-4C71-4d20-B15D-452831A87D9D");
+
     public static readonly Guid IidIMFTransform = new("bf94c121-5b05-4e6f-8000-ba598961414d");
 
     // Parametri del compressore (codecapi.h).

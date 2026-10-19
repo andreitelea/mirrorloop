@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MirrorLoop.MediaFoundation\MirrorLoop.MediaFoundation.csproj" />
+    <ProjectReference Include="..\..\strumenti\MittenteTest\MittenteTest.csproj" />
   </ItemGroup>
 
 </Project>

@@ -18,6 +18,13 @@ public sealed class CodaFrame(int capacita = 8)
     /// <summary>Frame buttati: in attesa del keyframe o per coda piena.</summary>
     public long Scartati { get; private set; }
 
+    /// <summary>
+    /// Cambia ogni volta che il flusso riparte da capo (nuova connessione o scarto per coda piena):
+    /// chi decomprime lo usa per sapere che deve ripartire con un decompressore pulito.
+    /// </summary>
+    public long Generazione { get { lock (_blocco) return _generazione; } }
+    private long _generazione;
+
     /// <summary>Nuova trasmissione: si svuota la coda e si aspetta un keyframe.</summary>
     public void Ricomincia()
     {
@@ -25,6 +32,7 @@ public sealed class CodaFrame(int capacita = 8)
         {
             _coda.Clear();
             _attendoKeyframe = true;
+            _generazione++;
         }
     }
 
@@ -37,6 +45,7 @@ public sealed class CodaFrame(int capacita = 8)
                 Scartati += _coda.Count;
                 _coda.Clear();
                 _attendoKeyframe = true;
+                _generazione++;
             }
 
             if (_attendoKeyframe && !frame.Keyframe)
