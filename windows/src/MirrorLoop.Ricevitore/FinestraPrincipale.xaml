@@ -1,0 +1,25 @@
+<Window x:Class="MirrorLoop.Ricevitore.FinestraPrincipale"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MirrorLoop"
+        Width="1280" Height="760"
+        Background="Black"
+        KeyDown="SuTastoPremuto">
+    <Grid>
+        <!-- Qui arriverà il video (passo 3b). -->
+        <TextBlock x:Name="TestoStato"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="#B0B0B0" FontSize="22" TextAlignment="Center"
+                   Text="Avvio..." />
+
+        <!-- Riquadro delle statistiche: il tasto S lo mostra e lo nasconde,
+             così non finisce in diretta quando OBS riprende la finestra. -->
+        <Border x:Name="RiquadroStatistiche"
+                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
+                Padding="10,8" CornerRadius="4" Background="#B0000000">
+            <TextBlock x:Name="TestoStatistiche"
+                       Foreground="White" FontFamily="Consolas" FontSize="14"
+                       Text="—" />
+        </Border>
+    </Grid>
+</Window>
