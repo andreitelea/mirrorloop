@@ -3,4 +3,10 @@
     <Project Path="prototipi/ChatTcp/ChatTcp.csproj" />
     <Project Path="prototipi/ChatUdp/ChatUdp.csproj" />
   </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/MirrorLoop.Protocollo/MirrorLoop.Protocollo.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/MirrorLoop.Protocollo.Test/MirrorLoop.Protocollo.Test.csproj" />
+  </Folder>
 </Solution>
