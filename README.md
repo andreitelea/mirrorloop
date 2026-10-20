@@ -2,11 +2,11 @@
 
 App gratuita, senza pubblicità e senza server, che trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete locale, con integrazione in OBS per le dirette.
 
-> **Stato:** in sviluppo (Fase 3 · Cattura dello schermo). Il ricevitore Windows mostra già un video di prova trasmesso da un altro programma sul PC; l'app iPhone minima si installa con TestFlight, ma non trasmette ancora nulla.
+> **Stato:** in sviluppo (Fase 4 · Audio). Lo schermo dell'iPhone (iOS 27 o successivo) si vede già sul PC: l'app cattura con ScreenCaptureKit, comprime in H.264 e trasmette al ricevitore Windows sulla rete di casa. L'audio non è ancora trasmesso.
 
 ## Come funziona
 
-- **iPhone:** cattura lo schermo con ReplayKit, lo comprime in H.264 e lo trasmette sulla rete locale.
+- **iPhone:** cattura lo schermo con ScreenCaptureKit, lo comprime in H.264 e lo trasmette sulla rete locale.
 - **PC Windows:** riceve il flusso, lo decodifica e lo mostra.
 - **OBS:** riprende la finestra del ricevitore (in futuro tramite un plugin dedicato).
 

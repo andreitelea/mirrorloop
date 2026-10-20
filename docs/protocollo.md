@@ -1,6 +1,6 @@
 # Protocollo di trasmissione
 
-Come viaggiano i dati dal mittente (oggi `MittenteTest` sul PC, domani l'app iPhone) al ricevitore Windows. L'implementazione di riferimento è `windows/src/MirrorLoop.Protocollo`.
+Come viaggiano i dati dal mittente (l'app iPhone, oppure `MittenteTest` per le prove sul PC) al ricevitore Windows. L'implementazione per iPhone è in `ios/MirrorLoop/Trasmissione.swift`. L'implementazione di riferimento è `windows/src/MirrorLoop.Protocollo`.
 
 > **Regola d'oro:** mittente e ricevitore devono produrre e leggere **esattamente** questi byte. Ogni modifica al formato va fatta qui, nel codice C# e nell'app iPhone insieme.
 
