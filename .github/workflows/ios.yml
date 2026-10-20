@@ -1,6 +1,8 @@
-# Compila l'app iOS su una macchina macOS di GitHub e pubblica un .ipa senza firma.
-# La firma si fa dopo, sul PC, con l'Apple ID dello sviluppatore (Sideloadly):
-# così nel repository pubblico non serve nessun certificato né segreto.
+# Compila l'app iOS su una macchina macOS di GitHub.
+# - "compila": controllo senza firma, per ogni modifica (anche nelle pull request).
+# - "testflight": solo sul ramo main o a mano; firma con certificato e profilo presi
+#   dai segreti del repository e carica la build su App Store Connect per TestFlight.
+#   I segreti non vengono mai passati ai lavori delle pull request.
 name: iOS
 
 on:
@@ -37,8 +39,6 @@ jobs:
       - name: Genera il progetto Xcode
         run: xcodegen generate
 
-      # Il numero di build è quello dell'esecuzione: App Store Connect vuole un numero
-      # sempre crescente a ogni caricamento.
       - name: Compila senza firma
         run: |
           xcodebuild build \
@@ -47,20 +47,99 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -derivedDataPath build \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGNING_ALLOWED=NO
 
-      # Un .ipa è uno zip con l'app dentro una cartella "Payload".
-      - name: Crea il file .ipa
-        run: |
-          mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/MirrorLoop.app Payload/
-          zip -qry MirrorLoop.ipa Payload
+  testflight:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: macos-26
+    timeout-minutes: 30
+    # Un caricamento alla volta: due build in parallelo potrebbero arrivare in ordine sbagliato.
+    concurrency:
+      group: testflight
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: ios
+    env:
+      # ID numerico dell'app su App Store Connect (pubblico, compare nei link dell'App Store).
+      APP_ID_ASC: "6825028097"
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v7
 
-      - name: Pubblica il file .ipa
-        uses: actions/upload-artifact@v7
-        with:
-          name: MirrorLoop-ipa
-          path: ios/MirrorLoop.ipa
-          retention-days: 14
-          if-no-files-found: error
+      - name: Installa XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+          xcodebuild -version
+
+      - name: Genera il progetto Xcode
+        run: xcodegen generate
+
+      # Procedura della guida ufficiale di GitHub "Signing Xcode applications":
+      # portachiavi temporaneo, distrutto insieme alla macchina a fine lavoro.
+      - name: Importa certificato e profilo
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATO=$RUNNER_TEMP/certificato.p12
+          PROFILO=$RUNNER_TEMP/profilo.mobileprovision
+          PORTACHIAVI=$RUNNER_TEMP/firma.keychain-db
+
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATO"
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PROFILO"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$PORTACHIAVI"
+          security set-keychain-settings -lut 21600 "$PORTACHIAVI"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$PORTACHIAVI"
+          security import "$CERTIFICATO" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$PORTACHIAVI"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$PORTACHIAVI"
+          security list-keychain -d user -s "$PORTACHIAVI"
+          security find-identity -v -p codesigning "$PORTACHIAVI"
+
+          # Da Xcode 16 i profili stanno in UserData; la cartella storica resta per compatibilità.
+          UUID=$(security cms -D -i "$PROFILO" | plutil -extract UUID raw -)
+          for CARTELLA in "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" "$HOME/Library/MobileDevice/Provisioning Profiles"; do
+            mkdir -p "$CARTELLA"
+            cp "$PROFILO" "$CARTELLA/$UUID.mobileprovision"
+          done
+
+      # Il numero di build è quello dell'esecuzione: App Store Connect vuole un numero
+      # sempre crescente. Rilanciare la stessa esecuzione riusa il numero e viene rifiutato.
+      - name: Archivia
+        run: |
+          xcodebuild archive \
+            -project MirrorLoop.xcodeproj \
+            -scheme MirrorLoop \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/MirrorLoop.xcarchive" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+
+      - name: Esporta il file .ipa firmato
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/MirrorLoop.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export"
+          ls -l "$RUNNER_TEMP/export"
+
+      # --apple-id (l'ID numerico dell'app) evita un difetto noto di altool in Xcode 26,
+      # che poteva associare la build all'app sbagliata.
+      - name: Carica su App Store Connect
+        env:
+          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          echo -n "$API_KEY_BASE64" | base64 --decode -o "$HOME/.appstoreconnect/private_keys/AuthKey_$API_KEY_ID.p8"
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$RUNNER_TEMP/export/MirrorLoop.ipa" \
+            --apiKey "$API_KEY_ID" \
+            --apiIssuer "$API_ISSUER_ID" \
+            --apple-id "$APP_ID_ASC"
