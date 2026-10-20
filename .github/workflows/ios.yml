@@ -1,0 +1,63 @@
+# Compila l'app iOS su una macchina macOS di GitHub e pubblica un .ipa senza firma.
+# La firma si fa dopo, sul PC, con l'Apple ID dello sviluppatore (Sideloadly):
+# così nel repository pubblico non serve nessun certificato né segreto.
+name: iOS
+
+on:
+  push:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compila:
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v7
+
+      - name: Installa XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+          xcodebuild -version
+
+      - name: Genera il progetto Xcode
+        run: xcodegen generate
+
+      - name: Compila senza firma
+        run: |
+          xcodebuild build \
+            -project MirrorLoop.xcodeproj \
+            -scheme MirrorLoop \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      # Un .ipa è uno zip con l'app dentro una cartella "Payload".
+      - name: Crea il file .ipa
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/MirrorLoop.app Payload/
+          zip -qry MirrorLoop.ipa Payload
+
+      - name: Pubblica il file .ipa
+        uses: actions/upload-artifact@v7
+        with:
+          name: MirrorLoop-ipa
+          path: ios/MirrorLoop.ipa
+          retention-days: 14
+          if-no-files-found: error
