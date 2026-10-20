@@ -33,6 +33,7 @@ final class CompressoreH264: @unchecked Sendable {
     static let secondiTraKeyframe = 2
 
     let statistiche = Mutex(StatisticheCompressione())
+    private let keyframeRichiesto = Mutex(false)
 
     private let larghezza: Int32
     private let altezza: Int32
@@ -56,18 +57,28 @@ final class CompressoreH264: @unchecked Sendable {
         self.sessione = nil
     }
 
+    /// Il prossimo frame sarà un keyframe: si chiama da qualsiasi thread.
+    func forzaKeyframe() {
+        keyframeRichiesto.withLock { $0 = true }
+    }
+
     func comprimi(_ immagine: CVImageBuffer, tempo: CMTime, istanteCatturaMicrosecondi: Int64) {
         if sessione == nil {
             creaSessione()
         }
         guard let sessione else { return }
+        let forza = keyframeRichiesto.withLock { richiesto in
+            defer { richiesto = false }
+            return richiesto
+        }
+        let opzioni = forza ? [kVTEncodeFrameOptionKey_ForceKeyFrame: kCFBooleanTrue!] as CFDictionary : nil
         let inizio = ContinuousClock.now
         let stato = VTCompressionSessionEncodeFrame(
             sessione,
             imageBuffer: immagine,
             presentationTimeStamp: tempo,
             duration: .invalid,
-            frameProperties: nil,
+            frameProperties: opzioni,
             infoFlagsOut: nil
         ) { [self] stato, _, campione in
             completato(stato: stato, campione: campione, inizio: inizio, istante: istanteCatturaMicrosecondi)

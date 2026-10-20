@@ -11,7 +11,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.3.0"
+    MARKETING_VERSION: "0.4.0"
     CURRENT_PROJECT_VERSION: "1"
     # Identificativo del team Apple Developer (non è un segreto: compare in ogni app firmata).
     DEVELOPMENT_TEAM: FVYL9M67QJ
@@ -52,3 +52,5 @@ targets:
         # l'app va in background (guida Apple "Capturing screen content on iOS").
         UIBackgroundModes:
           - screen-capture
+        # Testo mostrato da iOS quando chiede il permesso di usare la rete locale.
+        NSLocalNetworkUsageDescription: MirrorLoop si collega al ricevitore sul tuo PC nella rete di casa per trasmettere lo schermo.

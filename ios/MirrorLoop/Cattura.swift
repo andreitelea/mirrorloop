@@ -133,6 +133,8 @@ final class Cattura {
     private(set) var contatori = Contatori()
     private(set) var compressione = StatisticheCompressione()
     private(set) var kbitAlSecondo = 0
+    private(set) var kbitPicco = 0
+    private(set) var rete = StatisticheTrasmissione()
     private(set) var dimensioneRichiesta = "–"
     private(set) var errore: String?
 
@@ -140,23 +142,35 @@ final class Cattura {
 
     @ObservationIgnored private var stream: SCStream?
     @ObservationIgnored private var ricevitore: Ricevitore?
+    @ObservationIgnored private var trasmissione: Trasmissione?
     @ObservationIgnored private var inBackground = false
     @ObservationIgnored private var misuraBitrate: (byte: Int, istante: TimeInterval)?
     @ObservationIgnored private let coda = DispatchQueue(label: "io.github.andreitelea.mirrorloop.cattura")
 
-    func avvia() {
+    func avvia(indirizzoPC: String) {
         ferma()
         errore = nil
         contatori = Contatori()
         compressione = StatisticheCompressione()
+        rete = StatisticheTrasmissione()
         kbitAlSecondo = 0
+        kbitPicco = 0
         misuraBitrate = nil
 
         let (larghezza, altezza) = Self.dimensioniVideo()
         dimensioneRichiesta = "\(larghezza)×\(altezza)"
-        let compressore = CompressoreH264(larghezza: larghezza, altezza: altezza) { _ in
-            // Passo 1 della Fase 3: i frame compressi si contano soltanto; l'invio arriva al passo 2.
+        // Il compressore e la trasmissione si conoscono a vicenda: uno consegna i frame,
+        // l'altra chiede un keyframe quando ne ha bisogno.
+        let scatolaCompressore = Mutex<CompressoreH264?>(nil)
+        let trasmissione = Trasmissione(indirizzo: indirizzoPC) {
+            scatolaCompressore.withLock { $0?.forzaKeyframe() }
         }
+        let compressore = CompressoreH264(larghezza: larghezza, altezza: altezza) { frame in
+            trasmissione.invia(frame)
+        }
+        scatolaCompressore.withLock { $0 = compressore }
+        self.trasmissione = trasmissione
+        trasmissione.avvia()
         let ricevitore = Ricevitore(compressore: compressore) { evento in
             Task { @MainActor in self.gestisci(evento) }
         }
@@ -182,6 +196,8 @@ final class Cattura {
         }
         SCContentSharingPicker.shared.isActive = false
         ricevitore = nil
+        trasmissione?.ferma()
+        trasmissione = nil
         stato = "Ferma"
     }
 
@@ -192,6 +208,9 @@ final class Cattura {
 
     /// Copia i conteggi della coda di cattura nelle proprietà mostrate a schermo.
     func aggiorna() {
+        if let trasmissione {
+            rete = trasmissione.statistiche.withLock { $0 }
+        }
         guard let ricevitore else { return }
         contatori = ricevitore.contatori.withLock { $0 }
         compressione = ricevitore.compressore.statistiche.withLock { $0 }
@@ -199,20 +218,22 @@ final class Cattura {
         if let precedente = misuraBitrate, adesso - precedente.istante >= 1 {
             let bit = Double(compressione.byteTotali - precedente.byte) * 8
             kbitAlSecondo = Int(bit / (adesso - precedente.istante) / 1000)
+            kbitPicco = max(kbitPicco, kbitAlSecondo)
             misuraBitrate = (compressione.byteTotali, adesso)
         } else if misuraBitrate == nil {
             misuraBitrate = (compressione.byteTotali, adesso)
         }
     }
 
-    /// 720 pixel di larghezza e altezza in proporzione allo schermo, arrotondata a un numero
-    /// pari (H.264 lavora su coppie di pixel per i colori).
+    /// 720 pixel di larghezza e altezza in proporzione allo schermo, arrotondata a un multiplo
+    /// di 16: H.264 lavora a blocchi di 16×16 e con altezze diverse il decodificatore di Windows
+    /// aggiunge righe di riempimento in fondo all'immagine. La differenza di proporzioni è minima.
     private static func dimensioniVideo() -> (Int, Int) {
         let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         let schermo = scena?.screen.nativeBounds.size ?? CGSize(width: 1170, height: 2532)
         let lato = min(schermo.width, schermo.height)
         let altezza = Int((Double(larghezzaVideo) * max(schermo.width, schermo.height) / lato).rounded())
-        return (larghezzaVideo, altezza & ~1)
+        return (larghezzaVideo, Int((Double(altezza) / 16).rounded(.down)) * 16)
     }
 
     private func gestisci(_ evento: EventoCattura) {

@@ -37,29 +37,44 @@ struct SchermataPrincipale: View {
 struct PannelloCattura: View {
     @State private var cattura = Cattura()
     @Environment(\.scenePhase) private var fase
+    // L'indirizzo del PC si ricorda tra un avvio e l'altro.
+    @AppStorage("indirizzoPC") private var indirizzoPC = ""
 
     var body: some View {
         let c = cattura.contatori
         let s = cattura.compressione
+        let r = cattura.rete
         VStack(alignment: .leading, spacing: 6) {
-            Text("Cattura e compressione")
+            Text("Trasmissione al PC")
                 .font(.headline)
+            TextField("Indirizzo del PC (es. 192.168.1.23)", text: $indirizzoPC)
+                .textFieldStyle(.roundedBorder)
+                .keyboardType(.numbersAndPunctuation)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
             if !cattura.disponibile {
                 Text("La registrazione dello schermo non è disponibile su questo iPhone.")
                     .foregroundStyle(.red)
             }
             HStack {
-                Button("Avvia") { cattura.avvia() }
+                Button("Avvia") { cattura.avvia(indirizzoPC: indirizzoPC.trimmingCharacters(in: .whitespaces)) }
                     .buttonStyle(.borderedProminent)
+                    .disabled(indirizzoPC.trimmingCharacters(in: .whitespaces).isEmpty)
                 Button("Ferma") { cattura.ferma() }
                     .buttonStyle(.bordered)
             }
-            Text("Stato: \(cattura.stato)")
+            Text("Cattura: \(cattura.stato)")
+            Text("Rete: \(r.stato)")
+            Text("Inviati: \(r.inviati) · scartati \(r.scartati) · connessioni \(r.connessioni)")
+            if let erroreRete = r.ultimoErrore {
+                Text("Ultimo errore di rete: \(erroreRete)")
+                    .foregroundStyle(.orange)
+            }
             Text("Catturati: \(c.fotogrammi) (in background \(c.fotogrammiInBackground) in \(c.secondiInBackground, format: .number.precision(.fractionLength(1))) s)")
             Text("Scartati per il ritmo: \(c.scartatiPerRitmo)")
             Text("Dimensione: \(c.larghezza)×\(c.altezza) (richiesta \(cattura.dimensioneRichiesta))")
             Text("Compressi: \(s.frameCompressi) · keyframe \(s.keyframe)")
-            Text("Bitrate: \(cattura.kbitAlSecondo) kbit/s")
+            Text("Bitrate: \(cattura.kbitAlSecondo) kbit/s (picco \(cattura.kbitPicco))")
             Text("Compressione: \(s.msUltimaCompressione, format: .number.precision(.fractionLength(1))) ms (max \(s.msCompressioneMassima, format: .number.precision(.fractionLength(1))) ms)")
             Text("Errori codificatore: \(s.errori) (ultimo \(s.ultimoErrore)) · sessioni \(s.sessioniCreate) · impostazioni rifiutate \(s.impostazioniRifiutate)")
             Text("Audio: \(c.pacchettiAudio) pacchetti")

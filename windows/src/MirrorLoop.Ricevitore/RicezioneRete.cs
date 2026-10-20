@@ -1,5 +1,6 @@
 using System.IO;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using MirrorLoop.Protocollo;
 
@@ -16,15 +17,17 @@ public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezion
 
     public async Task EseguiAsync(CancellationToken stop)
     {
-        // Per ora solo connessioni da questo PC: niente domande dal firewall.
-        // Aprire alla rete di casa (per l'iPhone) è un passo della Fase 3.
-        var ascolto = new TcpListener(IPAddress.Loopback, porta);
+        // In ascolto su tutte le reti del PC, così l'iPhone lo raggiunge dalla rete di casa.
+        // Al primo avvio Windows chiede il permesso del firewall: va consentito solo sulle reti private.
+        var ascolto = new TcpListener(IPAddress.Any, porta);
         ascolto.Start();
         try
         {
             while (!stop.IsCancellationRequested)
             {
-                StatoCambiato?.Invoke($"In attesa del mittente su 127.0.0.1:{porta}...");
+                // Riletti a ogni attesa: il PC potrebbe aver cambiato rete nel frattempo.
+                string indirizzi = string.Join("  ·  ", IndirizziLocali().Select(i => $"{i}:{porta}"));
+                StatoCambiato?.Invoke($"In attesa dell'iPhone su {indirizzi}");
                 using TcpClient client = await ascolto.AcceptTcpClientAsync(stop);
                 client.NoDelay = true;
                 StatoCambiato?.Invoke($"Collegato a {client.Client.RemoteEndPoint}");
@@ -50,6 +53,24 @@ public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezion
         {
             ascolto.Stop();
         }
+    }
+
+    /// <summary>
+    /// Gli indirizzi IPv4 con cui il PC è raggiungibile nella rete locale, da scrivere nell'app.
+    /// Se non ce n'è nessuno (PC senza rete) resta 127.0.0.1, utile per le prove con MittenteTest.
+    /// </summary>
+    public static IReadOnlyList<IPAddress> IndirizziLocali()
+    {
+        var indirizzi = NetworkInterface.GetAllNetworkInterfaces()
+            .Where(s => s.OperationalStatus == OperationalStatus.Up && s.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .SelectMany(s => s.GetIPProperties().UnicastAddresses)
+            .Select(u => u.Address)
+            .Where(a => a.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a))
+            // 169.254.x.x è l'indirizzo che Windows si assegna da solo quando manca la rete: inutile.
+            .Where(a => a.GetAddressBytes()[0] != 169 || a.GetAddressBytes()[1] != 254)
+            .Distinct()
+            .ToList();
+        return indirizzi.Count > 0 ? indirizzi : [IPAddress.Loopback];
     }
 
     private async Task RiceviTuttoAsync(NetworkStream flusso, CancellationToken stop)
