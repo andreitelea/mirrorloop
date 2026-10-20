@@ -37,6 +37,8 @@ jobs:
       - name: Genera il progetto Xcode
         run: xcodegen generate
 
+      # Il numero di build è quello dell'esecuzione: App Store Connect vuole un numero
+      # sempre crescente a ogni caricamento.
       - name: Compila senza firma
         run: |
           xcodebuild build \
@@ -45,6 +47,7 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -derivedDataPath build \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGNING_ALLOWED=NO
 
       # Un .ipa è uno zip con l'app dentro una cartella "Payload".
