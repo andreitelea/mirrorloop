@@ -162,11 +162,12 @@ final class ProvaCattura {
     private func gestisci(_ evento: EventoCattura) {
         switch evento {
         case .filtroScelto(let scatola):
+            // Su iOS non esiste updateContentFilter: una nuova scelta richiede un nuovo flusso.
             if let stream {
-                stream.updateContentFilter(scatola.valore) { _ in }
-            } else {
-                avviaFlusso(scatola.valore)
+                stream.stopCapture { _ in }
+                self.stream = nil
             }
+            avviaFlusso(scatola.valore)
         case .annullato:
             if stream == nil {
                 ferma()
