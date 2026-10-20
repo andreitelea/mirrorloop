@@ -28,57 +28,54 @@ struct SchermataPrincipale: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            if #available(iOS 27.0, *) {
-                PannelloProvaCattura()
-            } else {
-                Text("La prova di cattura richiede iOS 27")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            PannelloCattura()
         }
         .padding()
     }
 }
 
-@available(iOS 27.0, *)
-struct PannelloProvaCattura: View {
-    @State private var prova = ProvaCattura()
+struct PannelloCattura: View {
+    @State private var cattura = Cattura()
     @Environment(\.scenePhase) private var fase
 
     var body: some View {
-        let c = prova.contatori
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Prova di cattura")
+        let c = cattura.contatori
+        let s = cattura.compressione
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Cattura e compressione")
                 .font(.headline)
-            if !prova.disponibile {
+            if !cattura.disponibile {
                 Text("La registrazione dello schermo non è disponibile su questo iPhone.")
                     .foregroundStyle(.red)
             }
             HStack {
-                Button("Prova cattura") { prova.avvia() }
+                Button("Avvia") { cattura.avvia() }
                     .buttonStyle(.borderedProminent)
-                Button("Ferma") { prova.ferma() }
+                Button("Ferma") { cattura.ferma() }
                     .buttonStyle(.bordered)
             }
-            Text("Stato: \(prova.stato)")
-            Text("Fotogrammi: \(c.fotogrammi)")
-            Text("In background: \(c.fotogrammiInBackground) in \(c.secondiInBackground, format: .number.precision(.fractionLength(1))) s")
+            Text("Stato: \(cattura.stato)")
+            Text("Catturati: \(c.fotogrammi) (in background \(c.fotogrammiInBackground) in \(c.secondiInBackground, format: .number.precision(.fractionLength(1))) s)")
+            Text("Scartati per il ritmo: \(c.scartatiPerRitmo)")
+            Text("Dimensione: \(c.larghezza)×\(c.altezza) (richiesta \(cattura.dimensioneRichiesta))")
+            Text("Compressi: \(s.frameCompressi) · keyframe \(s.keyframe)")
+            Text("Bitrate: \(cattura.kbitAlSecondo) kbit/s")
+            Text("Compressione: \(s.msUltimaCompressione, format: .number.precision(.fractionLength(1))) ms (max \(s.msCompressioneMassima, format: .number.precision(.fractionLength(1))) ms)")
+            Text("Errori codificatore: \(s.errori) (ultimo \(s.ultimoErrore)) · sessioni \(s.sessioniCreate) · impostazioni rifiutate \(s.impostazioniRifiutate)")
             Text("Audio: \(c.pacchettiAudio) pacchetti")
-            Text("Dimensione: \(c.larghezza)×\(c.altezza)")
-            Text("Pausa massima: \(c.pausaMassima, format: .number.precision(.fractionLength(2))) s")
-            if let errore = prova.errore {
+            if let errore = cattura.errore {
                 Text("Errore: \(errore)")
                     .foregroundStyle(.red)
             }
         }
-        .font(.callout.monospacedDigit())
+        .font(.footnote.monospacedDigit())
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: fase) { _, nuova in
-            prova.cambiaFase(inBackground: nuova == .background)
+            cattura.cambiaFase(inBackground: nuova == .background)
         }
         .task {
             while !Task.isCancelled {
-                prova.aggiorna()
+                cattura.aggiorna()
                 try? await Task.sleep(for: .milliseconds(500))
             }
         }
