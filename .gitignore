@@ -483,3 +483,7 @@ $RECYCLE.BIN/
 
 # Video di prova generati dal mittente
 *.h264
+
+# Progetto Xcode e Info.plist generati da XcodeGen a partire da ios/project.yml
+ios/*.xcodeproj/
+ios/MirrorLoop/Info.plist
