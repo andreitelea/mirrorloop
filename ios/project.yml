@@ -48,3 +48,7 @@ targets:
         # L'app non usa cifratura propria (solo quella di sistema): così App Store Connect
         # non chiede la dichiarazione sull'esportazione a ogni build.
         ITSAppUsesNonExemptEncryption: false
+        # Senza questa modalità iOS 27 interrompe la cattura dello schermo intero appena
+        # l'app va in background (guida Apple "Capturing screen content on iOS").
+        UIBackgroundModes:
+          - screen-capture
