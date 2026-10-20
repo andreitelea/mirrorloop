@@ -21,7 +21,9 @@ permissions:
 
 jobs:
   compila:
-    runs-on: macos-26
+    # ScreenCaptureKit su iOS richiede il kit di iOS 27, cioè Xcode 27
+    # (immagine "xcode-27" di GitHub, in anteprima).
+    runs-on: xcode-27
     timeout-minutes: 30
     defaults:
       run:
@@ -51,7 +53,9 @@ jobs:
 
   testflight:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: macos-26
+    # ScreenCaptureKit su iOS richiede il kit di iOS 27, cioè Xcode 27
+    # (immagine "xcode-27" di GitHub, in anteprima).
+    runs-on: xcode-27
     timeout-minutes: 30
     # Un caricamento alla volta: due build in parallelo potrebbero arrivare in ordine sbagliato.
     concurrency:
