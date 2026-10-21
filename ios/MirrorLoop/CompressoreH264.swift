@@ -9,6 +9,8 @@ struct FrameCompresso: Sendable {
     let datiAnnexB: Data
     let keyframe: Bool
     let istanteCatturaMicrosecondi: Int64
+    /// Passi da 90° in senso orario per raddrizzare l'immagine (0–3); viaggia nel flag del frame.
+    let rotazione: UInt8
 }
 
 struct StatisticheCompressione: Sendable {
@@ -62,7 +64,7 @@ final class CompressoreH264: @unchecked Sendable {
         keyframeRichiesto.withLock { $0 = true }
     }
 
-    func comprimi(_ immagine: CVImageBuffer, tempo: CMTime, istanteCatturaMicrosecondi: Int64) {
+    func comprimi(_ immagine: CVImageBuffer, tempo: CMTime, istanteCatturaMicrosecondi: Int64, rotazione: UInt8) {
         if sessione == nil {
             creaSessione()
         }
@@ -81,7 +83,7 @@ final class CompressoreH264: @unchecked Sendable {
             frameProperties: opzioni,
             infoFlagsOut: nil
         ) { [self] stato, _, campione in
-            completato(stato: stato, campione: campione, inizio: inizio, istante: istanteCatturaMicrosecondi)
+            completato(stato: stato, campione: campione, inizio: inizio, istante: istanteCatturaMicrosecondi, rotazione: rotazione)
         }
         if stato != noErr {
             registraErrore(stato)
@@ -127,7 +129,7 @@ final class CompressoreH264: @unchecked Sendable {
         statistiche.withLock { $0.sessioniCreate += 1 }
     }
 
-    private func completato(stato: OSStatus, campione: CMSampleBuffer?, inizio: ContinuousClock.Instant, istante: Int64) {
+    private func completato(stato: OSStatus, campione: CMSampleBuffer?, inizio: ContinuousClock.Instant, istante: Int64, rotazione: UInt8) {
         let ms = (ContinuousClock.now - inizio) / .milliseconds(1)
         guard stato == noErr else {
             registraErrore(stato)
@@ -142,7 +144,7 @@ final class CompressoreH264: @unchecked Sendable {
             s.msUltimaCompressione = ms
             s.msCompressioneMassima = max(s.msCompressioneMassima, ms)
         }
-        consegna(FrameCompresso(datiAnnexB: dati, keyframe: keyframe, istanteCatturaMicrosecondi: istante))
+        consegna(FrameCompresso(datiAnnexB: dati, keyframe: keyframe, istanteCatturaMicrosecondi: istante, rotazione: rotazione))
     }
 
     private func registraErrore(_ stato: OSStatus) {

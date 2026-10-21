@@ -25,6 +25,10 @@ struct Contatori: Sendable {
     var ultimoAudio: TimeInterval?
     var larghezza = 0
     var altezza = 0
+    // Ultimo valore grezzo di videoOrientation (CGImagePropertyOrientation) e quante volte è cambiato:
+    // servono a verificare sul telefono che ScreenCaptureKit segua davvero le rotazioni.
+    var orientamento: UInt32?
+    var cambiOrientamento = 0
     var pausaMassima: TimeInterval = 0
     var ultimoFotogramma: TimeInterval?
     var ultimoAccettato: Double?
@@ -77,6 +81,26 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
         orologio.microsecondi(tempo)
     }
 
+    /// L'orientamento che ScreenCaptureKit allega al fotogramma (SCStreamFrameInfo.videoOrientation,
+    /// iOS 27): un valore di CGImagePropertyOrientation. Nil se manca.
+    private static func orientamento(_ campione: CMSampleBuffer) -> UInt32? {
+        let allegati = CMSampleBufferGetSampleAttachmentsArray(campione, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]]
+        return (allegati?.first?[.videoOrientation] as? NSNumber)?.uint32Value
+    }
+
+    /// Di quanti passi da 90° in senso orario girare l'immagine per mostrarla dritta (protocollo,
+    /// bit 1 e 2 del flag). Valori di CGImagePropertyOrientation come nelle foto (EXIF): 6 = da
+    /// girare di 90° in senso orario, 8 = di 270°, 3 = capovolta. Le varianti a specchio non
+    /// dovrebbero comparire: si trattano come la rotazione corrispondente.
+    static func rotazione(da orientamento: UInt32?) -> UInt8 {
+        switch orientamento {
+        case 3, 4: 2
+        case 6, 7: 1
+        case 5, 8: 3
+        default: 0
+        }
+    }
+
     /// Quanto tempo è passato tra la cattura del campione e il suo arrivo qui. Se gli istanti
     /// non fossero sull'orologio di sistema, questo numero sarebbe assurdo: è il controllo.
     private func ritardoConsegnaMs(_ tempo: CMTime) -> Double {
@@ -106,12 +130,17 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
             let larghezza = CVPixelBufferGetWidth(immagine)
             let altezza = CVPixelBufferGetHeight(immagine)
             let ritardo = ritardoConsegnaMs(tempo)
+            let orientamento = Self.orientamento(sampleBuffer)
             let accettato = contatori.withLock { c -> Bool in
                 c.fotogrammi += 1
                 c.ritardoConsegnaVideoMs = ritardo
                 if c.inBackground { c.fotogrammiInBackground += 1 }
                 c.larghezza = larghezza
                 c.altezza = altezza
+                if orientamento != c.orientamento {
+                    if c.orientamento != nil { c.cambiOrientamento += 1 }
+                    c.orientamento = orientamento
+                }
                 if let ultimo = c.ultimoFotogramma {
                     c.pausaMassima = max(c.pausaMassima, adesso - ultimo)
                 }
@@ -125,7 +154,8 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
                 return true
             }
             if accettato {
-                compressore.comprimi(immagine, tempo: tempo, istanteCatturaMicrosecondi: istanteMicrosecondi(tempo))
+                compressore.comprimi(immagine, tempo: tempo, istanteCatturaMicrosecondi: istanteMicrosecondi(tempo),
+                                     rotazione: Self.rotazione(da: orientamento))
             }
         case .audio:
             let tempo = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)

@@ -140,12 +140,13 @@ final class Trasmissione: @unchecked Sendable {
     }
 
     /// Lunghezza (4 byte, big-endian) + tipo 1 + flag + istante di cattura (8 byte, big-endian) + dati.
+    /// Flag: bit 0 = keyframe, bit 1 e 2 = rotazione in passi da 90° in senso orario.
     static func messaggio(_ frame: FrameCompresso) -> Data {
         var dati = Data(capacity: 14 + frame.datiAnnexB.count)
         let lunghezza = UInt32(1 + 1 + 8 + frame.datiAnnexB.count)
         withUnsafeBytes(of: lunghezza.bigEndian) { dati.append(contentsOf: $0) }
         dati.append(1)
-        dati.append(frame.keyframe ? 1 : 0)
+        dati.append((frame.keyframe ? 1 : 0) | (frame.rotazione & 0b11) << 1)
         withUnsafeBytes(of: frame.istanteCatturaMicrosecondi.bigEndian) { dati.append(contentsOf: $0) }
         dati.append(frame.datiAnnexB)
         return dati

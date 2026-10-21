@@ -78,6 +78,7 @@ struct PannelloCattura: View {
             Text("Catturati: \(c.fotogrammi) (in background \(c.fotogrammiInBackground) in \(c.secondiInBackground, format: .number.precision(.fractionLength(1))) s)")
             Text("Scartati per il ritmo: \(c.scartatiPerRitmo)")
             Text("Dimensione: \(c.larghezza)×\(c.altezza) (richiesta \(cattura.dimensioneRichiesta))")
+            Text("Orientamento: \(c.orientamento.map { String($0) } ?? "—") → rotazione \(Int(Ricevitore.rotazione(da: c.orientamento)) * 90)° · cambi \(c.cambiOrientamento)")
             Text("Compressi: \(s.frameCompressi) · keyframe \(s.keyframe)")
             Text("Bitrate: \(cattura.kbitAlSecondo) kbit/s (picco \(cattura.kbitPicco))")
             Text("Compressione: \(s.msUltimaCompressione, format: .number.precision(.fractionLength(1))) ms (max \(s.msCompressioneMassima, format: .number.precision(.fractionLength(1))) ms)")
