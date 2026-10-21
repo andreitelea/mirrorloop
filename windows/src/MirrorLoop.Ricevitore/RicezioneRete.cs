@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using MirrorLoop.Protocollo;
+using Ping = MirrorLoop.Protocollo.Ping;
 
 namespace MirrorLoop.Ricevitore;
 
@@ -10,8 +11,17 @@ namespace MirrorLoop.Ricevitore;
 /// Ascolta il mittente e legge i frame dalla rete in continuazione, mettendoli nella coda.
 /// Non fa altro: leggere subito è ciò che impedisce al ritardo di accumularsi nei buffer di Windows.
 /// </summary>
-public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezione statistiche, StatisticheAudio statisticheAudio, RiproduzioneAudio riproduzioneAudio)
+public sealed class RicezioneRete(
+    int porta,
+    CodaFrame coda,
+    StatisticheRicezione statistiche,
+    StatisticheAudio statisticheAudio,
+    RiproduzioneAudio riproduzioneAudio,
+    SincroniaOrologi sincronia)
 {
+    // Un ping al secondo basta: lo scarto tra gli orologi cambia molto lentamente.
+    private static readonly TimeSpan IntervalloPing = TimeSpan.FromSeconds(1);
+
     /// <summary>Descrizione dello stato, per la finestra. Viene chiamato da un thread in sottofondo.</summary>
     public event Action<string>? StatoCambiato;
 
@@ -35,15 +45,24 @@ public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezion
                 coda.Ricomincia();
                 riproduzioneAudio.Ricomincia();
                 statisticheAudio.Ricomincia();
+                sincronia.Ricomincia();
+                using var fineConnessione = CancellationTokenSource.CreateLinkedTokenSource(stop);
+                NetworkStream flusso = client.GetStream();
+                Task ping = MandaPingAsync(flusso, fineConnessione.Token);
                 try
                 {
-                    await RiceviTuttoAsync(client.GetStream(), stop);
+                    await RiceviTuttoAsync(flusso, stop);
                 }
                 catch (Exception ex) when (ex is IOException or EndOfStreamException or InvalidDataException)
                 {
                     // Il mittente è sparito o ha mandato dati non validi: si torna ad aspettare.
                     StatoCambiato?.Invoke($"Connessione persa: {ex.Message}");
                     await Task.Delay(TimeSpan.FromSeconds(1), stop);
+                }
+                finally
+                {
+                    await fineConnessione.CancelAsync();
+                    await ping;
                 }
             }
         }
@@ -75,6 +94,36 @@ public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezion
         return indirizzi.Count > 0 ? indirizzi : [IPAddress.Loopback];
     }
 
+    /// <summary>
+    /// Millisecondi passati dalla cattura sull'iPhone a adesso. Con gli orologi sincronizzati è la
+    /// latenza vera; senza, il confronto diretto tra i due orologi (può venire anche negativo).
+    /// </summary>
+    public long LatenzaMicrosecondi(long istanteCatturaIphone) =>
+        Protocollo.Protocollo.AdessoMicrosecondi() - (sincronia.InOraDelPc(istanteCatturaIphone) ?? istanteCatturaIphone);
+
+    private double LatenzaMs(long istanteCatturaIphone) => LatenzaMicrosecondi(istanteCatturaIphone) / 1000.0;
+
+    /// <summary>
+    /// Manda un ping al secondo finché dura la connessione. Lettura (l'altro task) e scrittura
+    /// sullo stesso NetworkStream da due task diversi sono consentite.
+    /// </summary>
+    private static async Task MandaPingAsync(NetworkStream flusso, CancellationToken stop)
+    {
+        int numero = 0;
+        try
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                await Protocollo.Protocollo.InviaPingAsync(flusso, new Ping(++numero, Protocollo.Protocollo.AdessoMicrosecondi()), stop);
+                await Task.Delay(IntervalloPing, stop);
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException)
+        {
+            // Fine della connessione: se ne accorge anche la lettura.
+        }
+    }
+
     private async Task RiceviTuttoAsync(NetworkStream flusso, CancellationToken stop)
     {
         while (await Protocollo.Protocollo.RiceviMessaggioAsync(flusso, stop) is Messaggio messaggio)
@@ -82,13 +131,16 @@ public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezion
             switch (messaggio)
             {
                 case FrameVideo frame:
-                    double latenzaMs = (Protocollo.Protocollo.AdessoMicrosecondi() - frame.IstanteCatturaMicrosecondi) / 1000.0;
+                    double latenzaMs = LatenzaMs(frame.IstanteCatturaMicrosecondi);
                     statistiche.FrameRicevuto(frame.Keyframe, frame.DatiH264.Length, latenzaMs);
                     coda.Aggiungi(frame);
                     break;
                 case PacchettoAudio audio:
                     statisticheAudio.PacchettoRicevuto(audio);
                     riproduzioneAudio.Aggiungi(audio);
+                    break;
+                case Pong pong:
+                    sincronia.Registra(pong, Protocollo.Protocollo.AdessoMicrosecondi());
                     break;
             }
         }

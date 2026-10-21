@@ -18,6 +18,8 @@ public static class Protocollo
 
     private const byte TipoFrameVideo = 1;
     private const byte TipoAudio = 2;
+    private const byte TipoPing = 3;
+    private const byte TipoPong = 4;
 
     private const byte FlagKeyframe = 0b0000_0001;
 
@@ -26,6 +28,12 @@ public static class Protocollo
 
     // tipo (1) + codifica (1) + canali (1) + frequenza (4) + istante di cattura (8)
     private const int IntestazioneAudio = 1 + 1 + 1 + 4 + 8;
+
+    // tipo (1) + numero (4) + T1 (8)
+    private const int LunghezzaPing = 1 + 4 + 8;
+
+    // tipo (1) + numero (4) + T1 (8) + T2 (8) + T3 (8)
+    private const int LunghezzaPong = 1 + 4 + 8 + 8 + 8;
 
     public static async Task InviaFrameAsync(Stream flusso, FrameVideo frame, CancellationToken ct = default)
     {
@@ -73,6 +81,30 @@ public static class Protocollo
         await flusso.WriteAsync(pacchetto, ct);
     }
 
+    public static async Task InviaPingAsync(Stream flusso, Ping ping, CancellationToken ct = default)
+    {
+        byte[] pacchetto = new byte[4 + LunghezzaPing];
+        Span<byte> s = pacchetto;
+        BinaryPrimitives.WriteInt32BigEndian(s, LunghezzaPing);
+        s[4] = TipoPing;
+        BinaryPrimitives.WriteInt32BigEndian(s[5..], ping.Numero);
+        BinaryPrimitives.WriteInt64BigEndian(s[9..], ping.T1);
+        await flusso.WriteAsync(pacchetto, ct);
+    }
+
+    public static async Task InviaPongAsync(Stream flusso, Pong pong, CancellationToken ct = default)
+    {
+        byte[] pacchetto = new byte[4 + LunghezzaPong];
+        Span<byte> s = pacchetto;
+        BinaryPrimitives.WriteInt32BigEndian(s, LunghezzaPong);
+        s[4] = TipoPong;
+        BinaryPrimitives.WriteInt32BigEndian(s[5..], pong.Numero);
+        BinaryPrimitives.WriteInt64BigEndian(s[9..], pong.T1);
+        BinaryPrimitives.WriteInt64BigEndian(s[17..], pong.T2);
+        BinaryPrimitives.WriteInt64BigEndian(s[25..], pong.T3);
+        await flusso.WriteAsync(pacchetto, ct);
+    }
+
     /// <summary>
     /// Legge il prossimo frame video, saltando tutti gli altri messaggi. Restituisce null se
     /// l'altro ha chiuso la connessione in modo pulito, tra un messaggio e l'altro.
@@ -94,7 +126,7 @@ public static class Protocollo
     }
 
     /// <summary>
-    /// Legge il prossimo messaggio conosciuto (video o audio). Restituisce null se l'altro ha
+    /// Legge il prossimo messaggio conosciuto (video, audio, ping o pong). Restituisce null se l'altro ha
     /// chiuso la connessione in modo pulito, tra un messaggio e l'altro.
     /// </summary>
     /// <exception cref="EndOfStreamException">La connessione si è interrotta a metà di un messaggio.</exception>
@@ -124,6 +156,10 @@ public static class Protocollo
                     return LeggiFrame(messaggio);
                 case TipoAudio:
                     return LeggiAudio(messaggio);
+                case TipoPing:
+                    return LeggiPing(messaggio);
+                case TipoPong:
+                    return LeggiPong(messaggio);
                 default:
                     // Tipi sconosciuti si saltano invece di dare errore: così un mittente più nuovo
                     // può aggiungere messaggi senza rompere un ricevitore più vecchio.
@@ -162,6 +198,26 @@ public static class Protocollo
             throw new InvalidDataException($"Pacchetto PCM di {dati.Length} byte non divisibile in campioni da {2 * canali} byte.");
 
         return new PacchettoAudio(codifica, canali, frequenza, istante, dati);
+    }
+
+    private static Ping LeggiPing(byte[] messaggio)
+    {
+        if (messaggio.Length != LunghezzaPing)
+            throw new InvalidDataException($"Ping di {messaggio.Length} byte invece di {LunghezzaPing}.");
+        return new Ping(
+            BinaryPrimitives.ReadInt32BigEndian(messaggio.AsSpan(1)),
+            BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(5)));
+    }
+
+    private static Pong LeggiPong(byte[] messaggio)
+    {
+        if (messaggio.Length != LunghezzaPong)
+            throw new InvalidDataException($"Pong di {messaggio.Length} byte invece di {LunghezzaPong}.");
+        return new Pong(
+            BinaryPrimitives.ReadInt32BigEndian(messaggio.AsSpan(1)),
+            BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(5)),
+            BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(13)),
+            BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(21)));
     }
 
     /// <summary>L'istante attuale nel formato usato da <see cref="FrameVideo.IstanteCatturaMicrosecondi"/>.</summary>

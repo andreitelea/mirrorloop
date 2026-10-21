@@ -32,6 +32,8 @@ Tutti i numeri sono **big-endian** ("network byte order").
 | --- | --- | --- |
 | 1 | Frame video | In uso |
 | 2 | Audio | In uso dalla Fase 4 |
+| 3 | Ping (dal ricevitore al mittente) | In uso dalla Fase 5 |
+| 4 | Pong (dal mittente al ricevitore) | In uso dalla Fase 5 |
 | altri | Riservati | Il ricevitore **li salta senza errore**, così le versioni future potranno aggiungerne senza rompere i ricevitori più vecchi |
 
 ## Tipo 1 · Frame video
@@ -99,6 +101,40 @@ Due campioni (uno sinistro `0x2010`, uno destro `0x4030`) in stereo a 48 kHz, co
 ```
 
 Questo esempio è verificato da un test automatico (`IlFormatoAudioSulFiloEQuelloDocumentato`).
+
+## Tipi 3 e 4 · Ping e pong (sincronizzazione degli orologi)
+
+È l'unico traffico nella direzione **ricevitore → mittente**. Serve a misurare di quanto l'orologio del mittente è spostato rispetto a quello del ricevitore, con il metodo dei server dell'ora di Internet (NTP), così le latenze calcolate dal ricevitore sono vere anche tra due dispositivi diversi.
+
+```
+Ping (ricevitore → mittente):
+┌──────────┬──────────┬──────────────┐
+│ tipo = 3 │ numero   │ T1           │
+│ 1 byte   │ 4 byte   │ 8 byte       │
+└──────────┴──────────┴──────────────┘
+
+Pong (mittente → ricevitore):
+┌──────────┬──────────┬──────────────┬──────────────┬──────────────┐
+│ tipo = 4 │ numero   │ T1           │ T2           │ T3           │
+│ 1 byte   │ 4 byte   │ 8 byte       │ 8 byte       │ 8 byte       │
+└──────────┴──────────┴──────────────┴──────────────┴──────────────┘
+```
+
+- **numero:** progressivo scelto dal ricevitore (intero con segno a 32 bit, big-endian); il pong lo ricopia.
+- **T1:** ora del ricevitore alla partenza del ping; il pong la ricopia identica.
+- **T2:** ora del mittente all'arrivo del ping. **T3:** ora del mittente alla partenza del pong.
+- Tutte le ore sono in microsecondi dal 1° gennaio 1970 UTC (64 bit, big-endian). T2 e T3 usano **lo stesso orologio degli istanti di cattura** di video e audio.
+- Il mittente risponde a ogni ping appena lo riceve. Un mittente che non conosce il tipo 3 lo ignora: il ricevitore allora non può sincronizzare gli orologi e lo segnala.
+- Lunghezze fisse: 13 byte per il ping, 29 per il pong (escluso il prefisso). Una lunghezza diversa è un errore.
+
+Con T4 = ora del ricevitore all'arrivo del pong:
+
+- **scarto** (ora del mittente − ora del ricevitore) = ((T2 − T1) + (T3 − T4)) / 2
+- **andata e ritorno** = (T4 − T1) − (T3 − T2)
+
+Il calcolo è esatto se andata e ritorno durano uguale. Il pong può restare in coda dietro ai frame video: il ricevitore manda un ping al secondo e, tra le ultime 30 misure, usa quella con l'andata e ritorno più breve.
+
+Esempio verificato da un test automatico (`IlFormatoDiPingEPongSulFiloEQuelloDocumentato`): un ping con numero `0x0A0B0C0D` e T1 `0x0102030405060708` è `00 00 00 0D 03 0A 0B 0C 0D 01 02 03 04 05 06 07 08`.
 
 ## Comportamento del ricevitore
 

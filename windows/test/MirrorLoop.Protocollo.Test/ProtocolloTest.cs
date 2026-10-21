@@ -278,6 +278,51 @@ public class ProtocolloTest
         Assert.Equal(TimeSpan.FromMilliseconds(20), audio.Durata);
     }
 
+    [Fact]
+    public async Task PingEPongAndataERitorno()
+    {
+        var flusso = new MemoryStream();
+        await Protocollo.InviaPingAsync(flusso, new Ping(7, 1_000));
+        await Protocollo.InviaPongAsync(flusso, new Pong(7, 1_000, 2_000, 2_050));
+        flusso.Position = 0;
+
+        Assert.Equal(new Ping(7, 1_000), await Protocollo.RiceviMessaggioAsync(flusso));
+        Assert.Equal(new Pong(7, 1_000, 2_000, 2_050), await Protocollo.RiceviMessaggioAsync(flusso));
+    }
+
+    [Fact]
+    public async Task IlFormatoDiPingEPongSulFiloEQuelloDocumentato()
+    {
+        // L'app iPhone deve leggere il ping e scrivere il pong esattamente così (docs/protocollo.md).
+        var flusso = new MemoryStream();
+        await Protocollo.InviaPingAsync(flusso, new Ping(0x0A0B0C0D, 0x0102030405060708));
+        await Protocollo.InviaPongAsync(flusso, new Pong(0x0A0B0C0D, 0x0102030405060708, 0x1112131415161718, 0x2122232425262728));
+
+        byte[] atteso =
+        [
+            0, 0, 0, 13,                                       // ping: lunghezza = tipo + numero + T1
+            3,                                                 // tipo: ping
+            0x0A, 0x0B, 0x0C, 0x0D,                            // numero
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,    // T1
+            0, 0, 0, 29,                                       // pong: lunghezza = tipo + numero + T1 + T2 + T3
+            4,                                                 // tipo: pong
+            0x0A, 0x0B, 0x0C, 0x0D,                            // numero
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,    // T1 (copiato dal ping)
+            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,    // T2
+            0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,    // T3
+        ];
+        Assert.Equal(atteso, flusso.ToArray());
+    }
+
+    [Fact]
+    public async Task UnPongDiLunghezzaSbagliataDaErrore()
+    {
+        byte[] messaggio = [0, 0, 0, 5, 4, 0, 0, 0, 1];
+        using var flusso = new MemoryStream(messaggio);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(flusso));
+    }
+
     /// <summary>Un flusso che restituisce al massimo un byte per lettura.</summary>
     private sealed class FlussoAGoccia(byte[] dati) : MemoryStream(dati)
     {

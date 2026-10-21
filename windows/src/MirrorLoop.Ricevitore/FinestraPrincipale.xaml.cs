@@ -18,6 +18,7 @@ public partial class FinestraPrincipale : Window
     private readonly StatisticheRicezione _statisticheSchermo = new();
     private readonly StatisticheAudio _statisticheAudio = new();
     private readonly RiproduzioneAudio _riproduzioneAudio = new();
+    private readonly SincroniaOrologi _sincronia = new();
     private readonly RicezioneRete _ricezione;
     private readonly Riproduzione _riproduzione;
     private readonly CancellationTokenSource _stop = new();
@@ -34,7 +35,7 @@ public partial class FinestraPrincipale : Window
     {
         InitializeComponent();
 
-        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio);
+        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia);
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
 
@@ -87,7 +88,7 @@ public partial class FinestraPrincipale : Window
 
         // Latenza "fino allo schermo": dal disegno nel mittente a qui. Manca solo l'ultimo tratto,
         // fino al prossimo aggiornamento del monitor (al massimo circa 16 ms a 60 Hz), non misurabile da qui.
-        double latenzaMs = (Protocollo.Protocollo.AdessoMicrosecondi() - immagine.IstanteCatturaMicrosecondi) / 1000.0;
+        double latenzaMs = _ricezione.LatenzaMicrosecondi(immagine.IstanteCatturaMicrosecondi) / 1000.0;
         _statisticheSchermo.FrameRicevuto(false, 0, latenzaMs);
         _msDecompressione = immagine.MsDecompressione;
         _msConversione = immagine.MsConversione;
@@ -116,6 +117,8 @@ public partial class FinestraPrincipale : Window
             $"bitrate         {rete.Byte * 8 / secondi / 1_000_000,6:F2} Mbit/s\n" +
             $"latenza rete    {Latenza(rete)}\n" +
             $"latenza schermo {Latenza(schermo)}\n" +
+            $"latenza audio   {DescriviLatenzaAudio()}\n" +
+            $"orologi         {DescriviOrologi()}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
             $"conversione     {_msConversione,6:F1} ms\n" +
             $"keyframe        {_keyframeTotali,6} (totale)\n" +
@@ -133,6 +136,21 @@ public partial class FinestraPrincipale : Window
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             "S: mostra/nascondi";
     }
+
+    /// <summary>Dalla cattura sull'iPhone al suono nelle cuffie (stimato con la latenza dell'uscita).</summary>
+    private string DescriviLatenzaAudio() =>
+        _riproduzioneAudio.IstanteInAscolto() is long istante
+            ? $"{_ricezione.LatenzaMicrosecondi(istante) / 1000.0,6:F1} ms"
+            : "     —";
+
+    /// <summary>
+    /// Lo scarto tra l'orologio dell'iPhone e quello del PC e il tempo del giro ping-pong migliore.
+    /// Senza sincronia (iPhone con una versione che non risponde ai ping) le latenze sono falsate.
+    /// </summary>
+    private string DescriviOrologi() =>
+        _sincronia.Migliore is SincroniaOrologi.Misura m
+            ? $"scarto {m.ScartoMicrosecondi / 1000.0:+0.0;-0.0} ms · andata/ritorno {m.AndataRitornoMicrosecondi / 1000.0:F1} ms"
+            : "non sincronizzati (le latenze qui sopra non sono affidabili)";
 
     /// <summary>Mediana e massimo dello scarto audio-video dall'ultima lettura, poi riparte.</summary>
     private string DescriviSincronia()
