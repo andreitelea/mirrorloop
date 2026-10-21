@@ -33,6 +33,28 @@ namespace MirrorLoop.Ricevitore;
 /// </summary>
 public sealed class RiservaAudio
 {
+    public enum TipoEvento
+    {
+        /// <summary>La riserva si è svuotata mentre si suonava.</summary>
+        Buco,
+        /// <summary>Oltre il massimo mentre si suonava: si è tornati all'obiettivo.</summary>
+        Taglio,
+        /// <summary>Oltre il massimo mentre si aspettava di ripartire dopo un buco.</summary>
+        TaglioInRiempimento,
+    }
+
+    /// <param name="ByteRiserva">Riserva subito prima dell'evento.</param>
+    /// <param name="ByteObiettivo">Obiettivo in quel momento.</param>
+    /// <param name="ByteCoinvolti">Buco: silenzio scritto in quella lettura. Taglio: byte buttati.</param>
+    /// <param name="ByteLettura">Dimensione della lettura in corso (buco) o dell'ultima lettura (taglio).</param>
+    public readonly record struct Evento(TipoEvento Tipo, int ByteRiserva, int ByteObiettivo, int ByteCoinvolti, int ByteLettura);
+
+    /// <summary>
+    /// Buchi e tagli, per il registro su file. Chiamato con la riserva bloccata, dal thread di rete
+    /// (tagli) o da quello audio (buchi): chi ascolta deve fare in fretta e non richiamare la riserva.
+    /// </summary>
+    public event Action<Evento>? EventoAvvenuto;
+
     public const double VariazioneVelocita = 0.005;
 
     /// <summary>Per quanto tempo una pausa tiene alto l'obiettivo.</summary>
@@ -51,6 +73,7 @@ public sealed class RiservaAudio
     private int _byteObiettivo;
     private int _inizio;
     private int _disponibili;
+    private int _byteUltimaLettura;
     private bool _inRiempimento = true;
     private double _fase;
 
@@ -160,8 +183,11 @@ public sealed class RiservaAudio
                 // Se si sta suonando, i campioni che stavano per uscire sfumano in quelli nuovi.
                 if (!_inRiempimento)
                     PreparaIncrocio();
+                int prima = _disponibili;
                 Scarta(_disponibili - _byteObiettivo);
                 Tagli++;
+                EventoAvvenuto?.Invoke(new Evento(_inRiempimento ? TipoEvento.TaglioInRiempimento : TipoEvento.Taglio,
+                    prima, _byteObiettivo, prima - _disponibili, _byteUltimaLettura));
             }
         }
     }
@@ -174,6 +200,7 @@ public sealed class RiservaAudio
     {
         lock (_blocco)
         {
+            _byteUltimaLettura = destinazione.Length;
             if (_inRiempimento)
             {
                 if (_disponibili < _byteObiettivo)
@@ -190,6 +217,7 @@ public sealed class RiservaAudio
 
             AggiornaVelocita();
 
+            int riservaPrima = _disponibili;
             int istantiDaScrivere = destinazione.Length / _byteBlocco;
             int istantiDisponibili = _disponibili / _byteBlocco;
             int scritti = 0;
@@ -222,6 +250,8 @@ public sealed class RiservaAudio
                 _inRiempimento = true;
                 _incrocioTotali = 0;
                 Buchi++;
+                EventoAvvenuto?.Invoke(new Evento(TipoEvento.Buco, riservaPrima, _byteObiettivo,
+                    (istantiDaScrivere - scritti) * _byteBlocco, destinazione.Length));
             }
             else
             {

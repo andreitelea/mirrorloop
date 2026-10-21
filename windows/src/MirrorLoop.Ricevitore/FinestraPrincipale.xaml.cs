@@ -39,6 +39,7 @@ public partial class FinestraPrincipale : Window
         _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro, CaricaCertificato());
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
+        _riproduzioneAudio.EventoRiserva += evento => _registro.ScriviRiserva(evento, Protocollo.Protocollo.AdessoMicrosecondi());
 
         _riproduzione = new Riproduzione(_coda);
 

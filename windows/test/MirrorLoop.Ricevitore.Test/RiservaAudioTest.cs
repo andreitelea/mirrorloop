@@ -388,6 +388,30 @@ public class RiservaAudioTest
     }
 
     [Fact]
+    public void BuchiETagliVengonoAnnunciatiConIDettagli()
+    {
+        var tempo = new TempoFinto();
+        var riserva = CreaAdattiva(tempo);
+        var eventi = new List<RiservaAudio.Evento>();
+        riserva.EventoAvvenuto += eventi.Add;
+        const int ms = ByteAlSecondoReali / 1000;
+
+        riserva.Aggiungi(Millisecondi(60));
+        Leggi(riserva, ms * 10);                 // si suona; restano 50 ms
+        riserva.Aggiungi(Millisecondi(100));     // 150 > 140: taglio mentre si suona
+        Leggi(riserva, ms * 80);                 // 60 ms disponibili, 80 chiesti: buco
+        riserva.Aggiungi(Millisecondi(160));     // 160 > 140 durante il riempimento
+
+        RiservaAudio.Evento[] attesi =
+        [
+            new(RiservaAudio.TipoEvento.Taglio, ms * 150, ms * 60, ms * 90, ms * 10),
+            new(RiservaAudio.TipoEvento.Buco, ms * 60, ms * 60, ms * 20, ms * 80),
+            new(RiservaAudio.TipoEvento.TaglioInRiempimento, ms * 160, ms * 60, ms * 100, ms * 80),
+        ];
+        Assert.Equal(attesi, eventi);
+    }
+
+    [Fact]
     public void SvuotaDimenticaLePauseDellaConnessionePrecedente()
     {
         var tempo = new TempoFinto();

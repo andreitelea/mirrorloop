@@ -41,6 +41,9 @@ public sealed class RiproduzioneAudio : IDisposable
     public long Tagli => _riserva?.Tagli ?? 0;
     public double Velocita => _riserva?.Velocita ?? 1;
 
+    /// <summary>Buchi e tagli della riserva (vedi <see cref="RiservaAudio.EventoAvvenuto"/>).</summary>
+    public event Action<RiservaAudio.Evento>? EventoRiserva;
+
     /// <summary>Chiamato dal thread di rete per ogni pacchetto ricevuto.</summary>
     public void Aggiungi(PacchettoAudio audio)
     {
@@ -70,6 +73,7 @@ public sealed class RiproduzioneAudio : IDisposable
             int byteBlocco = canali * 2;
             var riserva = new RiservaAudio(frequenza * byteBlocco, canali, RiservaMinima, RiservaTetto, RiservaTolleranza,
                 RiservaMassima, Dissolvenza);
+            riserva.EventoAvvenuto += e => EventoRiserva?.Invoke(e);
             var uscita = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, LatenzaWasapiMs);
             uscita.Init(new SorgenteRiserva(riserva, new WaveFormat(frequenza, 16, canali)));
             uscita.Play();
