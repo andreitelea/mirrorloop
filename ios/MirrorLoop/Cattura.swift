@@ -19,6 +19,10 @@ struct Contatori: Sendable {
     var formatoAudio = "—"
     var ritardoConsegnaVideoMs: Double = 0
     var ritardoConsegnaAudioMs: Double = 0
+    // Pause più lunghe tra due consegne di ScreenCaptureKit: se sono grandi, il ritardo nasce
+    // sull'iPhone (cattura) e non in rete.
+    var pausaMassimaAudio: TimeInterval = 0
+    var ultimoAudio: TimeInterval?
     var larghezza = 0
     var altezza = 0
     var pausaMassima: TimeInterval = 0
@@ -130,6 +134,10 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
             contatori.withLock { c in
                 c.pacchettiAudio += 1
                 c.ritardoConsegnaAudioMs = ritardo
+                if let ultimo = c.ultimoAudio {
+                    c.pausaMassimaAudio = max(c.pausaMassimaAudio, adesso - ultimo)
+                }
+                c.ultimoAudio = adesso
                 if let convertito {
                     c.audioConvertiti += 1
                     c.formatoAudio = convertito.descrizione

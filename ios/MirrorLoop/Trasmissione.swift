@@ -13,6 +13,7 @@ struct StatisticheTrasmissione: Sendable {
     var byteAudio = 0
     var connessioni = 0
     var pingRisposti = 0
+    var piccoByteInAttesa = 0
     var ultimoErrore: String?
 }
 
@@ -79,6 +80,8 @@ final class Trasmissione: @unchecked Sendable {
 
             let messaggio = Self.messaggio(frame)
             byteInAttesa += messaggio.count
+            let picco = byteInAttesa
+            statistiche.withLock { $0.piccoByteInAttesa = max($0.piccoByteInAttesa, picco) }
             let mia = generazione
             connessione.send(content: messaggio, completion: .contentProcessed { [self] errore in
                 // Il completamento arriva sulla coda della connessione, cioè `coda`.
@@ -105,6 +108,8 @@ final class Trasmissione: @unchecked Sendable {
             }
             let messaggio = Self.messaggioAudio(audio)
             byteInAttesa += messaggio.count
+            let picco = byteInAttesa
+            statistiche.withLock { $0.piccoByteInAttesa = max($0.piccoByteInAttesa, picco) }
             let mia = generazione
             connessione.send(content: messaggio, completion: .contentProcessed { [self] errore in
                 guard mia == generazione else { return }
