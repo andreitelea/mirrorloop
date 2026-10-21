@@ -28,6 +28,7 @@ public partial class FinestraPrincipale : Window
     private double _msDecompressione;
     private double _msConversione;
     private string _stato = "Avvio...";
+    private readonly List<double> _scartiAudioVideoMs = [];
 
     public FinestraPrincipale()
     {
@@ -65,9 +66,15 @@ public partial class FinestraPrincipale : Window
 
     private void MostraUltimaImmagine(object? sender, EventArgs e)
     {
-        ImmaginePronta? immagine = _riproduzione.PrendiUltima();
+        long? istanteAudio = _riproduzioneAudio.IstanteInAscolto();
+        ImmaginePronta? immagine = _riproduzione.Prendi(istanteAudio);
         if (immagine is null)
             return;
+
+        // Quanto l'immagine mostrata è dietro all'audio che si sente: idealmente tra 0 e la durata
+        // di un fotogramma (33 ms a 30 fps). Senza audio non c'è niente da misurare.
+        if (istanteAudio is long audio)
+            _scartiAudioVideoMs.Add((audio - immagine.IstanteCatturaMicrosecondi) / 1000.0);
 
         if (_immagine is null || _immagine.PixelWidth != immagine.Larghezza || _immagine.PixelHeight != immagine.Altezza)
         {
@@ -114,6 +121,8 @@ public partial class FinestraPrincipale : Window
             $"keyframe        {_keyframeTotali,6} (totale)\n" +
             $"scartati        {_coda.Scartati,6} (totale)\n" +
             $"non mostrati    {_riproduzione.NonMostrate,6} (totale)\n" +
+            $"in attesa       {_riproduzione.InAttesa,6} immagini\n" +
+            $"sincronia A/V   {DescriviSincronia()}\n" +
             $"errori          {_riproduzione.Errori,6} (totale)\n" +
             $"audio           {audio.Pacchetti / secondi,6:F1} pacchetti/s  {audio.Byte * 8 / secondi / 1000,5:F0} kbit/s\n" +
             $"audio ricevuto  {audio.MsAudio / secondi,6:F0} ms al secondo (~1000 = completo)\n" +
@@ -123,6 +132,16 @@ public partial class FinestraPrincipale : Window
             $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             "S: mostra/nascondi";
+    }
+
+    /// <summary>Mediana e massimo dello scarto audio-video dall'ultima lettura, poi riparte.</summary>
+    private string DescriviSincronia()
+    {
+        if (_scartiAudioVideoMs.Count == 0)
+            return "     — (niente audio: il video si mostra subito)";
+        var ordinati = _scartiAudioVideoMs.Order().ToArray();
+        _scartiAudioVideoMs.Clear();
+        return $"{ordinati[ordinati.Length / 2],6:F0} ms video dietro l'audio (max {ordinati[^1]:F0})";
     }
 
     private void SuTastoPremuto(object sender, KeyEventArgs e)

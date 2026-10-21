@@ -197,6 +197,45 @@ public class RiservaAudioTest
     }
 
     [Fact]
+    public void DuranteIlRiempimentoNonCEUnIstanteInAscolto()
+    {
+        var riserva = CreaReale();
+        riserva.Aggiungi(Millisecondi(20), 1_000_000);
+        Leggi(riserva, 400);
+
+        Assert.Null(riserva.IstanteInAscolto(TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void LIstanteInAscoltoSegueICampioniSuonati()
+    {
+        var riserva = CreaReale();
+        riserva.Aggiungi(Millisecondi(60), 1_000_000);
+
+        Leggi(riserva, ByteAlSecondoReali / 1000 * 20);
+
+        // Suonati 20 ms del pacchetto catturato a 1 000 000 µs: si sente ~1 020 000 (più i pochi
+        // microsecondi trascorsi durante il test), e 30 ms prima se l'uscita ha 30 ms di latenza.
+        Assert.InRange(riserva.IstanteInAscolto(TimeSpan.Zero)!.Value, 1_020_000, 1_030_000);
+        Assert.InRange(riserva.IstanteInAscolto(TimeSpan.FromMilliseconds(30))!.Value, 990_000, 1_000_000);
+    }
+
+    [Fact]
+    public void LIstanteInAscoltoUsaLAncoraDelPacchettoGiusto()
+    {
+        // Il terzo pacchetto è stato catturato molto dopo (per esempio dopo una pausa):
+        // l'istante deve saltare con lui, non continuare a contare dal primo.
+        var riserva = CreaReale();
+        riserva.Aggiungi(Millisecondi(20), 1_000_000);
+        riserva.Aggiungi(Millisecondi(20), 1_020_000);
+        riserva.Aggiungi(Millisecondi(20), 5_000_000);
+
+        Leggi(riserva, ByteAlSecondoReali / 1000 * 50);
+
+        Assert.InRange(riserva.IstanteInAscolto(TimeSpan.Zero)!.Value, 5_010_000, 5_020_000);
+    }
+
+    [Fact]
     public void SvuotaRicominciaDalRiempimento()
     {
         var riserva = Crea();

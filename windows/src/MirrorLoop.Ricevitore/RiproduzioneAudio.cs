@@ -17,6 +17,10 @@ public sealed class RiproduzioneAudio : IDisposable
     public static readonly TimeSpan RiservaMassima = TimeSpan.FromMilliseconds(400);
     private const int LatenzaWasapiMs = 30;
 
+    // Quanto passa tra la consegna dei campioni a WASAPI e il suono nelle cuffie. È una stima
+    // (il buffer di WASAPI): con cuffie Bluetooth sarebbe molto di più e andrà resa regolabile.
+    private static readonly TimeSpan LatenzaUscita = TimeSpan.FromMilliseconds(LatenzaWasapiMs);
+
     private readonly object _blocco = new();
     private WasapiOut? _uscita;
     private RiservaAudio? _riserva;
@@ -40,9 +44,12 @@ public sealed class RiproduzioneAudio : IDisposable
         {
             if (_uscita is null || _formato != (audio.Canali, audio.Frequenza))
                 Apri(audio.Canali, audio.Frequenza);
-            _riserva?.Aggiungi(audio.Dati.Span);
+            _riserva?.Aggiungi(audio.Dati.Span, audio.IstanteCatturaMicrosecondi);
         }
     }
+
+    /// <summary>L'istante di cattura che si sente adesso, o null se l'audio non sta suonando.</summary>
+    public long? IstanteInAscolto() => _riserva?.IstanteInAscolto(LatenzaUscita);
 
     /// <summary>A una nuova connessione si riparte da zero, senza avanzi della precedente.</summary>
     public void Ricomincia() => _riserva?.Svuota();

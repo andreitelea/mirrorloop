@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics;
 
 namespace MirrorLoop.Ricevitore;
 
@@ -17,6 +18,9 @@ namespace MirrorLoop.Ricevitore;
 ///
 /// Il cambio di velocità si fa per interpolazione lineare tra campioni vicini: con una
 /// differenza di 0,5% l'errore introdotto è trascurabile.
+///
+/// Tiene anche il conto di "che istante di cattura sto suonando", che serve a sincronizzare
+/// il video con l'audio (vedi <see cref="IstanteInAscolto"/>).
 ///
 /// Formato: PCM 16 bit little-endian, canali intercalati.
 /// Thread-safe: <see cref="Aggiungi"/> arriva dal thread di rete, <see cref="Leggi"/> da quello audio.
@@ -37,6 +41,14 @@ public sealed class RiservaAudio
     private int _disponibili;
     private bool _inRiempimento = true;
     private double _fase;
+
+    // Per sapere quale istante di cattura si sta suonando: posizioni "assolute" (byte scritti e
+    // letti dall'inizio) e, per ogni pacchetto, l'istante di cattura del suo primo campione.
+    private readonly Queue<(long Posizione, long IstanteMicrosecondi)> _ancore = new();
+    private long _scritti;
+    private long _letti;
+    private long? _istanteUltimaLettura;
+    private long _momentoUltimaLettura;
 
     /// <param name="byteAlSecondo">Es. 48 000 Hz × 2 canali × 2 byte = 192 000.</param>
     /// <param name="canali">Numero di canali (campioni da 16 bit per istante).</param>
@@ -74,13 +86,19 @@ public sealed class RiservaAudio
         }
     }
 
-    public void Aggiungi(ReadOnlySpan<byte> dati)
+    /// <param name="istanteCatturaMicrosecondi">Istante di cattura del primo campione di <paramref name="dati"/>.</param>
+    public void Aggiungi(ReadOnlySpan<byte> dati, long istanteCatturaMicrosecondi = 0)
     {
         lock (_blocco)
         {
             // Un pacchetto più grande dell'intero anello: conta solo la sua parte finale.
             if (dati.Length > _anello.Length)
+            {
+                istanteCatturaMicrosecondi += DurataMicrosecondi(dati.Length - _anello.Length);
                 dati = dati[^_anello.Length..];
+            }
+            _ancore.Enqueue((_scritti, istanteCatturaMicrosecondi));
+            _scritti += dati.Length;
 
             int fine = (_inizio + _disponibili) % _anello.Length;
             int primoPezzo = Math.Min(dati.Length, _anello.Length - fine);
@@ -111,6 +129,7 @@ public sealed class RiservaAudio
                 if (_disponibili < _byteObiettivo)
                 {
                     destinazione.Clear();
+                    _istanteUltimaLettura = null;
                     return destinazione.Length;
                 }
                 _inRiempimento = false;
@@ -141,6 +160,9 @@ public sealed class RiservaAudio
             _fase = posizione - (int)posizione;
             _inizio = (_inizio + consumati * _byteBlocco) % _anello.Length;
             _disponibili -= consumati * _byteBlocco;
+            Avanza(consumati * _byteBlocco);
+            _istanteUltimaLettura = scritti > 0 ? IstanteLetto() : null;
+            _momentoUltimaLettura = Stopwatch.GetTimestamp();
 
             if (scritti < istantiDaScrivere)
             {
@@ -166,6 +188,26 @@ public sealed class RiservaAudio
             _inRiempimento = true;
             _fase = 0;
             Velocita = 1;
+            _ancore.Clear();
+            _scritti = _letti = 0;
+            _istanteUltimaLettura = null;
+        }
+    }
+
+    /// <summary>
+    /// L'istante di cattura che si sente <em>adesso</em> nelle cuffie, o null se non si sta suonando
+    /// audio vero (riempimento, buco). Parte dall'ultimo campione passato alla scheda audio, aggiunge
+    /// il tempo trascorso da allora e toglie la latenza dell'uscita (i campioni consegnati alla
+    /// scheda si sentono solo dopo che è passato il suo buffer).
+    /// </summary>
+    public long? IstanteInAscolto(TimeSpan latenzaUscita)
+    {
+        lock (_blocco)
+        {
+            if (_istanteUltimaLettura is not long istante)
+                return null;
+            TimeSpan trascorso = Stopwatch.GetElapsedTime(_momentoUltimaLettura);
+            return istante + (long)((trascorso - latenzaUscita).TotalMilliseconds * 1000);
         }
     }
 
@@ -206,7 +248,26 @@ public sealed class RiservaAudio
         _inizio = (_inizio + byteDaScartare) % _anello.Length;
         _disponibili -= byteDaScartare;
         _fase = 0;
+        Avanza(byteDaScartare);
     }
+
+    private void Avanza(int byteLetti)
+    {
+        _letti += byteLetti;
+        // Le ancore dei pacchetti ormai suonati per intero non servono più.
+        while (_ancore.Count >= 2 && _ancore.ElementAt(1).Posizione <= _letti)
+            _ancore.Dequeue();
+    }
+
+    /// <summary>Istante di cattura del prossimo campione da leggere.</summary>
+    private long IstanteLetto()
+    {
+        if (!_ancore.TryPeek(out var ancora))
+            return 0;
+        return ancora.IstanteMicrosecondi + DurataMicrosecondi(_letti - ancora.Posizione);
+    }
+
+    private long DurataMicrosecondi(long byteTotali) => byteTotali * 1_000_000 / _byteAlSecondo;
 
     private int Allinea(int byteTotali) => byteTotali / _byteBlocco * _byteBlocco;
 }
