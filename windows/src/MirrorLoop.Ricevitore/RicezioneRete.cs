@@ -10,7 +10,7 @@ namespace MirrorLoop.Ricevitore;
 /// Ascolta il mittente e legge i frame dalla rete in continuazione, mettendoli nella coda.
 /// Non fa altro: leggere subito è ciò che impedisce al ritardo di accumularsi nei buffer di Windows.
 /// </summary>
-public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezione statistiche, StatisticheAudio statisticheAudio)
+public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezione statistiche, StatisticheAudio statisticheAudio, RiproduzioneAudio riproduzioneAudio)
 {
     /// <summary>Descrizione dello stato, per la finestra. Viene chiamato da un thread in sottofondo.</summary>
     public event Action<string>? StatoCambiato;
@@ -33,6 +33,7 @@ public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezion
                 StatoCambiato?.Invoke($"Collegato a {client.Client.RemoteEndPoint}");
 
                 coda.Ricomincia();
+                riproduzioneAudio.Ricomincia();
                 try
                 {
                     await RiceviTuttoAsync(client.GetStream(), stop);
@@ -85,8 +86,8 @@ public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezion
                     coda.Aggiungi(frame);
                     break;
                 case PacchettoAudio audio:
-                    // Fase 4, passo 1: l'audio si conta soltanto; la riproduzione arriva al passo 2.
                     statisticheAudio.PacchettoRicevuto(audio);
+                    riproduzioneAudio.Aggiungi(audio);
                     break;
             }
         }

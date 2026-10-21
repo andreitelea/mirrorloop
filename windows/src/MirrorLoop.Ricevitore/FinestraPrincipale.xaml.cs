@@ -17,6 +17,7 @@ public partial class FinestraPrincipale : Window
     private readonly StatisticheRicezione _statistiche = new();
     private readonly StatisticheRicezione _statisticheSchermo = new();
     private readonly StatisticheAudio _statisticheAudio = new();
+    private readonly RiproduzioneAudio _riproduzioneAudio = new();
     private readonly RicezioneRete _ricezione;
     private readonly Riproduzione _riproduzione;
     private readonly CancellationTokenSource _stop = new();
@@ -32,7 +33,7 @@ public partial class FinestraPrincipale : Window
     {
         InitializeComponent();
 
-        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio);
+        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio);
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
 
@@ -117,6 +118,8 @@ public partial class FinestraPrincipale : Window
             $"audio           {audio.Pacchetti / secondi,6:F1} pacchetti/s  {audio.Byte * 8 / secondi / 1000,5:F0} kbit/s\n" +
             $"audio ricevuto  {audio.MsAudio / secondi,6:F0} ms al secondo (~1000 = completo)\n" +
             $"formato audio   {audio.Formato}{(audio.Ignorati > 0 ? $"  ({audio.Ignorati} ignorati)" : "")}\n" +
+            $"uscita audio    {_riproduzioneAudio.Stato}\n" +
+            $"riserva audio   {_riproduzioneAudio.Riserva.TotalMilliseconds,6:F0} ms  (buchi {_riproduzioneAudio.Buchi}, tagli {_riproduzioneAudio.Tagli})\n" +
             "S: mostra/nascondi";
     }
 
@@ -133,6 +136,7 @@ public partial class FinestraPrincipale : Window
     protected override void OnClosing(CancelEventArgs e)
     {
         _stop.Cancel();
+        _riproduzioneAudio.Dispose();
         _timerStatistiche.Stop();
         CompositionTarget.Rendering -= MostraUltimaImmagine;
         base.OnClosing(e);
