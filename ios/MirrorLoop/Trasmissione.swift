@@ -37,6 +37,9 @@ final class Trasmissione: @unchecked Sendable {
     // accodare (per il video si riparte dal keyframe successivo: lezione dei buffer della Fase 1).
     static let sogliaVideoInAttesa = CompressoreH264.bitrate / 8 / 2
     static let sogliaAudioInAttesa = 48_000 * 4 / 2
+    /// Se il collegamento non si completa entro questo tempo si considera fallito e si riprova:
+    /// un'attesa infinita senza errori (com'è successo con QUIC) non deve passare inosservata.
+    static let limiteCollegamento: TimeInterval = 5
 
     let statistiche = Mutex(StatisticheTrasmissione())
 
@@ -184,10 +187,15 @@ final class Trasmissione: @unchecked Sendable {
     private func collega() {
         guard attivo else { return }
         generazione += 1
+        let mia = generazione
         statistiche.withLock { $0.stato = "Collegamento a \(host) (\(trasporto.rawValue))…" }
         switch trasporto {
-        case .tcp: collegaTcp(generazione: generazione)
-        case .quic: collegaQuic(generazione: generazione)
+        case .tcp: collegaTcp(generazione: mia)
+        case .quic: collegaQuic(generazione: mia)
+        }
+        coda.asyncAfter(deadline: .now() + Self.limiteCollegamento) { [self] in
+            guard mia == generazione, !collegato else { return }
+            riprova("collegamento \(trasporto.rawValue) non riuscito entro \(Int(Self.limiteCollegamento)) s")
         }
     }
 
@@ -228,16 +236,20 @@ final class Trasmissione: @unchecked Sendable {
         nuovo.stateUpdateHandler = { [self] stato in
             guard mia == generazione else { return }
             switch stato {
-            case .ready:
-                apriCorsieQuic(nuovo, generazione: mia)
             case .waiting(let errore), .failed(let errore):
                 riprova(errore.localizedDescription)
             default:
-                break
+                // Lo stato del gruppo resta visibile finché non è tutto collegato: aiuta a capire dove si ferma.
+                if !collegato {
+                    statistiche.withLock { $0.stato = "QUIC: gruppo \(stato)…" }
+                }
             }
         }
         gruppo = nuovo
         nuovo.start(queue: coda)
+        // Le corsie si aprono subito: il gruppo QUIC stabilisce la connessione quando c'è la prima
+        // corsia. Aspettare che il gruppo fosse "pronto" prima di aprirle lo lasciava in sospeso per sempre.
+        apriCorsieQuic(nuovo, generazione: mia)
     }
 
     /// Controllo bidirezionale (ping dal PC, pong dall'iPhone); video e audio in sola andata.
