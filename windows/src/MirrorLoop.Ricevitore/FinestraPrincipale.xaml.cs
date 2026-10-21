@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using MirrorLoop.Protocollo;
 
 namespace MirrorLoop.Ricevitore;
 
@@ -26,6 +27,7 @@ public partial class FinestraPrincipale : Window
     private readonly DispatcherTimer _timerStatistiche;
     private readonly Stopwatch _dallUltimaLettura = Stopwatch.StartNew();
     private WriteableBitmap? _immagine;
+    private RotazioneVideo _rotazione = RotazioneVideo.Nessuna;
     private long _keyframeTotali;
     private double _msDecompressione;
     private double _msConversione;
@@ -88,6 +90,17 @@ public partial class FinestraPrincipale : Window
 
         _immagine.WritePixels(new Int32Rect(0, 0, immagine.Larghezza, immagine.Altezza), immagine.Bgra, immagine.Larghezza * 4, 0);
 
+        // La rotazione la fa la scheda video al momento di disegnare: nessun lavoro sui pixel.
+        // LayoutTransform (non RenderTransform) perché anche l'impaginazione deve vedere l'immagine
+        // girata, così in orizzontale riempie la finestra in larghezza.
+        if (immagine.Rotazione != _rotazione)
+        {
+            _rotazione = immagine.Rotazione;
+            var trasformazione = new RotateTransform(90 * (int)_rotazione);
+            trasformazione.Freeze();
+            Video.LayoutTransform = trasformazione;
+        }
+
         // Latenza "fino allo schermo": dal disegno nel mittente a qui. Manca solo l'ultimo tratto,
         // fino al prossimo aggiornamento del monitor (al massimo circa 16 ms a 60 Hz), non misurabile da qui.
         double latenzaMs = _ricezione.LatenzaMicrosecondi(immagine.IstanteCatturaMicrosecondi) / 1000.0;
@@ -124,6 +137,7 @@ public partial class FinestraPrincipale : Window
             $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (QUIC spento: {m})" : "")}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
             $"conversione     {_msConversione,6:F1} ms\n" +
+            $"rotazione       {90 * (int)_rotazione,6}°\n" +
             $"keyframe        {_keyframeTotali,6} (totale)\n" +
             $"scartati        {_coda.Scartati,6} (totale)\n" +
             $"non mostrati    {_riproduzione.NonMostrate,6} (totale)\n" +

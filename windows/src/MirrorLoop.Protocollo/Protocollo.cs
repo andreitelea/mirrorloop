@@ -23,6 +23,8 @@ public static class Protocollo
     private const byte TipoAperturaCorsia = 5;
 
     private const byte FlagKeyframe = 0b0000_0001;
+    private const byte FlagRotazione = 0b0000_0110;
+    private const int SpostamentoRotazione = 1;
 
     // tipo (1) + flag (1) + istante di cattura (8)
     private const int IntestazioneFrame = 1 + 1 + 8;
@@ -54,7 +56,7 @@ public static class Protocollo
         Span<byte> s = pacchetto;
         BinaryPrimitives.WriteInt32BigEndian(s, lunghezza);
         s[4] = TipoFrameVideo;
-        s[5] = frame.Keyframe ? FlagKeyframe : (byte)0;
+        s[5] = (byte)((frame.Keyframe ? FlagKeyframe : 0) | (((int)frame.Rotazione << SpostamentoRotazione) & FlagRotazione));
         BinaryPrimitives.WriteInt64BigEndian(s[6..], frame.IstanteCatturaMicrosecondi);
         frame.DatiH264.Span.CopyTo(s[(4 + IntestazioneFrame)..]);
 
@@ -191,9 +193,10 @@ public static class Protocollo
             throw new InvalidDataException("Frame video senza dati H.264.");
 
         bool keyframe = (messaggio[1] & FlagKeyframe) != 0;
+        var rotazione = (RotazioneVideo)((messaggio[1] & FlagRotazione) >> SpostamentoRotazione);
         long istante = BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(2));
         var dati = new ReadOnlyMemory<byte>(messaggio, IntestazioneFrame, messaggio.Length - IntestazioneFrame);
-        return new FrameVideo(keyframe, istante, dati);
+        return new FrameVideo(keyframe, istante, dati, rotazione);
     }
 
     private static PacchettoAudio LeggiAudio(byte[] messaggio)

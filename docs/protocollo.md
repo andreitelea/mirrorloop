@@ -54,7 +54,10 @@ Tutti i numeri sono **big-endian** ("network byte order").
 └──────────┴──────────┴────────────────────────┴─────────────────────┘
 ```
 
-- **flag:** bit 0 = **keyframe** (1 se il frame si decodifica da solo). Gli altri bit sono riservati e vanno lasciati a 0.
+- **flag:**
+  - bit 0 = **keyframe** (1 se il frame si decodifica da solo);
+  - bit 1 e 2 = **rotazione**: di quanto girare l'immagine **in senso orario** per mostrarla dritta, a passi di 90° (valore 0 = nessuna, 1 = 90°, 2 = 180°, 3 = 270°). L'iPhone cattura sempre nel verso del pannello: con il telefono in orizzontale il contenuto arriva coricato, e la rotazione dice come raddrizzarlo. Vale per il frame che la porta; può cambiare da un frame all'altro senza bisogno di un keyframe;
+  - gli altri bit sono riservati e vanno lasciati a 0.
 - **istante di cattura:** intero con segno a 64 bit, big-endian, in **microsecondi dal 1° gennaio 1970 UTC**. Serve a misurare la latenza. Ha senso solo se i due orologi sono allineati: è vero sullo stesso PC, mentre tra iPhone e PC andrà gestito (Fase 5).
 - **dati H.264:** **un frame intero** (in gergo *access unit*) in formato **Annex B**, cioè con i codici di inizio `00 00 00 01` davanti a ogni pezzo (*NAL unit*). Ogni keyframe deve includere anche **SPS e PPS**, le "istruzioni per il decoder", così chi si collega a metà trasmissione può partire dal primo keyframe che riceve. Gli **AUD** (*Access Unit Delimiter*, NAL di tipo 9) non servono, perché ogni messaggio contiene già un frame intero: il mittente li toglie.
 
@@ -71,6 +74,8 @@ AB CD         dati H.264
 ```
 
 Questo esempio è verificato da un test automatico (`IlFormatoSulFiloEQuelloDocumentato`).
+
+Lo stesso keyframe da girare di 90° in senso orario ha flag `03` (bit 0 e bit 1); verificato da `LaRotazioneStaNeiBit1E2DelFlag`.
 
 ## Tipo 2 · Audio
 

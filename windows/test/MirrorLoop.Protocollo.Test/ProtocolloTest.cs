@@ -323,6 +323,23 @@ public class ProtocolloTest
         await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(flusso));
     }
 
+    [Theory]
+    [InlineData(RotazioneVideo.Nessuna, true, 0x01)]
+    [InlineData(RotazioneVideo.Gradi90, true, 0x03)]
+    [InlineData(RotazioneVideo.Gradi180, false, 0x04)]
+    [InlineData(RotazioneVideo.Gradi270, true, 0x07)]
+    public async Task LaRotazioneStaNeiBit1E2DelFlag(RotazioneVideo rotazione, bool keyframe, byte flagAtteso)
+    {
+        var flusso = new MemoryStream();
+        await Protocollo.InviaFrameAsync(flusso, new FrameVideo(keyframe, 1, new byte[] { 0xAB }, rotazione));
+
+        Assert.Equal(flagAtteso, flusso.ToArray()[5]);
+        flusso.Position = 0;
+        var letto = Assert.IsType<FrameVideo>(await Protocollo.RiceviMessaggioAsync(flusso));
+        Assert.Equal(rotazione, letto.Rotazione);
+        Assert.Equal(keyframe, letto.Keyframe);
+    }
+
     [Fact]
     public async Task IlFormatoDellAperturaCorsiaSulFiloEQuelloDocumentato()
     {

@@ -6,7 +6,9 @@ using MirrorLoop.Protocollo;
 namespace MirrorLoop.Ricevitore;
 
 /// <summary>Un'immagine pronta da mostrare, con le misure raccolte lungo la strada.</summary>
-public sealed record ImmaginePronta(byte[] Bgra, int Larghezza, int Altezza, long IstanteCatturaMicrosecondi, double MsDecompressione, double MsConversione);
+/// <param name="Rotazione">Di quanto girarla in senso orario per mostrarla dritta (la gira la finestra).</param>
+public sealed record ImmaginePronta(byte[] Bgra, int Larghezza, int Altezza, long IstanteCatturaMicrosecondi, double MsDecompressione,
+    double MsConversione, RotazioneVideo Rotazione = RotazioneVideo.Nessuna);
 
 /// <summary>
 /// Prende i frame dalla coda, li decomprime e li converte in immagini da mostrare.
@@ -103,7 +105,9 @@ public sealed class Riproduzione
             ConversioneColori.Nv12ABgra(d.Nv12, d.Larghezza, d.Altezza, d.Passo, bgra, d.Larghezza * 4);
             double msConversione = cronometro.Elapsed.TotalMilliseconds;
 
-            _immagini.Aggiungi(new ImmaginePronta(bgra, d.Larghezza, d.Altezza, d.Tempo, msDecompressione, msConversione));
+            // Il decompressore è in bassa latenza (un frame entra, un frame esce): l'immagine che
+            // esce è quella del frame appena entrato, e ne prende la rotazione.
+            _immagini.Aggiungi(new ImmaginePronta(bgra, d.Larghezza, d.Altezza, d.Tempo, msDecompressione, msConversione, frame.Rotazione));
         }
     }
 
