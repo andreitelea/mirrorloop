@@ -36,7 +36,7 @@ public partial class FinestraPrincipale : Window
     {
         InitializeComponent();
 
-        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro);
+        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro, CaricaCertificato());
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
 
@@ -120,6 +120,7 @@ public partial class FinestraPrincipale : Window
             $"latenza schermo {Latenza(schermo)}\n" +
             $"latenza audio   {DescriviLatenzaAudio()}\n" +
             $"orologi         {DescriviOrologi()}\n" +
+            $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (QUIC spento: {m})" : "")}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
             $"conversione     {_msConversione,6:F1} ms\n" +
             $"keyframe        {_keyframeTotali,6} (totale)\n" +
@@ -137,6 +138,19 @@ public partial class FinestraPrincipale : Window
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             $"registro        {DescriviRegistro()}\n" +
             "S: mostra/nascondi · R: registro su file";
+    }
+
+    /// <summary>Senza certificato il ricevitore funziona lo stesso, solo in TCP.</summary>
+    private static System.Security.Cryptography.X509Certificates.X509Certificate2? CaricaCertificato()
+    {
+        try
+        {
+            return CertificatoRicevitore.CaricaOCrea();
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Dalla cattura sull'iPhone al suono nelle cuffie (stimato con la latenza dell'uscita).</summary>
