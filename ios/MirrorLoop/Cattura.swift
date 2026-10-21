@@ -14,6 +14,11 @@ struct Contatori: Sendable {
     var fotogrammiInBackground = 0
     var scartatiPerRitmo = 0
     var pacchettiAudio = 0
+    var audioConvertiti = 0
+    var audioNonConvertiti = 0
+    var formatoAudio = "—"
+    var ritardoConsegnaVideoMs: Double = 0
+    var ritardoConsegnaAudioMs: Double = 0
     var larghezza = 0
     var altezza = 0
     var pausaMassima: TimeInterval = 0
@@ -43,16 +48,33 @@ enum EventoCattura: Sendable {
 final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSharingPickerObserver, @unchecked Sendable {
     let contatori = Mutex(Contatori())
     let compressore: CompressoreH264
+    private let audio: @Sendable (AudioPcm16) -> Void
     private let eventi: @Sendable (EventoCattura) -> Void
+
+    // Gli istanti dei campioni di ScreenCaptureKit sono sull'orologio di sistema dell'iPhone
+    // (quello di CMClockGetHostTimeClock). Lo scarto lo trasforma nell'ora "da calendario"
+    // del protocollo. Audio e video usano lo stesso scarto: è ciò che li tiene sincronizzati.
+    private let scartoOrologio = Date().timeIntervalSince1970 - CMClockGetTime(CMClockGetHostTimeClock()).seconds
 
     // ScreenCaptureKit su iOS non permette di chiedere meno fotogrammi al secondo
     // (minimumFrameInterval non esiste): il ritmo lo limitiamo noi. Il margine evita di
     // scartare fotogrammi arrivati con qualche millisecondo di anticipo.
     private let intervalloMinimo = 1.0 / Double(CompressoreH264.fps) - 0.004
 
-    init(compressore: CompressoreH264, eventi: @escaping @Sendable (EventoCattura) -> Void) {
+    init(compressore: CompressoreH264, audio: @escaping @Sendable (AudioPcm16) -> Void, eventi: @escaping @Sendable (EventoCattura) -> Void) {
         self.compressore = compressore
+        self.audio = audio
         self.eventi = eventi
+    }
+
+    private func istanteMicrosecondi(_ tempo: CMTime) -> Int64 {
+        Int64((tempo.seconds + scartoOrologio) * 1_000_000)
+    }
+
+    /// Quanto tempo è passato tra la cattura del campione e il suo arrivo qui. Se gli istanti
+    /// non fossero sull'orologio di sistema, questo numero sarebbe assurdo: è il controllo.
+    private func ritardoConsegnaMs(_ tempo: CMTime) -> Double {
+        (CMClockGetTime(CMClockGetHostTimeClock()).seconds - tempo.seconds) * 1000
     }
 
     func impostaBackground(_ attivo: Bool) {
@@ -77,8 +99,10 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
             let tempo = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
             let larghezza = CVPixelBufferGetWidth(immagine)
             let altezza = CVPixelBufferGetHeight(immagine)
+            let ritardo = ritardoConsegnaMs(tempo)
             let accettato = contatori.withLock { c -> Bool in
                 c.fotogrammi += 1
+                c.ritardoConsegnaVideoMs = ritardo
                 if c.inBackground { c.fotogrammiInBackground += 1 }
                 c.larghezza = larghezza
                 c.altezza = altezza
@@ -95,11 +119,25 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
                 return true
             }
             if accettato {
-                let istante = Int64(Date().timeIntervalSince1970 * 1_000_000)
-                compressore.comprimi(immagine, tempo: tempo, istanteCatturaMicrosecondi: istante)
+                compressore.comprimi(immagine, tempo: tempo, istanteCatturaMicrosecondi: istanteMicrosecondi(tempo))
             }
         case .audio:
-            contatori.withLock { $0.pacchettiAudio += 1 }
+            let tempo = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            let ritardo = ritardoConsegnaMs(tempo)
+            let convertito = ConvertitoreAudio.pcm16(da: sampleBuffer, istante: istanteMicrosecondi(tempo))
+            contatori.withLock { c in
+                c.pacchettiAudio += 1
+                c.ritardoConsegnaAudioMs = ritardo
+                if let convertito {
+                    c.audioConvertiti += 1
+                    c.formatoAudio = convertito.descrizione
+                } else {
+                    c.audioNonConvertiti += 1
+                }
+            }
+            if let convertito {
+                audio(convertito.0)
+            }
         default:
             break
         }
@@ -171,7 +209,9 @@ final class Cattura {
         scatolaCompressore.withLock { $0 = compressore }
         self.trasmissione = trasmissione
         trasmissione.avvia()
-        let ricevitore = Ricevitore(compressore: compressore) { evento in
+        let ricevitore = Ricevitore(compressore: compressore) { audio in
+            trasmissione.inviaAudio(audio)
+        } eventi: { evento in
             Task { @MainActor in self.gestisci(evento) }
         }
         ricevitore.impostaBackground(inBackground)
@@ -268,6 +308,10 @@ final class Cattura {
         configurazione.width = larghezza
         configurazione.height = altezza
         configurazione.capturesAudio = true
+        // I valori predefiniti di ScreenCaptureKit, scritti per esteso: sono quelli che il
+        // ricevitore si aspetta.
+        configurazione.sampleRate = 48_000
+        configurazione.channelCount = 2
         let stream = SCStream(filter: filtro, configuration: configurazione, delegate: ricevitore)
         do {
             try stream.addStreamOutput(ricevitore, type: .screen, sampleHandlerQueue: coda)

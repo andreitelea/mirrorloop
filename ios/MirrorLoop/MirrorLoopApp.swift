@@ -77,7 +77,9 @@ struct PannelloCattura: View {
             Text("Bitrate: \(cattura.kbitAlSecondo) kbit/s (picco \(cattura.kbitPicco))")
             Text("Compressione: \(s.msUltimaCompressione, format: .number.precision(.fractionLength(1))) ms (max \(s.msCompressioneMassima, format: .number.precision(.fractionLength(1))) ms)")
             Text("Errori codificatore: \(s.errori) (ultimo \(s.ultimoErrore)) · sessioni \(s.sessioniCreate) · impostazioni rifiutate \(s.impostazioniRifiutate)")
-            Text("Audio: \(c.pacchettiAudio) pacchetti")
+            Text("Audio: \(c.pacchettiAudio) catturati · inviati \(r.audioInviati) · scartati \(r.audioScartati) · non convertiti \(c.audioNonConvertiti)")
+            Text("Formato audio: \(c.formatoAudio)")
+            Text("Ritardo di consegna: video \(c.ritardoConsegnaVideoMs, format: .number.precision(.fractionLength(1))) ms · audio \(c.ritardoConsegnaAudioMs, format: .number.precision(.fractionLength(1))) ms")
             if let errore = cattura.errore {
                 Text("Errore: \(errore)")
                     .foregroundStyle(.red)

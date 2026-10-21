@@ -8,6 +8,9 @@ struct StatisticheTrasmissione: Sendable {
     var inviati = 0
     var scartati = 0
     var byteInviati = 0
+    var audioInviati = 0
+    var audioScartati = 0
+    var byteAudio = 0
     var connessioni = 0
     var ultimoErrore: String?
 }
@@ -81,6 +84,46 @@ final class Trasmissione: @unchecked Sendable {
                 }
             })
         }
+    }
+
+    func inviaAudio(_ audio: AudioPcm16) {
+        coda.async { [self] in
+            guard collegato, let connessione else { return }
+            // Con la rete in affanno anche l'audio si scarta: meglio un buco breve che un
+            // ritardo che cresce. Il video intanto riparte dal keyframe successivo.
+            if byteInAttesa > Self.sogliaByteInAttesa {
+                statistiche.withLock { $0.audioScartati += 1 }
+                return
+            }
+            let messaggio = Self.messaggioAudio(audio)
+            byteInAttesa += messaggio.count
+            let mia = generazione
+            connessione.send(content: messaggio, completion: .contentProcessed { [self] errore in
+                guard mia == generazione else { return }
+                byteInAttesa -= messaggio.count
+                if errore == nil {
+                    statistiche.withLock { s in
+                        s.audioInviati += 1
+                        s.byteAudio += messaggio.count
+                    }
+                }
+            })
+        }
+    }
+
+    /// Lunghezza (4 byte, big-endian) + tipo 2 + codifica 1 (PCM 16 bit) + canali + frequenza
+    /// (4 byte, big-endian) + istante di cattura (8 byte, big-endian) + campioni little-endian.
+    static func messaggioAudio(_ audio: AudioPcm16) -> Data {
+        var dati = Data(capacity: 19 + audio.dati.count)
+        let lunghezza = UInt32(15 + audio.dati.count)
+        withUnsafeBytes(of: lunghezza.bigEndian) { dati.append(contentsOf: $0) }
+        dati.append(2)
+        dati.append(1)
+        dati.append(UInt8(audio.canali))
+        withUnsafeBytes(of: UInt32(audio.frequenza).bigEndian) { dati.append(contentsOf: $0) }
+        withUnsafeBytes(of: audio.istanteCatturaMicrosecondi.bigEndian) { dati.append(contentsOf: $0) }
+        dati.append(audio.dati)
+        return dati
     }
 
     /// Lunghezza (4 byte, big-endian) + tipo 1 + flag + istante di cattura (8 byte, big-endian) + dati.
