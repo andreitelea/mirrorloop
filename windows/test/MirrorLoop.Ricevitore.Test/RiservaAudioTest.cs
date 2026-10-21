@@ -5,17 +5,46 @@ namespace MirrorLoop.Ricevitore.Test;
 public class RiservaAudioTest
 {
     // Numeri piccoli per leggere i test a mente: 1000 byte al secondo, stereo (blocchi da 4 byte),
-    // obiettivo 40 ms = 40 byte, tolleranza 20 ms, massimo 100 ms = 100 byte.
+    // obiettivo fisso 40 ms = 40 byte, tolleranza 20 ms, massimo 100 ms = 100 byte. Senza
+    // dissolvenze, così i byte in uscita sono esattamente quelli in entrata.
     private static RiservaAudio Crea() =>
-        new(1000, 2, TimeSpan.FromMilliseconds(40), TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(100));
+        new(1000, 2, Ms(40), Ms(40), Ms(20), Ms(100), TimeSpan.Zero);
 
     // Valori reali: 48 kHz stereo a 16 bit, come dall'iPhone.
     private const int ByteAlSecondoReali = 48_000 * 4;
 
     private static RiservaAudio CreaReale() =>
-        new(ByteAlSecondoReali, 2, TimeSpan.FromMilliseconds(60), TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(400));
+        new(ByteAlSecondoReali, 2, Ms(60), Ms(60), Ms(20), Ms(400), TimeSpan.Zero);
+
+    // Le regole vere del ricevitore: obiettivo da 60 a 100 ms, taglio oltre 140, dissolvenze da 5 ms.
+    private static RiservaAudio CreaAdattiva(TimeProvider tempo) =>
+        new(ByteAlSecondoReali, 2, Ms(60), Ms(100), Ms(20), Ms(140), Ms(5), tempo);
+
+    private static TimeSpan Ms(double ms) => TimeSpan.FromMilliseconds(ms);
 
     private static byte[] Millisecondi(int ms) => Byte(ByteAlSecondoReali / 1000 * ms, 9);
+
+    /// <summary>Stereo, tutti i campioni uguali a <paramref name="valore"/>.</summary>
+    private static byte[] Costante(int ms, short valore)
+    {
+        int istanti = 48 * ms;
+        var dati = new byte[istanti * 4];
+        for (int i = 0; i < istanti * 2; i++)
+            BinaryPrimitives.WriteInt16LittleEndian(dati.AsSpan(i * 2), valore);
+        return dati;
+    }
+
+    /// <summary>Il canale sinistro di ogni istante, per guardare la forma d'onda in uscita.</summary>
+    private static short[] Sinistro(byte[] uscita) =>
+        Enumerable.Range(0, uscita.Length / 4).Select(i => BinaryPrimitives.ReadInt16LittleEndian(uscita.AsSpan(i * 4))).ToArray();
+
+    /// <summary>Un orologio fermo che avanza solo quando lo dice il test (1 tic = 1 ms).</summary>
+    private sealed class TempoFinto : TimeProvider
+    {
+        public long Adesso { get; set; }
+        public override long TimestampFrequency => 1000;
+        public override long GetTimestamp() => Adesso;
+    }
 
     /// <summary>Campioni stereo con valori crescenti (0, 1, 2…), uguali sui due canali.</summary>
     private static byte[] Rampa(int istanti)
@@ -247,5 +276,131 @@ public class RiservaAudioTest
 
         Assert.Equal(TimeSpan.FromMilliseconds(20), riserva.Riserva);
         Assert.All(Leggi(riserva, 8), b => Assert.Equal(0, b));
+    }
+
+    // ---- Riserva adattiva ----
+
+    [Fact]
+    public void UnaPausaAlzaLObiettivoMaMaiOltreIlTetto()
+    {
+        var tempo = new TempoFinto();
+        var riserva = CreaAdattiva(tempo);
+        riserva.Aggiungi(Millisecondi(20));
+        tempo.Adesso += 20;
+        riserva.Aggiungi(Millisecondi(20));
+        Assert.Equal(60, riserva.Obiettivo.TotalMilliseconds, 3);
+
+        // Una pausa di 70 ms chiede 70 + 20 di tolleranza.
+        tempo.Adesso += 70;
+        riserva.Aggiungi(Millisecondi(20));
+        Assert.Equal(90, riserva.Obiettivo.TotalMilliseconds, 3);
+
+        // Una pausa di 300 ms chiederebbe 320: ci si ferma al tetto.
+        tempo.Adesso += 300;
+        riserva.Aggiungi(Millisecondi(20));
+        Assert.Equal(100, riserva.Obiettivo.TotalMilliseconds, 3);
+    }
+
+    [Fact]
+    public void DopoUnMinutoSenzaPauseLObiettivoTornaAlMinimo()
+    {
+        var tempo = new TempoFinto();
+        var riserva = CreaAdattiva(tempo);
+        riserva.Aggiungi(Millisecondi(20));
+        tempo.Adesso += 70;
+        riserva.Aggiungi(Millisecondi(20));
+
+        // Pacchetti regolari ogni 20 ms, letti allo stesso ritmo.
+        for (int i = 0; i < 2900; i++)   // 58 secondi
+        {
+            tempo.Adesso += 20;
+            riserva.Aggiungi(Millisecondi(20));
+            Leggi(riserva, ByteAlSecondoReali / 1000 * 20);
+        }
+        Assert.Equal(90, riserva.Obiettivo.TotalMilliseconds, 3);
+
+        for (int i = 0; i < 150; i++)    // oltre il minuto
+        {
+            tempo.Adesso += 20;
+            riserva.Aggiungi(Millisecondi(20));
+            Leggi(riserva, ByteAlSecondoReali / 1000 * 20);
+        }
+        Assert.Equal(60, riserva.Obiettivo.TotalMilliseconds, 3);
+    }
+
+    [Fact]
+    public void ConLObiettivoAlzatoLaRiservaPienaNonVieneAccelerata()
+    {
+        // Dopo una pausa, 100 ms di riserva sono quelli voluti: niente corsa verso i 60.
+        var tempo = new TempoFinto();
+        var riserva = CreaAdattiva(tempo);
+        riserva.Aggiungi(Millisecondi(20));
+        tempo.Adesso += 80;
+        riserva.Aggiungi(Millisecondi(80));    // obiettivo 100, riserva 100
+
+        Leggi(riserva, ByteAlSecondoReali / 1000 * 10);
+
+        Assert.Equal(1, riserva.Velocita);
+        Assert.Equal(0, riserva.Buchi);
+    }
+
+    [Fact]
+    public void OltreIlMassimoTornaSubitoAllObiettivoConUnaDissolvenzaIncrociata()
+    {
+        var tempo = new TempoFinto();
+        var riserva = CreaAdattiva(tempo);
+        riserva.Aggiungi(Costante(60, 1000));
+        Leggi(riserva, ByteAlSecondoReali / 1000 * 10);   // si suona; restano 50 ms da 1000
+
+        // Arrivano tutti insieme 120 ms trattenuti da una pausa: 170 ms superano il massimo (140).
+        riserva.Aggiungi(Costante(120, -1000));
+        Assert.Equal(60, riserva.Riserva.TotalMilliseconds, 3);
+        Assert.Equal(1, riserva.Tagli);
+
+        // I primi 5 ms (240 istanti) passano con continuità da 1000 a −1000, poi solo −1000.
+        short[] uscita = Sinistro(Leggi(riserva, ByteAlSecondoReali / 1000 * 10));
+        Assert.InRange(uscita[0], 980, 1000);
+        for (int i = 1; i < 240; i++)
+            Assert.True(uscita[i] < uscita[i - 1], $"l'istante {i} doveva scendere");
+        Assert.InRange(uscita[239], -1000, -980);
+        Assert.All(uscita[240..], v => Assert.Equal(-1000, v));
+    }
+
+    [Fact]
+    public void IlSuonoSfumaPrimaDiUnBucoERientraInDissolvenza()
+    {
+        var tempo = new TempoFinto();
+        var riserva = CreaAdattiva(tempo);
+        riserva.Aggiungi(Costante(60, 1000));
+
+        short[] uscita = Sinistro(Leggi(riserva, ByteAlSecondoReali / 1000 * 80));
+
+        // Entrata: da quasi zero a 1000 in 240 istanti; uscita: da 1000 a quasi zero prima del silenzio.
+        Assert.InRange(uscita[0], 1, 10);
+        for (int i = 1; i < 240; i++)
+            Assert.True(uscita[i] > uscita[i - 1], $"l'istante {i} doveva salire");
+        Assert.All(uscita[240..2640], v => Assert.Equal(1000, v));
+        for (int i = 2641; i < 2880; i++)
+            Assert.True(uscita[i] < uscita[i - 1], $"l'istante {i} doveva scendere");
+        Assert.InRange(uscita[2879], 1, 10);
+        Assert.All(uscita[2880..], v => Assert.Equal(0, v));
+        Assert.Equal(1, riserva.Buchi);
+    }
+
+    [Fact]
+    public void SvuotaDimenticaLePauseDellaConnessionePrecedente()
+    {
+        var tempo = new TempoFinto();
+        var riserva = CreaAdattiva(tempo);
+        riserva.Aggiungi(Millisecondi(20));
+        tempo.Adesso += 300;
+        riserva.Aggiungi(Millisecondi(20));
+        Assert.Equal(100, riserva.Obiettivo.TotalMilliseconds, 3);
+
+        riserva.Svuota();
+        tempo.Adesso += 5000;   // la nuova connessione arriva dopo un po': non è una pausa
+        riserva.Aggiungi(Millisecondi(20));
+
+        Assert.Equal(60, riserva.Obiettivo.TotalMilliseconds, 3);
     }
 }

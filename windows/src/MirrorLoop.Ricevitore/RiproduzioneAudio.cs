@@ -10,11 +10,17 @@ namespace MirrorLoop.Ricevitore;
 /// </summary>
 public sealed class RiproduzioneAudio : IDisposable
 {
-    // ~60 ms di riserva per i piccoli ritardi della rete di casa; fuori da ±20 ms si corregge
-    // la velocità, oltre 400 ms si taglia (vedi RiservaAudio). La latenza di WASAPI si aggiunge.
-    public static readonly TimeSpan RiservaObiettivo = TimeSpan.FromMilliseconds(60);
+    // Riserva da 60 ms con la rete tranquilla, fino a 100 dopo le pause (vedi RiservaAudio). Il
+    // tetto è basso di proposito: lo schermo deve restare il più possibile in tempo reale rispetto
+    // a una webcam, e con un ritardo quasi costante. Simulazione sui registri del 21/10/2026: con
+    // tetto 100 da 2 a 7 buchi ogni 5 minuti contro 13–16 con 60 fisso; oltre 100 quasi nessun
+    // guadagno. Fuori da ±20 ms si corregge la velocità, oltre 140 si torna subito all'obiettivo.
+    // La latenza di WASAPI si aggiunge.
+    public static readonly TimeSpan RiservaMinima = TimeSpan.FromMilliseconds(60);
+    public static readonly TimeSpan RiservaTetto = TimeSpan.FromMilliseconds(100);
     public static readonly TimeSpan RiservaTolleranza = TimeSpan.FromMilliseconds(20);
-    public static readonly TimeSpan RiservaMassima = TimeSpan.FromMilliseconds(400);
+    public static readonly TimeSpan RiservaMassima = TimeSpan.FromMilliseconds(140);
+    public static readonly TimeSpan Dissolvenza = TimeSpan.FromMilliseconds(5);
     private const int LatenzaWasapiMs = 30;
 
     // Quanto passa tra la consegna dei campioni a WASAPI e il suono nelle cuffie. È una stima
@@ -30,6 +36,7 @@ public sealed class RiproduzioneAudio : IDisposable
     public string Stato { get; private set; } = "in attesa di audio";
 
     public TimeSpan Riserva => _riserva?.Riserva ?? TimeSpan.Zero;
+    public TimeSpan Obiettivo => _riserva?.Obiettivo ?? RiservaMinima;
     public long Buchi => _riserva?.Buchi ?? 0;
     public long Tagli => _riserva?.Tagli ?? 0;
     public double Velocita => _riserva?.Velocita ?? 1;
@@ -61,7 +68,8 @@ public sealed class RiproduzioneAudio : IDisposable
         try
         {
             int byteBlocco = canali * 2;
-            var riserva = new RiservaAudio(frequenza * byteBlocco, canali, RiservaObiettivo, RiservaTolleranza, RiservaMassima);
+            var riserva = new RiservaAudio(frequenza * byteBlocco, canali, RiservaMinima, RiservaTetto, RiservaTolleranza,
+                RiservaMassima, Dissolvenza);
             var uscita = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, LatenzaWasapiMs);
             uscita.Init(new SorgenteRiserva(riserva, new WaveFormat(frequenza, 16, canali)));
             uscita.Play();

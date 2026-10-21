@@ -133,7 +133,7 @@ public partial class FinestraPrincipale : Window
             $"audio ricevuto  {audio.MsAudio / secondi,6:F0} ms al secondo (~1000 = completo)\n" +
             $"formato audio   {audio.Formato}{(audio.Ignorati > 0 ? $"  ({audio.Ignorati} ignorati)" : "")}\n" +
             $"uscita audio    {_riproduzioneAudio.Stato}\n" +
-            $"riserva audio   {_riproduzioneAudio.Riserva.TotalMilliseconds,6:F0} ms  (buchi {_riproduzioneAudio.Buchi}, tagli {_riproduzioneAudio.Tagli})\n" +
+            $"riserva audio   {_riproduzioneAudio.Riserva.TotalMilliseconds,6:F0} ms  (obiettivo {_riproduzioneAudio.Obiettivo.TotalMilliseconds:F0}, buchi {_riproduzioneAudio.Buchi}, tagli {_riproduzioneAudio.Tagli})\n" +
             $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             $"registro        {DescriviRegistro()}\n" +
