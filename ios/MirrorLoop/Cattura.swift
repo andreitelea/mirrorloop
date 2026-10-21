@@ -194,6 +194,10 @@ final class Cattura {
     @ObservationIgnored private var inBackground = false
     @ObservationIgnored private var misuraBitrate: (byte: Int, istante: TimeInterval)?
     @ObservationIgnored private let coda = DispatchQueue(label: "io.github.andreitelea.mirrorloop.cattura")
+    // L'audio ha una coda tutta sua: sulla coda del video c'è anche il compressore, che a volte si
+    // ferma per centinaia di millisecondi (per esempio quando iOS lo fa ripartire), e l'audio
+    // restava bloccato dietro di lui (registro del 21/10/2026: pausa di 481 ms).
+    @ObservationIgnored private let codaAudio = DispatchQueue(label: "io.github.andreitelea.mirrorloop.audio", qos: .userInteractive)
 
     func avvia(indirizzoPC: String) {
         ferma()
@@ -326,7 +330,7 @@ final class Cattura {
         let stream = SCStream(filter: filtro, configuration: configurazione, delegate: ricevitore)
         do {
             try stream.addStreamOutput(ricevitore, type: .screen, sampleHandlerQueue: coda)
-            try stream.addStreamOutput(ricevitore, type: .audio, sampleHandlerQueue: coda)
+            try stream.addStreamOutput(ricevitore, type: .audio, sampleHandlerQueue: codaAudio)
         } catch {
             errore = error.localizedDescription
             stato = "Errore"
