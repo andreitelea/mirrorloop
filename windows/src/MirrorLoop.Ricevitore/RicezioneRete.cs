@@ -17,7 +17,9 @@ namespace MirrorLoop.Ricevitore;
 ///
 /// Due ingressi sulla stessa porta: TCP (una sola fila per tutto) e QUIC su UDP, dove l'iPhone
 /// apre corsie indipendenti (controllo, video, audio) così una perdita nel video non blocca l'audio.
-/// Un solo mittente alla volta: una nuova connessione, di qualunque tipo, chiude la precedente.
+/// In QUIC le corsie possono arrivare su connessioni diverse: le riunisce il numero di trasmissione
+/// scritto nella loro apertura (tipo 5).
+/// Un solo mittente alla volta: una nuova trasmissione, di qualunque tipo, chiude la precedente.
 /// </summary>
 public sealed class RicezioneRete(
     int porta,
@@ -35,8 +37,13 @@ public sealed class RicezioneRete(
     // Un ping al secondo basta: lo scarto tra gli orologi cambia molto lentamente.
     private static readonly TimeSpan IntervalloPing = TimeSpan.FromSeconds(1);
 
+    // Una corsia QUIC che non si presenta entro questo tempo non è dell'app: si chiude.
+    private static readonly TimeSpan LimiteApertura = TimeSpan.FromSeconds(5);
+
     private readonly object _bloccoSessione = new();
     private CancellationTokenSource? _sessione;
+    // Solo per le sessioni QUIC: le corsie con questo numero appartengono alla sessione in corso.
+    private long? _numeroTrasmissione;
 
     /// <summary>Descrizione dello stato, per la finestra. Viene chiamato da un thread in sottofondo.</summary>
     public event Action<string>? StatoCambiato;
@@ -117,7 +124,7 @@ public sealed class RicezioneRete(
     {
         using (client)
         {
-            CancellationToken sessione = NuovaSessione(stop, "TCP", client.Client.RemoteEndPoint);
+            CancellationToken sessione = NuovaSessione(stop, "TCP", client.Client.RemoteEndPoint, null);
             NetworkStream flusso = client.GetStream();
             using var fine = CancellationTokenSource.CreateLinkedTokenSource(sessione);
             Task ping = MandaPingAsync(flusso, fine.Token);
@@ -200,95 +207,136 @@ public sealed class RicezioneRete(
         }
     }
 
+    /// <summary>
+    /// Una connessione QUIC vive finché vive la trasmissione delle sue corsie: quando la trasmissione
+    /// finisce (o ne arriva una nuova) le corsie la chiudono annullando <c>fine</c>.
+    /// </summary>
     private async Task GestisciQuicAsync(QuicConnection connessione, CancellationToken stop)
     {
         await using (connessione)
         {
-            CancellationToken sessione = NuovaSessione(stop, "QUIC", connessione.RemoteEndPoint);
-            using var fineCorsie = CancellationTokenSource.CreateLinkedTokenSource(sessione);
+            using var fine = CancellationTokenSource.CreateLinkedTokenSource(stop);
             var corsie = new List<Task>();
-            string? errore = null;
             try
             {
                 while (true)
                 {
-                    QuicStream corsia = await connessione.AcceptInboundStreamAsync(sessione);
-                    corsie.Add(GestisciCorsiaAsync(corsia, fineCorsie.Token));
+                    QuicStream corsia = await connessione.AcceptInboundStreamAsync(fine.Token);
+                    corsie.Add(GestisciCorsiaAsync(corsia, connessione.RemoteEndPoint, fine, stop));
                 }
             }
-            catch (QuicException ex)
+            catch (Exception ex) when (ex is QuicException or OperationCanceledException)
             {
-                // Fine della connessione: chiusa dal mittente, scaduta per inattività o persa.
-                errore = ex.QuicError == QuicError.ConnectionAborted && ex.ApplicationErrorCode == 0 ? null : ex.Message;
-            }
-            catch (OperationCanceledException)
-            {
-                // Sostituita da una connessione nuova, o chiusura della finestra.
+                // Connessione chiusa dal mittente, scaduta per inattività o persa; oppure trasmissione
+                // finita. Gli errori da mostrare li raccolgono le corsie.
             }
             finally
             {
-                await fineCorsie.CancelAsync();
+                await fine.CancelAsync();
                 await Task.WhenAll(corsie);
-                FineSessione(sessione, errore);
             }
         }
     }
 
-    private async Task GestisciCorsiaAsync(QuicStream corsia, CancellationToken stop)
+    private async Task GestisciCorsiaAsync(QuicStream corsia, EndPoint remoto, CancellationTokenSource fineConnessione, CancellationToken stop)
     {
         await using (corsia)
         {
-            using var fine = CancellationTokenSource.CreateLinkedTokenSource(stop);
-            // La corsia bidirezionale è quella di controllo: da lì partono i ping verso l'iPhone.
-            Task ping = corsia.Type == QuicStreamType.Bidirectional ? MandaPingAsync(corsia, fine.Token) : Task.CompletedTask;
+            AperturaCorsia apertura;
             try
             {
-                await RiceviTuttoAsync(corsia, stop);
+                using var limite = CancellationTokenSource.CreateLinkedTokenSource(fineConnessione.Token);
+                limite.CancelAfter(LimiteApertura);
+                if (await Protocollo.Protocollo.RiceviMessaggioAsync(corsia, limite.Token) is not AperturaCorsia letta)
+                    return;
+                apertura = letta;
             }
             catch (Exception ex) when (ex is QuicException or IOException or EndOfStreamException or InvalidDataException or OperationCanceledException)
             {
-                // La corsia si è chiusa insieme alla connessione: lo gestisce GestisciQuicAsync.
+                return;
+            }
+
+            CancellationToken sessione = NuovaSessione(stop, "QUIC", remoto, apertura.NumeroTrasmissione);
+            // Finita la trasmissione, si chiude anche la connessione che porta questa corsia.
+            using var chiudiConnessione = sessione.Register(fineConnessione.Cancel);
+            using var fine = CancellationTokenSource.CreateLinkedTokenSource(sessione);
+            Task ping = apertura.Ruolo == RuoloCorsia.Controllo ? MandaPingAsync(corsia, fine.Token) : Task.CompletedTask;
+            string? errore = null;
+            try
+            {
+                await RiceviTuttoAsync(corsia, sessione);
+            }
+            catch (QuicException ex)
+            {
+                // Chiusura normale del mittente (codice 0) o vera perdita della connessione.
+                errore = ex.QuicError == QuicError.ConnectionAborted && ex.ApplicationErrorCode == 0 ? null : ex.Message;
+            }
+            catch (Exception ex) when (ex is IOException or EndOfStreamException or InvalidDataException)
+            {
+                errore = ex.Message;
+            }
+            catch (OperationCanceledException)
+            {
+                // Trasmissione sostituita da una nuova, o chiusura della finestra.
             }
             finally
             {
                 await fine.CancelAsync();
                 await ping;
+                // Senza una delle sue corsie la trasmissione non sta in piedi: si chiude tutta e
+                // l'iPhone si ricollega con un numero nuovo.
+                FineSessione(sessione, errore);
             }
         }
     }
 
     // ---- In comune ----
 
-    /// <summary>Una connessione nuova chiude la precedente e riparte con lo stato pulito.</summary>
-    private CancellationToken NuovaSessione(CancellationToken stop, string trasporto, EndPoint? remoto)
+    /// <summary>
+    /// Una connessione nuova chiude la precedente e riparte con lo stato pulito. In QUIC, una corsia
+    /// con il numero della trasmissione in corso si aggiunge invece a quella.
+    /// </summary>
+    private CancellationToken NuovaSessione(CancellationToken stop, string trasporto, EndPoint? remoto, long? numeroTrasmissione)
     {
-        var nuova = CancellationTokenSource.CreateLinkedTokenSource(stop);
+        CancellationTokenSource nuova;
         CancellationTokenSource? vecchia;
         lock (_bloccoSessione)
         {
+            if (numeroTrasmissione is not null && _sessione is not null && _numeroTrasmissione == numeroTrasmissione)
+                return _sessione.Token;
+
+            nuova = CancellationTokenSource.CreateLinkedTokenSource(stop);
             vecchia = _sessione;
             _sessione = nuova;
+            _numeroTrasmissione = numeroTrasmissione;
             Trasporto = trasporto;
+            // Dentro il blocco: le altre corsie della stessa trasmissione aspettano qui, così i loro
+            // primi dati (il keyframe!) non vengono cancellati da questo azzeramento.
+            coda.Ricomincia();
+            riproduzioneAudio.Ricomincia();
+            statisticheAudio.Ricomincia();
+            sincronia.Ricomincia();
         }
         vecchia?.Cancel();
-        coda.Ricomincia();
-        riproduzioneAudio.Ricomincia();
-        statisticheAudio.Ricomincia();
-        sincronia.Ricomincia();
         StatoCambiato?.Invoke($"Collegato a {remoto} ({trasporto})");
         return nuova.Token;
     }
 
     private void FineSessione(CancellationToken sessione, string? errore)
     {
+        CancellationTokenSource finita;
         lock (_bloccoSessione)
         {
-            // Se nel frattempo è arrivata un'altra connessione, lo stato è già il suo.
+            // Se nel frattempo è arrivata un'altra trasmissione, lo stato è già il suo.
             if (_sessione is null || _sessione.Token != sessione)
                 return;
+            finita = _sessione;
             _sessione = null;
+            _numeroTrasmissione = null;
             Trasporto = null;
         }
+        // Chiude le altre corsie e connessioni della stessa trasmissione.
+        finita.Cancel();
         AnnunciaAttesa(errore);
     }
 

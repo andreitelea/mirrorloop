@@ -20,6 +20,7 @@ public static class Protocollo
     private const byte TipoAudio = 2;
     private const byte TipoPing = 3;
     private const byte TipoPong = 4;
+    private const byte TipoAperturaCorsia = 5;
 
     private const byte FlagKeyframe = 0b0000_0001;
 
@@ -34,6 +35,9 @@ public static class Protocollo
 
     // tipo (1) + numero (4) + T1 (8) + T2 (8) + T3 (8)
     private const int LunghezzaPong = 1 + 4 + 8 + 8 + 8;
+
+    // tipo (1) + ruolo (1) + numero di trasmissione (8)
+    private const int LunghezzaAperturaCorsia = 1 + 1 + 8;
 
     public static async Task InviaFrameAsync(Stream flusso, FrameVideo frame, CancellationToken ct = default)
     {
@@ -105,6 +109,17 @@ public static class Protocollo
         await flusso.WriteAsync(pacchetto, ct);
     }
 
+    public static async Task InviaAperturaCorsiaAsync(Stream flusso, AperturaCorsia apertura, CancellationToken ct = default)
+    {
+        byte[] pacchetto = new byte[4 + LunghezzaAperturaCorsia];
+        Span<byte> s = pacchetto;
+        BinaryPrimitives.WriteInt32BigEndian(s, LunghezzaAperturaCorsia);
+        s[4] = TipoAperturaCorsia;
+        s[5] = (byte)apertura.Ruolo;
+        BinaryPrimitives.WriteInt64BigEndian(s[6..], apertura.NumeroTrasmissione);
+        await flusso.WriteAsync(pacchetto, ct);
+    }
+
     /// <summary>
     /// Legge il prossimo frame video, saltando tutti gli altri messaggi. Restituisce null se
     /// l'altro ha chiuso la connessione in modo pulito, tra un messaggio e l'altro.
@@ -126,7 +141,7 @@ public static class Protocollo
     }
 
     /// <summary>
-    /// Legge il prossimo messaggio conosciuto (video, audio, ping o pong). Restituisce null se l'altro ha
+    /// Legge il prossimo messaggio conosciuto (video, audio, ping, pong o apertura corsia). Restituisce null se l'altro ha
     /// chiuso la connessione in modo pulito, tra un messaggio e l'altro.
     /// </summary>
     /// <exception cref="EndOfStreamException">La connessione si è interrotta a metà di un messaggio.</exception>
@@ -160,6 +175,8 @@ public static class Protocollo
                     return LeggiPing(messaggio);
                 case TipoPong:
                     return LeggiPong(messaggio);
+                case TipoAperturaCorsia:
+                    return LeggiAperturaCorsia(messaggio);
                 default:
                     // Tipi sconosciuti si saltano invece di dare errore: così un mittente più nuovo
                     // può aggiungere messaggi senza rompere un ricevitore più vecchio.
@@ -218,6 +235,13 @@ public static class Protocollo
             BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(5)),
             BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(13)),
             BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(21)));
+    }
+
+    private static AperturaCorsia LeggiAperturaCorsia(byte[] messaggio)
+    {
+        if (messaggio.Length != LunghezzaAperturaCorsia)
+            throw new InvalidDataException($"Apertura corsia di {messaggio.Length} byte invece di {LunghezzaAperturaCorsia}.");
+        return new AperturaCorsia((RuoloCorsia)messaggio[1], BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(2)));
     }
 
     /// <summary>L'istante attuale nel formato usato da <see cref="FrameVideo.IstanteCatturaMicrosecondi"/>.</summary>

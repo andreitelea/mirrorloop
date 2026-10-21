@@ -10,10 +10,12 @@ Il ricevitore ascolta sulla porta **7450** in due modi; il mittente sceglie qual
 
 - **TCP:** una connessione per trasmissione, tutti i messaggi in un'unica fila. Si disattiva l'algoritmo di Nagle (`NoDelay`), per spedire subito ogni frame.
 - **QUIC** (su UDP, sempre cifrato con TLS 1.3): protocollo applicativo (ALPN) `mirrorloop/1`. Il mittente apre tre **corsie** indipendenti, così una perdita in una non blocca le altre:
-  - **controllo**, bidirezionale: ping (ricevitore → mittente) e pong (mittente → ricevitore). Il mittente vi scrive subito un messaggio di **apertura corsia** (tipo 5), perché in QUIC una corsia esiste per l'altro lato solo dopo il primo dato;
-  - **video**, unidirezionale: frame video (tipo 1);
-  - **audio**, unidirezionale: pacchetti audio (tipo 2).
-  
+  - **controllo**: ping (ricevitore → mittente) e pong (mittente → ricevitore);
+  - **video**: frame video (tipo 1);
+  - **audio**: pacchetti audio (tipo 2).
+
+  Ogni corsia è un flusso QUIC (*stream*) e comincia sempre con un messaggio di **apertura corsia** (tipo 5) che dice il suo ruolo e a quale trasmissione appartiene. Le corsie possono viaggiare in connessioni QUIC separate (come fa l'app iPhone: una connessione per corsia) oppure nella stessa: il ricevitore le raggruppa solo in base al **numero di trasmissione**. Il ricevitore scrive (i ping) solo sulla corsia di controllo, che quindi deve essere bidirezionale; le altre possono essere bidirezionali o unidirezionali.
+
   Il certificato del ricevitore è autofirmato. Su ogni corsia i messaggi hanno lo stesso formato descritto qui sotto.
 
 ## Struttura di ogni messaggio
@@ -40,7 +42,7 @@ Tutti i numeri sono **big-endian** ("network byte order").
 | 2 | Audio | In uso dalla Fase 4 |
 | 3 | Ping (dal ricevitore al mittente) | In uso dalla Fase 5 |
 | 4 | Pong (dal mittente al ricevitore) | In uso dalla Fase 5 |
-| 5 | Apertura corsia (vuoto, solo QUIC) | In uso dalla Fase 5: il ricevitore lo ignora |
+| 5 | Apertura corsia (solo QUIC) | In uso dalla Fase 5 |
 | altri | Riservati | Il ricevitore **li salta senza errore**, così le versioni future potranno aggiungerne senza rompere i ricevitori più vecchi |
 
 ## Tipo 1 · Frame video
@@ -142,6 +144,30 @@ Con T4 = ora del ricevitore all'arrivo del pong:
 Il calcolo è esatto se andata e ritorno durano uguale. Il pong può restare in coda dietro ai frame video: il ricevitore manda un ping al secondo e, tra le ultime 30 misure, usa quella con l'andata e ritorno più breve.
 
 Esempio verificato da un test automatico (`IlFormatoDiPingEPongSulFiloEQuelloDocumentato`): un ping con numero `0x0A0B0C0D` e T1 `0x0102030405060708` è `00 00 00 0D 03 0A 0B 0C 0D 01 02 03 04 05 06 07 08`.
+
+## Tipo 5 · Apertura corsia (solo QUIC)
+
+Il primo messaggio di ogni corsia QUIC. Serve anche perché in QUIC una corsia esiste per l'altro lato solo dopo il primo dato: senza, il ricevitore non saprebbe dove mandare i ping.
+
+```
+┌──────────┬──────────┬──────────────────────────┐
+│ tipo = 5 │ ruolo    │ numero di trasmissione   │
+│ 1 byte   │ 1 byte   │ 8 byte                   │
+└──────────┴──────────┴──────────────────────────┘
+```
+
+- **ruolo:** 1 = controllo, 2 = video, 3 = audio. Altri valori sono riservati: il ricevitore tratta la corsia come una corsia di dati (legge i messaggi, non manda ping).
+- **numero di trasmissione:** 64 bit, big-endian, scelto **a caso** dal mittente a ogni nuovo tentativo di collegamento e uguale su tutte le corsie di quel tentativo.
+- Lunghezza fissa: 10 byte (escluso il prefisso). Una lunghezza diversa è un errore.
+
+Il ricevitore, per ogni corsia nuova:
+
+- se il primo messaggio non arriva entro 5 secondi, o non è un'apertura corsia, chiude la corsia;
+- se il numero è quello della trasmissione in corso, aggiunge la corsia alla trasmissione;
+- se il numero è nuovo, chiude la trasmissione in corso (tutte le sue corsie e connessioni) e ne comincia una nuova;
+- quando una corsia di una trasmissione si chiude, chiude tutta la trasmissione: il mittente si ricollegherà con un numero nuovo.
+
+Esempio verificato da un test automatico (`IlFormatoDellAperturaCorsiaSulFiloEQuelloDocumentato`): la corsia video della trasmissione `0x0102030405060708` comincia con `00 00 00 0A 05 02 01 02 03 04 05 06 07 08`.
 
 ## Comportamento del ricevitore
 

@@ -8,14 +8,42 @@ using Ping = MirrorLoop.Protocollo.Ping;
 namespace MirrorLoop.Ricevitore.Test;
 
 /// <summary>
-/// Prova completa sul PC: un finto iPhone si collega in QUIC, apre la corsia di controllo e quella
-/// video come farà l'app, risponde ai ping e manda un keyframe.
+/// Prove complete sul PC con QUIC vero: un finto iPhone apre, come l'app, una connessione QUIC per
+/// ogni corsia (controllo, video, audio) e le presenta con lo stesso numero di trasmissione.
 /// </summary>
-public sealed class RicezioneQuicTest : IDisposable
+public sealed class RicezioneQuicTest : IAsyncDisposable
 {
     private readonly string _cartella = Path.Combine(Path.GetTempPath(), "MirrorLoopTest-" + Guid.NewGuid());
+    private readonly int _porta = PortaLibera();
+    private readonly CancellationTokenSource _stop = new(TimeSpan.FromSeconds(20));
+    private readonly List<QuicConnection> _connessioni = [];
+    private readonly CodaFrame _coda = new();
+    private readonly SincroniaOrologi _sincronia = new();
+    private readonly StatisticheAudio _statisticheAudio = new();
+    private readonly RiproduzioneAudio _riproduzioneAudio = new();
+    private readonly RegistroPacchetti _registro;
+    private readonly RicezioneRete _ricezione;
+    private Task? _inAscolto;
 
-    public void Dispose() => Directory.Delete(_cartella, recursive: true);
+    public RicezioneQuicTest()
+    {
+        _registro = new RegistroPacchetti(_cartella);
+        _ricezione = new RicezioneRete(_porta, _coda, new StatisticheRicezione(), _statisticheAudio,
+            _riproduzioneAudio, _sincronia, _registro, CertificatoRicevitore.CaricaOCrea(_cartella));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var connessione in _connessioni)
+            await connessione.DisposeAsync();
+        await _stop.CancelAsync();
+        if (_inAscolto is not null)
+            await _inAscolto;
+        _riproduzioneAudio.Dispose();
+        _registro.Dispose();
+        _stop.Dispose();
+        Directory.Delete(_cartella, recursive: true);
+    }
 
     private static int PortaLibera()
     {
@@ -26,30 +54,27 @@ public sealed class RicezioneQuicTest : IDisposable
         return porta;
     }
 
-    [Fact]
-    public async Task UnMittenteQuicArrivaFinoAllaCodaEAgliOrologi()
+    /// <summary>
+    /// QUIC richiede Windows 11 o Server 2022 (build 20348+): su sistemi più vecchi i test non hanno
+    /// senso, ma su quelli nuovi la sua assenza è un errore, non un motivo per saltare.
+    /// </summary>
+    private bool AvviaRicevitore()
     {
-        // QUIC richiede Windows 11 o Server 2022 (build 20348+): su sistemi più vecchi il test non ha
-        // senso, ma su quelli nuovi la sua assenza è un errore, non un motivo per saltare.
         if (!QuicConnection.IsSupported)
         {
             Assert.True(Environment.OSVersion.Version.Build < 20348, "QUIC dovrebbe essere disponibile su questo Windows");
-            return;
+            return false;
         }
+        _inAscolto = _ricezione.EseguiAsync(_stop.Token);
+        return true;
+    }
 
-        int porta = PortaLibera();
-        var coda = new CodaFrame();
-        var sincronia = new SincroniaOrologi();
-        using var riproduzioneAudio = new RiproduzioneAudio();
-        using var registro = new RegistroPacchetti(_cartella);
-        var ricezione = new RicezioneRete(porta, coda, new StatisticheRicezione(), new StatisticheAudio(),
-            riproduzioneAudio, sincronia, registro, CertificatoRicevitore.CaricaOCrea(_cartella));
-        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        Task inAscolto = ricezione.EseguiAsync(stop.Token);
-
-        await using var connessione = await QuicConnection.ConnectAsync(new QuicClientConnectionOptions
+    /// <summary>Una connessione QUIC nuova con una sola corsia, presentata con l'apertura (tipo 5).</summary>
+    private async Task<QuicStream> ApriCorsiaAsync(RuoloCorsia ruolo, long numeroTrasmissione, QuicStreamType tipo = QuicStreamType.Bidirectional)
+    {
+        var connessione = await QuicConnection.ConnectAsync(new QuicClientConnectionOptions
         {
-            RemoteEndPoint = new IPEndPoint(IPAddress.Loopback, porta),
+            RemoteEndPoint = new IPEndPoint(IPAddress.Loopback, _porta),
             DefaultStreamErrorCode = 1,
             DefaultCloseErrorCode = 0,
             ClientAuthenticationOptions = new SslClientAuthenticationOptions
@@ -59,29 +84,141 @@ public sealed class RicezioneQuicTest : IDisposable
                 // Il certificato del ricevitore è autofirmato: qui, come nell'app, si accetta.
                 RemoteCertificateValidationCallback = (_, _, _, _) => true,
             },
-        }, stop.Token);
+        }, _stop.Token);
+        _connessioni.Add(connessione);
+        var corsia = await connessione.OpenOutboundStreamAsync(tipo, _stop.Token);
+        await Protocollo.Protocollo.InviaAperturaCorsiaAsync(corsia, new AperturaCorsia(ruolo, numeroTrasmissione), _stop.Token);
+        return corsia;
+    }
 
-        // Corsia di controllo: il ricevitore manda ping, il finto iPhone risponde con l'orologio spostato di 1 s.
-        await using var controllo = await connessione.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, stop.Token);
-        await Protocollo.Protocollo.InviaPongAsync(controllo, new Pong(0, 0, 0, 0), stop.Token); // apre la corsia
-        var ping = Assert.IsType<Ping>(await Protocollo.Protocollo.RiceviMessaggioAsync(controllo, stop.Token));
+    /// <summary>Legge finché il ricevitore non chiude la corsia; false se non la chiude entro 5 s.</summary>
+    private async Task<bool> ChiusaDalRicevitoreAsync(QuicStream corsia)
+    {
+        using var limite = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
+        limite.CancelAfter(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await Protocollo.Protocollo.RiceviMessaggioAsync(corsia, limite.Token) is not null)
+            {
+                // Ping arrivati prima della chiusura.
+            }
+            return true;
+        }
+        catch (QuicException)
+        {
+            return true;
+        }
+        catch (OperationCanceledException) when (limite.IsCancellationRequested && !_stop.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+
+    [Fact]
+    public async Task TreConnessioniConLoStessoNumeroFormanoUnaTrasmissione()
+    {
+        if (!AvviaRicevitore())
+            return;
+        const long numero = 0x1234_5678_9ABC_DEF0;
+
+        // Controllo: il ricevitore manda ping, il finto iPhone risponde con l'orologio spostato di 1 s.
+        await using var controllo = await ApriCorsiaAsync(RuoloCorsia.Controllo, numero);
+        var ping = Assert.IsType<Ping>(await Protocollo.Protocollo.RiceviMessaggioAsync(controllo, _stop.Token));
         long oraIphone = Protocollo.Protocollo.AdessoMicrosecondi() + 1_000_000;
-        await Protocollo.Protocollo.InviaPongAsync(controllo, new Pong(ping.Numero, ping.T1, oraIphone, oraIphone), stop.Token);
+        await Protocollo.Protocollo.InviaPongAsync(controllo, new Pong(ping.Numero, ping.T1, oraIphone, oraIphone), _stop.Token);
 
-        // Corsia video, separata.
-        await using var video = await connessione.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, stop.Token);
-        await Protocollo.Protocollo.InviaFrameAsync(video, new FrameVideo(true, 42, new byte[] { 0, 0, 0, 1, 0x65 }), stop.Token);
+        // Video bidirezionale come nell'app, audio unidirezionale: il ricevitore accetta entrambi.
+        await using var video = await ApriCorsiaAsync(RuoloCorsia.Video, numero);
+        await Protocollo.Protocollo.InviaFrameAsync(video, new FrameVideo(true, 42, new byte[] { 0, 0, 0, 1, 0x65 }), _stop.Token);
+        await using var audio = await ApriCorsiaAsync(RuoloCorsia.Audio, numero, QuicStreamType.Unidirectional);
+        await Protocollo.Protocollo.InviaAudioAsync(audio, new PacchettoAudio(CodificaAudio.Pcm16, 2, 48_000, 43, new byte[4]), _stop.Token);
 
-        Assert.True(coda.ProvaPrendi(TimeSpan.FromSeconds(5), out FrameVideo? arrivato));
+        Assert.True(_coda.ProvaPrendi(TimeSpan.FromSeconds(5), out FrameVideo? arrivato));
         Assert.Equal(42, arrivato!.IstanteCatturaMicrosecondi);
-        Assert.Equal("QUIC", ricezione.Trasporto);
+        Assert.Equal("QUIC", _ricezione.Trasporto);
+
+        long pacchettiAudio = 0;
+        for (int i = 0; i < 50 && pacchettiAudio == 0; i++)
+        {
+            pacchettiAudio += _statisticheAudio.Leggi().Pacchetti;
+            if (pacchettiAudio == 0)
+                await Task.Delay(100, _stop.Token);
+        }
+        Assert.Equal(1, pacchettiAudio);
+
+        // Una sola trasmissione: la coda è ripartita una volta sola, non a ogni connessione.
+        Assert.Equal(1, _coda.Generazione);
 
         // Lo scarto misurato deve essere circa +1 s (sul PC stesso il viaggio dura pochissimo).
-        for (int i = 0; i < 50 && sincronia.Migliore is null; i++)
-            await Task.Delay(100, stop.Token);
-        Assert.InRange(sincronia.Migliore!.Value.ScartoMicrosecondi, 900_000, 1_100_000);
+        for (int i = 0; i < 50 && _sincronia.Migliore is null; i++)
+            await Task.Delay(100, _stop.Token);
+        Assert.InRange(_sincronia.Migliore!.Value.ScartoMicrosecondi, 900_000, 1_100_000);
+    }
 
-        await stop.CancelAsync();
-        await inAscolto;
+    [Fact]
+    public async Task UnNumeroNuovoChiudeLaTrasmissionePrecedente()
+    {
+        if (!AvviaRicevitore())
+            return;
+
+        await using var vecchio = await ApriCorsiaAsync(RuoloCorsia.Controllo, 1);
+        Assert.IsType<Ping>(await Protocollo.Protocollo.RiceviMessaggioAsync(vecchio, _stop.Token));
+
+        // L'iPhone si ricollega: numero nuovo.
+        await using var nuovo = await ApriCorsiaAsync(RuoloCorsia.Controllo, 2);
+        Assert.IsType<Ping>(await Protocollo.Protocollo.RiceviMessaggioAsync(nuovo, _stop.Token));
+
+        Assert.True(await ChiusaDalRicevitoreAsync(vecchio), "la trasmissione vecchia doveva essere chiusa");
+        Assert.Equal(2, _coda.Generazione);
+        Assert.Equal("QUIC", _ricezione.Trasporto);
+    }
+
+    [Fact]
+    public async Task LaFineDiUnaCorsiaChiudeTuttaLaTrasmissione()
+    {
+        if (!AvviaRicevitore())
+            return;
+        const long numero = 7;
+
+        await using var controllo = await ApriCorsiaAsync(RuoloCorsia.Controllo, numero);
+        Assert.IsType<Ping>(await Protocollo.Protocollo.RiceviMessaggioAsync(controllo, _stop.Token));
+        var video = await ApriCorsiaAsync(RuoloCorsia.Video, numero);
+        await Protocollo.Protocollo.InviaFrameAsync(video, new FrameVideo(true, 1, new byte[] { 0, 0, 0, 1, 0x65 }), _stop.Token);
+        Assert.True(_coda.ProvaPrendi(TimeSpan.FromSeconds(5), out _));
+
+        // La connessione video si chiude (per esempio persa): anche il controllo deve chiudersi.
+        await _connessioni[^1].CloseAsync(0, _stop.Token);
+
+        Assert.True(await ChiusaDalRicevitoreAsync(controllo), "il controllo doveva chiudersi insieme al video");
+        Assert.Null(_ricezione.Trasporto);
+    }
+
+    [Fact]
+    public async Task UnaCorsiaCheNonSiPresentaVieneRifiutata()
+    {
+        if (!AvviaRicevitore())
+            return;
+
+        var connessione = await QuicConnection.ConnectAsync(new QuicClientConnectionOptions
+        {
+            RemoteEndPoint = new IPEndPoint(IPAddress.Loopback, _porta),
+            DefaultStreamErrorCode = 1,
+            DefaultCloseErrorCode = 0,
+            ClientAuthenticationOptions = new SslClientAuthenticationOptions
+            {
+                ApplicationProtocols = [RicezioneRete.ProtocolloQuic],
+                TargetHost = "mirrorloop",
+                RemoteCertificateValidationCallback = (_, _, _, _) => true,
+            },
+        }, _stop.Token);
+        _connessioni.Add(connessione);
+
+        // Un frame senza apertura: è il comportamento delle build 0.7.0 e 0.7.1 per la corsia video.
+        await using var corsia = await connessione.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, _stop.Token);
+        await Protocollo.Protocollo.InviaFrameAsync(corsia, new FrameVideo(true, 1, new byte[] { 0, 0, 0, 1, 0x65 }), _stop.Token);
+
+        Assert.True(await ChiusaDalRicevitoreAsync(corsia), "la corsia senza apertura doveva essere chiusa");
+        Assert.False(_coda.ProvaPrendi(TimeSpan.FromMilliseconds(200), out _));
+        Assert.Null(_ricezione.Trasporto);
     }
 }

@@ -323,6 +323,49 @@ public class ProtocolloTest
         await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(flusso));
     }
 
+    [Fact]
+    public async Task IlFormatoDellAperturaCorsiaSulFiloEQuelloDocumentato()
+    {
+        // L'app iPhone deve scrivere l'apertura esattamente così (docs/protocollo.md).
+        var flusso = new MemoryStream();
+        await Protocollo.InviaAperturaCorsiaAsync(flusso, new AperturaCorsia(RuoloCorsia.Video, 0x0102030405060708));
+
+        byte[] atteso =
+        [
+            0, 0, 0, 10,                                       // lunghezza = tipo + ruolo + numero
+            5,                                                 // tipo: apertura corsia
+            2,                                                 // ruolo: video
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,    // numero di trasmissione
+        ];
+        Assert.Equal(atteso, flusso.ToArray());
+
+        flusso.Position = 0;
+        Assert.Equal(new AperturaCorsia(RuoloCorsia.Video, 0x0102030405060708), await Protocollo.RiceviMessaggioAsync(flusso));
+    }
+
+    [Fact]
+    public async Task UnNumeroDiTrasmissioneNegativoArrivaIntatto()
+    {
+        // L'iPhone sceglie 64 bit a caso: metà dei numeri hanno il bit più alto a 1.
+        var flusso = new MemoryStream();
+        await Protocollo.InviaAperturaCorsiaAsync(flusso, new AperturaCorsia(RuoloCorsia.Controllo, -2));
+        flusso.Position = 0;
+
+        var letta = Assert.IsType<AperturaCorsia>(await Protocollo.RiceviMessaggioAsync(flusso));
+        Assert.Equal(-2, letta.NumeroTrasmissione);
+        Assert.Equal(RuoloCorsia.Controllo, letta.Ruolo);
+    }
+
+    [Fact]
+    public async Task UnaAperturaCorsiaVuotaDaErrore()
+    {
+        // Il formato delle build 0.7.0 e 0.7.1 dell'app, senza ruolo né numero.
+        byte[] messaggio = [0, 0, 0, 1, 5];
+        using var flusso = new MemoryStream(messaggio);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(flusso));
+    }
+
     /// <summary>Un flusso che restituisce al massimo un byte per lettura.</summary>
     private sealed class FlussoAGoccia(byte[] dati) : MemoryStream(dati)
     {
