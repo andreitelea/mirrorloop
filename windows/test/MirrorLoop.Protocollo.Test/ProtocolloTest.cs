@@ -157,6 +157,127 @@ public class ProtocolloTest
         Assert.Equal(atteso, flusso.ToArray());
     }
 
+    private static PacchettoAudio CreaAudio(long istante, params byte[] dati) =>
+        new(CodificaAudio.Pcm16, 2, 48_000, istante, dati);
+
+    [Fact]
+    public async Task UnPacchettoAudioAndataERitorno()
+    {
+        var originale = CreaAudio(1_729_000_000_654_321, 1, 2, 3, 4, 5, 6, 7, 8);
+        var flusso = new MemoryStream();
+        await Protocollo.InviaAudioAsync(flusso, originale);
+        flusso.Position = 0;
+
+        var letto = await Protocollo.RiceviMessaggioAsync(flusso);
+
+        var audio = Assert.IsType<PacchettoAudio>(letto);
+        Assert.Equal(CodificaAudio.Pcm16, audio.Codifica);
+        Assert.Equal(2, audio.Canali);
+        Assert.Equal(48_000, audio.Frequenza);
+        Assert.Equal(originale.IstanteCatturaMicrosecondi, audio.IstanteCatturaMicrosecondi);
+        Assert.Equal(originale.Dati.ToArray(), audio.Dati.ToArray());
+    }
+
+    [Fact]
+    public async Task VideoEAudioMescolatiArrivanoInOrdine()
+    {
+        var flusso = new MemoryStream();
+        await Protocollo.InviaFrameAsync(flusso, CreaFrame(true, 1, 9));
+        await Protocollo.InviaAudioAsync(flusso, CreaAudio(2, 0, 0, 0, 0));
+        await Protocollo.InviaFrameAsync(flusso, CreaFrame(false, 3, 8));
+        flusso.Position = 0;
+
+        Assert.IsType<FrameVideo>(await Protocollo.RiceviMessaggioAsync(flusso));
+        Assert.IsType<PacchettoAudio>(await Protocollo.RiceviMessaggioAsync(flusso));
+        var ultimo = Assert.IsType<FrameVideo>(await Protocollo.RiceviMessaggioAsync(flusso));
+        Assert.Equal(3, ultimo.IstanteCatturaMicrosecondi);
+        Assert.Null(await Protocollo.RiceviMessaggioAsync(flusso));
+    }
+
+    [Fact]
+    public async Task RiceviFrameSaltaLAudio()
+    {
+        // Un ricevitore che conosce solo il video (come quello della Fase 3) continua a funzionare.
+        var flusso = new MemoryStream();
+        await Protocollo.InviaAudioAsync(flusso, CreaAudio(1, 0, 0, 0, 0));
+        await Protocollo.InviaFrameAsync(flusso, CreaFrame(false, 5, 1));
+        flusso.Position = 0;
+
+        var letto = await Protocollo.RiceviFrameAsync(flusso);
+
+        Assert.Equal(5, letto!.IstanteCatturaMicrosecondi);
+    }
+
+    [Fact]
+    public async Task IlFormatoAudioSulFiloEQuelloDocumentato()
+    {
+        // L'app iPhone deve produrre esattamente questi byte (vedi docs/protocollo.md).
+        var flusso = new MemoryStream();
+        await Protocollo.InviaAudioAsync(flusso, CreaAudio(0x0102030405060708, 0x10, 0x20, 0x30, 0x40));
+
+        byte[] atteso =
+        [
+            0, 0, 0, 19,                                // lunghezza: 15 di intestazione + 4 byte di campioni
+            2,                                          // tipo: audio
+            1,                                          // codifica: PCM 16 bit
+            2,                                          // canali: stereo
+            0x00, 0x00, 0xBB, 0x80,                     // frequenza: 48 000
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // istante di cattura
+            0x10, 0x20, 0x30, 0x40,                     // un campione sinistro e uno destro
+        ];
+        Assert.Equal(atteso, flusso.ToArray());
+    }
+
+    [Fact]
+    public async Task AudioPcmConCampioniSpezzatiDaErrore()
+    {
+        // Stereo a 16 bit = 4 byte per istante: 3 byte di dati non sono validi.
+        byte[] messaggio = [0, 0, 0, 18, 2, 1, 2, 0, 0, 0xBB, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3];
+        using var flusso = new MemoryStream(messaggio);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(flusso));
+    }
+
+    [Fact]
+    public async Task AudioSenzaCanaliDaErrore()
+    {
+        byte[] messaggio = [0, 0, 0, 17, 2, 1, 0, 0, 0, 0xBB, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2];
+        using var flusso = new MemoryStream(messaggio);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(flusso));
+    }
+
+    [Fact]
+    public async Task AudioSenzaCampioniDaErrore()
+    {
+        byte[] messaggio = [0, 0, 0, 15, 2, 1, 2, 0, 0, 0xBB, 0x80, 0, 0, 0, 0, 0, 0, 0, 0];
+        using var flusso = new MemoryStream(messaggio);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(flusso));
+    }
+
+    [Fact]
+    public async Task CodificaAudioSconosciutaArrivaComunque()
+    {
+        // Codifica 7 (inventata): il protocollo la consegna, sarà il ricevitore a ignorarla.
+        byte[] messaggio = [0, 0, 0, 17, 2, 7, 2, 0, 0, 0xBB, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2];
+        using var flusso = new MemoryStream(messaggio);
+
+        var audio = Assert.IsType<PacchettoAudio>(await Protocollo.RiceviMessaggioAsync(flusso));
+
+        Assert.Equal((CodificaAudio)7, audio.Codifica);
+        Assert.Equal(TimeSpan.Zero, audio.Durata);
+    }
+
+    [Fact]
+    public void LaDurataDiUnPacchettoPcmSiCalcolaDaiByte()
+    {
+        // 960 istanti stereo a 16 bit = 3840 byte = 20 ms a 48 kHz.
+        var audio = new PacchettoAudio(CodificaAudio.Pcm16, 2, 48_000, 0, new byte[3840]);
+
+        Assert.Equal(TimeSpan.FromMilliseconds(20), audio.Durata);
+    }
+
     /// <summary>Un flusso che restituisce al massimo un byte per lettura.</summary>
     private sealed class FlussoAGoccia(byte[] dati) : MemoryStream(dati)
     {

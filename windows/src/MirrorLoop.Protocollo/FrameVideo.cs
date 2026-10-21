@@ -1,5 +1,8 @@
 namespace MirrorLoop.Protocollo;
 
+/// <summary>Un messaggio ricevuto: <see cref="FrameVideo"/> oppure <see cref="PacchettoAudio"/>.</summary>
+public abstract record Messaggio;
+
 /// <summary>
 /// Un frame video compresso, pronto da spedire o appena ricevuto.
 /// </summary>
@@ -13,4 +16,4 @@ namespace MirrorLoop.Protocollo;
 /// (vero sullo stesso PC; tra iPhone e PC andrà gestito a parte).
 /// </param>
 /// <param name="DatiH264">Il frame compresso in formato H.264 Annex B (con i codici di inizio 00 00 00 01).</param>
-public sealed record FrameVideo(bool Keyframe, long IstanteCatturaMicrosecondi, ReadOnlyMemory<byte> DatiH264);
+public sealed record FrameVideo(bool Keyframe, long IstanteCatturaMicrosecondi, ReadOnlyMemory<byte> DatiH264) : Messaggio;

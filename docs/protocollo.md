@@ -31,7 +31,8 @@ Tutti i numeri sono **big-endian** ("network byte order").
 | Tipo | Nome | Stato |
 | --- | --- | --- |
 | 1 | Frame video | In uso |
-| altri | Riservati | Il ricevitore **li salta senza errore**, così le versioni future potranno aggiungerne (per esempio l'audio nella Fase 4) senza rompere i ricevitori più vecchi |
+| 2 | Audio | In uso dalla Fase 4 |
+| altri | Riservati | Il ricevitore **li salta senza errore**, così le versioni future potranno aggiungerne senza rompere i ricevitori più vecchi |
 
 ## Tipo 1 · Frame video
 
@@ -59,6 +60,45 @@ AB CD         dati H.264
 ```
 
 Questo esempio è verificato da un test automatico (`IlFormatoSulFiloEQuelloDocumentato`).
+
+## Tipo 2 · Audio
+
+```
+┌──────────┬──────────┬──────────┬────────────┬────────────────────┬─────────────────┐
+│ tipo = 2 │ codifica │ canali   │ frequenza  │ istante di cattura │ campioni        │
+│ 1 byte   │ 1 byte   │ 1 byte   │ 4 byte     │ 8 byte             │ almeno 1 byte   │
+└──────────┴──────────┴──────────┴────────────┴────────────────────┴─────────────────┘
+```
+
+- **codifica:** come sono scritti i campioni.
+
+  | Valore | Codifica |
+  | --- | --- |
+  | 1 | **PCM 16 bit**: non compresso, interi con segno a 16 bit **little-endian** (come nei file WAV), canali **intercalati** (sinistro, destro, sinistro, destro…) |
+  | altri | Riservati (per esempio Opus in futuro). Il ricevitore **ignora** i pacchetti con una codifica che non conosce |
+
+- **canali:** 1 = mono, 2 = stereo. Zero non è ammesso.
+- **frequenza:** campioni al secondo per canale, intero con segno a 32 bit, big-endian (per esempio 48 000).
+- **istante di cattura:** come per il video (microsecondi dal 1° gennaio 1970 UTC, 64 bit, big-endian), riferito al **primo campione** del pacchetto. Audio e video usano lo **stesso orologio** del mittente: è ciò che permette di sincronizzarli.
+- **campioni:** con il PCM 16 bit la lunghezza deve essere un multiplo di 2 × canali byte, altrimenti il messaggio è considerato corrotto.
+
+Attenzione: i numeri dell'intestazione sono big-endian come nel resto del protocollo, mentre i **campioni PCM sono little-endian**, il formato naturale delle schede audio e dei file WAV.
+
+### Esempio byte per byte
+
+Due campioni (uno sinistro `0x2010`, uno destro `0x4030`) in stereo a 48 kHz, con istante `0x0102030405060708`:
+
+```
+00 00 00 13   lunghezza = 19 (15 di intestazione + 4 byte di campioni)
+02            tipo: audio
+01            codifica: PCM 16 bit
+02            canali: stereo
+00 00 BB 80   frequenza = 48 000
+01 02 03 04 05 06 07 08   istante di cattura
+10 20 30 40   campioni (little-endian)
+```
+
+Questo esempio è verificato da un test automatico (`IlFormatoAudioSulFiloEQuelloDocumentato`).
 
 ## Comportamento del ricevitore
 

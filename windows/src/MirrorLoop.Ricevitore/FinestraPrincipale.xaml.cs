@@ -16,6 +16,7 @@ public partial class FinestraPrincipale : Window
     private readonly CodaFrame _coda = new();
     private readonly StatisticheRicezione _statistiche = new();
     private readonly StatisticheRicezione _statisticheSchermo = new();
+    private readonly StatisticheAudio _statisticheAudio = new();
     private readonly RicezioneRete _ricezione;
     private readonly Riproduzione _riproduzione;
     private readonly CancellationTokenSource _stop = new();
@@ -31,7 +32,7 @@ public partial class FinestraPrincipale : Window
     {
         InitializeComponent();
 
-        _ricezione = new RicezioneRete(Porta, _coda, _statistiche);
+        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio);
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
 
@@ -90,6 +91,7 @@ public partial class FinestraPrincipale : Window
     {
         var rete = _statistiche.Leggi();
         var schermo = _statisticheSchermo.Leggi();
+        var audio = _statisticheAudio.Leggi();
         double secondi = _dallUltimaLettura.Elapsed.TotalSeconds;
         _dallUltimaLettura.Restart();
         // Un keyframe ogni 2 secondi: contarli per mezzo secondo darebbe quasi sempre 0.
@@ -112,6 +114,9 @@ public partial class FinestraPrincipale : Window
             $"scartati        {_coda.Scartati,6} (totale)\n" +
             $"non mostrati    {_riproduzione.NonMostrate,6} (totale)\n" +
             $"errori          {_riproduzione.Errori,6} (totale)\n" +
+            $"audio           {audio.Pacchetti / secondi,6:F1} pacchetti/s  {audio.Byte * 8 / secondi / 1000,5:F0} kbit/s\n" +
+            $"audio ricevuto  {audio.MsAudio / secondi,6:F0} ms al secondo (~1000 = completo)\n" +
+            $"formato audio   {audio.Formato}{(audio.Ignorati > 0 ? $"  ({audio.Ignorati} ignorati)" : "")}\n" +
             "S: mostra/nascondi";
     }
 

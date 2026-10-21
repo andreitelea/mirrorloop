@@ -17,11 +17,15 @@ public static class Protocollo
     public const int LunghezzaMassima = 8 * 1024 * 1024;
 
     private const byte TipoFrameVideo = 1;
+    private const byte TipoAudio = 2;
 
     private const byte FlagKeyframe = 0b0000_0001;
 
     // tipo (1) + flag (1) + istante di cattura (8)
     private const int IntestazioneFrame = 1 + 1 + 8;
+
+    // tipo (1) + codifica (1) + canali (1) + frequenza (4) + istante di cattura (8)
+    private const int IntestazioneAudio = 1 + 1 + 1 + 4 + 8;
 
     public static async Task InviaFrameAsync(Stream flusso, FrameVideo frame, CancellationToken ct = default)
     {
@@ -45,13 +49,57 @@ public static class Protocollo
         await flusso.WriteAsync(pacchetto, ct);
     }
 
+    public static async Task InviaAudioAsync(Stream flusso, PacchettoAudio audio, CancellationToken ct = default)
+    {
+        if (audio.Dati.IsEmpty)
+            throw new ArgumentException("Il pacchetto non contiene campioni.", nameof(audio));
+        if (audio.Canali is < 1 or > 255 || audio.Frequenza < 1)
+            throw new ArgumentException("Canali o frequenza non validi.", nameof(audio));
+
+        int lunghezza = IntestazioneAudio + audio.Dati.Length;
+        if (lunghezza > LunghezzaMassima)
+            throw new ArgumentException($"Pacchetto audio troppo grande ({audio.Dati.Length} byte).", nameof(audio));
+
+        byte[] pacchetto = new byte[4 + lunghezza];
+        Span<byte> s = pacchetto;
+        BinaryPrimitives.WriteInt32BigEndian(s, lunghezza);
+        s[4] = TipoAudio;
+        s[5] = (byte)audio.Codifica;
+        s[6] = (byte)audio.Canali;
+        BinaryPrimitives.WriteInt32BigEndian(s[7..], audio.Frequenza);
+        BinaryPrimitives.WriteInt64BigEndian(s[11..], audio.IstanteCatturaMicrosecondi);
+        audio.Dati.Span.CopyTo(s[(4 + IntestazioneAudio)..]);
+
+        await flusso.WriteAsync(pacchetto, ct);
+    }
+
     /// <summary>
-    /// Legge il prossimo frame video. Restituisce null se l'altro ha chiuso la connessione
-    /// in modo pulito, tra un messaggio e l'altro.
+    /// Legge il prossimo frame video, saltando tutti gli altri messaggi. Restituisce null se
+    /// l'altro ha chiuso la connessione in modo pulito, tra un messaggio e l'altro.
     /// </summary>
     /// <exception cref="EndOfStreamException">La connessione si è interrotta a metà di un messaggio.</exception>
     /// <exception cref="InvalidDataException">Il messaggio non rispetta il formato.</exception>
     public static async Task<FrameVideo?> RiceviFrameAsync(Stream flusso, CancellationToken ct = default)
+    {
+        while (true)
+        {
+            switch (await RiceviMessaggioAsync(flusso, ct))
+            {
+                case null:
+                    return null;
+                case FrameVideo frame:
+                    return frame;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Legge il prossimo messaggio conosciuto (video o audio). Restituisce null se l'altro ha
+    /// chiuso la connessione in modo pulito, tra un messaggio e l'altro.
+    /// </summary>
+    /// <exception cref="EndOfStreamException">La connessione si è interrotta a metà di un messaggio.</exception>
+    /// <exception cref="InvalidDataException">Il messaggio non rispetta il formato.</exception>
+    public static async Task<Messaggio?> RiceviMessaggioAsync(Stream flusso, CancellationToken ct = default)
     {
         byte[] prefisso = new byte[4];
 
@@ -70,20 +118,50 @@ public static class Protocollo
             byte[] messaggio = new byte[lunghezza];
             await flusso.ReadExactlyAsync(messaggio, ct);
 
-            // Tipi sconosciuti si saltano invece di dare errore: così un mittente più nuovo
-            // può aggiungere messaggi (es. l'audio nella Fase 4) senza rompere un ricevitore più vecchio.
-            if (messaggio[0] != TipoFrameVideo)
-                continue;
-
-            if (lunghezza <= IntestazioneFrame)
-                throw new InvalidDataException("Frame video senza dati H.264.");
-
-            bool keyframe = (messaggio[1] & FlagKeyframe) != 0;
-            long istante = BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(2));
-            var dati = new ReadOnlyMemory<byte>(messaggio, IntestazioneFrame, lunghezza - IntestazioneFrame);
-
-            return new FrameVideo(keyframe, istante, dati);
+            switch (messaggio[0])
+            {
+                case TipoFrameVideo:
+                    return LeggiFrame(messaggio);
+                case TipoAudio:
+                    return LeggiAudio(messaggio);
+                default:
+                    // Tipi sconosciuti si saltano invece di dare errore: così un mittente più nuovo
+                    // può aggiungere messaggi senza rompere un ricevitore più vecchio.
+                    continue;
+            }
         }
+    }
+
+    private static FrameVideo LeggiFrame(byte[] messaggio)
+    {
+        if (messaggio.Length <= IntestazioneFrame)
+            throw new InvalidDataException("Frame video senza dati H.264.");
+
+        bool keyframe = (messaggio[1] & FlagKeyframe) != 0;
+        long istante = BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(2));
+        var dati = new ReadOnlyMemory<byte>(messaggio, IntestazioneFrame, messaggio.Length - IntestazioneFrame);
+        return new FrameVideo(keyframe, istante, dati);
+    }
+
+    private static PacchettoAudio LeggiAudio(byte[] messaggio)
+    {
+        if (messaggio.Length <= IntestazioneAudio)
+            throw new InvalidDataException("Pacchetto audio senza campioni.");
+
+        var codifica = (CodificaAudio)messaggio[1];
+        int canali = messaggio[2];
+        int frequenza = BinaryPrimitives.ReadInt32BigEndian(messaggio.AsSpan(3));
+        long istante = BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(7));
+        if (canali < 1 || frequenza < 1)
+            throw new InvalidDataException($"Pacchetto audio con canali ({canali}) o frequenza ({frequenza}) non validi.");
+
+        var dati = new ReadOnlyMemory<byte>(messaggio, IntestazioneAudio, messaggio.Length - IntestazioneAudio);
+        // Con il PCM a 16 bit ogni "istante" occupa 2 byte per canale: un resto vorrebbe dire
+        // campioni spezzati, quindi dati corrotti.
+        if (codifica == CodificaAudio.Pcm16 && dati.Length % (2 * canali) != 0)
+            throw new InvalidDataException($"Pacchetto PCM di {dati.Length} byte non divisibile in campioni da {2 * canali} byte.");
+
+        return new PacchettoAudio(codifica, canali, frequenza, istante, dati);
     }
 
     /// <summary>L'istante attuale nel formato usato da <see cref="FrameVideo.IstanteCatturaMicrosecondi"/>.</summary>
