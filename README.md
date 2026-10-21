@@ -2,7 +2,7 @@
 
 App gratuita, senza pubblicità e senza server, che trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete locale, con integrazione in OBS per le dirette.
 
-> **Stato:** in sviluppo (Fase 4 · Audio). Lo schermo dell'iPhone (iOS 27 o successivo) si vede già sul PC: l'app cattura con ScreenCaptureKit, comprime in H.264 e trasmette al ricevitore Windows sulla rete di casa. L'audio non è ancora trasmesso.
+> **Stato:** in sviluppo (Fase 5 · Qualità e stabilità). Schermo e audio dell'iPhone (iOS 27 o successivo) arrivano già sul PC, sincronizzati: l'app cattura con ScreenCaptureKit, comprime il video in H.264 e trasmette video e audio al ricevitore Windows sulla rete di casa.
 
 ## Come funziona
 
