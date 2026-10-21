@@ -279,6 +279,9 @@ public sealed class RiservaAudio
             _ultimoArrivo = null;
             _byteObiettivo = _byteObiettivoMinimo;
             _incrocioTotali = 0;
+            // Le statistiche descrivono la connessione in corso, come i conteggi del registro.
+            Buchi = 0;
+            Tagli = 0;
         }
     }
 

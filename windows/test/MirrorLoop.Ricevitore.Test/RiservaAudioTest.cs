@@ -271,7 +271,11 @@ public class RiservaAudioTest
         riserva.Aggiungi(Byte(80, 3));
         Leggi(riserva, 8);
 
+        Leggi(riserva, 400);   // svuota la riserva: un buco
+        Assert.Equal(1, riserva.Buchi);
+
         riserva.Svuota();
+        Assert.Equal(0, riserva.Buchi);
         riserva.Aggiungi(Byte(20, 4));
 
         Assert.Equal(TimeSpan.FromMilliseconds(20), riserva.Riserva);
