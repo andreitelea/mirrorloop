@@ -46,7 +46,8 @@ final class Trasmissione: @unchecked Sendable {
     // Dal PC arrivano solo ping da 13 byte: un messaggio enorme vorrebbe dire dati corrotti.
     private static let lunghezzaMassimaInIngresso = 64 * 1024
 
-    private enum Corsia { case controllo, video, audio }
+    /// Il valore è il "ruolo" scritto nell'apertura della corsia (tipo 5).
+    private enum Corsia: UInt8 { case controllo = 1, video = 2, audio = 3 }
 
     private let host: NWEndpoint.Host
     private let trasporto: Trasporto
@@ -54,9 +55,9 @@ final class Trasmissione: @unchecked Sendable {
     private let chiediKeyframe: @Sendable () -> Void
     private let coda = DispatchQueue(label: "io.github.andreitelea.mirrorloop.rete")
 
-    // TCP: una connessione. QUIC: un gruppo e una connessione per corsia.
-    private var gruppo: NWConnectionGroup?
+    // TCP: una connessione. QUIC: una connessione per corsia, riunite dal PC grazie al numero di trasmissione.
     private var corsie: [Corsia: NWConnection] = [:]
+    private var numeroTrasmissione: UInt64 = 0
     private var corsiePronte = Set<Corsia>()
     private var generazione = 0
     private var attivo = false
@@ -150,9 +151,14 @@ final class Trasmissione: @unchecked Sendable {
         return dati
     }
 
-    /// Tipo 5 · apertura corsia: messaggio vuoto. In QUIC una corsia esiste per il ricevitore solo
-    /// dopo il primo dato; quella di controllo deve esistere subito, perché è lì che arrivano i ping.
-    private static let aperturaCorsia = Data([0, 0, 0, 1, 5])
+    /// Tipo 5 · apertura corsia: lunghezza 10 + tipo 5 + ruolo + numero di trasmissione (8 byte, big-endian).
+    /// Il PC riunisce le corsie con lo stesso numero; inoltre in QUIC una corsia esiste per il PC solo
+    /// dopo il primo dato, e quella di controllo deve esistere subito perché è lì che arrivano i ping.
+    private static func aperturaCorsia(_ corsia: Corsia, numero: UInt64) -> Data {
+        var dati = Data([0, 0, 0, 10, 5, corsia.rawValue])
+        withUnsafeBytes(of: numero.bigEndian) { dati.append(contentsOf: $0) }
+        return dati
+    }
 
     // MARK: - Spedizione
 
@@ -221,58 +227,26 @@ final class Trasmissione: @unchecked Sendable {
         nuova.start(queue: coda)
     }
 
+    /// Una connessione QUIC semplice per ogni corsia, come negli esempi QUIC collaudati su iPhone.
+    /// (Con `NWConnectionGroup` il gruppo non diventava mai pronto, senza nessun errore.)
+    /// Ogni connessione ha il suo recupero delle perdite: l'audio non aspetta mai il video.
     private func collegaQuic(generazione mia: Int) {
-        let quic = NWProtocolQUIC.Options(alpn: [Self.protocolloQuic])
-        quic.idleTimeout = 5_000
-        // Il certificato del ricevitore è autofirmato: sulla rete di casa per ora si accetta.
-        // Prima della pubblicazione si memorizzerà la sua impronta al primo collegamento (abbinamento).
-        sec_protocol_options_set_verify_block(quic.securityProtocolOptions, { _, _, completamento in
-            completamento(true)
-        }, coda)
-        let parametri = NWParameters(quic: quic)
-        parametri.serviceClass = .interactiveVideo
-        let endpoint = NWEndpoint.hostPort(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!)
-        let nuovo = NWConnectionGroup(with: NWMultiplexGroup(to: endpoint), using: parametri)
-        nuovo.stateUpdateHandler = { [self] stato in
-            guard mia == generazione else { return }
-            switch stato {
-            case .waiting(let errore), .failed(let errore):
-                riprova(errore.localizedDescription)
-            default:
-                // Lo stato del gruppo resta visibile finché non è tutto collegato: aiuta a capire dove si ferma.
-                if !collegato {
-                    statistiche.withLock { $0.stato = "QUIC: gruppo \(stato)…" }
-                }
-            }
-        }
-        gruppo = nuovo
-        nuovo.start(queue: coda)
-        // Le corsie si aprono subito: il gruppo QUIC stabilisce la connessione quando c'è la prima
-        // corsia. Aspettare che il gruppo fosse "pronto" prima di aprirle lo lasciava in sospeso per sempre.
-        apriCorsieQuic(nuovo, generazione: mia)
-    }
-
-    /// Controllo bidirezionale (ping dal PC, pong dall'iPhone); video e audio in sola andata.
-    private func apriCorsieQuic(_ gruppo: NWConnectionGroup, generazione mia: Int) {
+        // Nuovo a ogni tentativo: il PC riparte sempre da una trasmissione pulita.
+        numeroTrasmissione = UInt64.random(in: .min ... .max)
+        let numero = numeroTrasmissione
         for corsia in [Corsia.controllo, .video, .audio] {
-            let opzioni = NWProtocolQUIC.Options()
-            opzioni.direction = corsia == .controllo ? .bidirectional : .unidirectional
-            guard let connessione = NWConnection(from: gruppo, using: opzioni) else {
-                riprova("impossibile aprire la corsia \(corsia)")
-                return
-            }
+            let connessione = NWConnection(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!, using: Self.parametriQuic(coda: coda))
             connessione.stateUpdateHandler = { [self] stato in
                 guard mia == generazione else { return }
                 switch stato {
                 case .ready:
+                    // Prima di ogni altro dato: l'ordine su una corsia QUIC è garantito.
+                    connessione.send(content: Self.aperturaCorsia(corsia, numero: numero), completion: .contentProcessed { _ in })
+                    if corsia == .controllo { ricevi(connessione, generazione: mia) }
                     corsiePronte.insert(corsia)
-                    if corsia == .controllo {
-                        connessione.send(content: Self.aperturaCorsia, completion: .contentProcessed { _ in })
-                        ricevi(connessione, generazione: mia)
-                    }
                     if corsiePronte.count == 3 { collegamentoRiuscito() }
                 case .waiting(let errore), .failed(let errore):
-                    riprova(errore.localizedDescription)
+                    riprova("corsia \(corsia): \(errore.localizedDescription)")
                 default:
                     break
                 }
@@ -280,6 +254,22 @@ final class Trasmissione: @unchecked Sendable {
             corsie[corsia] = connessione
             connessione.start(queue: coda)
         }
+    }
+
+    private static func parametriQuic(coda: DispatchQueue) -> NWParameters {
+        let quic = NWProtocolQUIC.Options(alpn: [protocolloQuic])
+        quic.idleTimeout = 5_000
+        // Bidirezionale anche per video e audio: è la forma usata negli esempi che funzionano, e il
+        // PC la accetta. Solo sulla corsia di controllo il PC scrive (i ping).
+        quic.direction = .bidirectional
+        // Il certificato del ricevitore è autofirmato: sulla rete di casa per ora si accetta.
+        // Prima della pubblicazione si memorizzerà la sua impronta al primo collegamento (abbinamento).
+        sec_protocol_options_set_verify_block(quic.securityProtocolOptions, { _, _, completamento in
+            completamento(true)
+        }, coda)
+        let parametri = NWParameters(quic: quic)
+        parametri.serviceClass = .interactiveVideo
+        return parametri
     }
 
     private func collegamentoRiuscito() {
@@ -308,8 +298,6 @@ final class Trasmissione: @unchecked Sendable {
         for connessione in corsie.values { connessione.cancel() }
         corsie.removeAll()
         corsiePronte.removeAll()
-        gruppo?.cancel()
-        gruppo = nil
         collegato = false
         byteInAttesa.removeAll()
         statistiche.withLock { s in
