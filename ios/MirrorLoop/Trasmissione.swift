@@ -144,7 +144,11 @@ final class Trasmissione: @unchecked Sendable {
         let mia = generazione
         let tcp = NWProtocolTCP.Options()
         tcp.noDelay = true
-        let nuova = NWConnection(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!, using: NWParameters(tls: nil, tcp: tcp))
+        let parametri = NWParameters(tls: nil, tcp: tcp)
+        // Dice al sistema e al Wi-Fi che è un flusso interattivo a ritmo costante: dovrebbe
+        // ridurre le spedizioni "a gruppi" del risparmio energetico, che creano pause nell'audio.
+        parametri.serviceClass = .interactiveVideo
+        let nuova = NWConnection(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!, using: parametri)
         nuova.stateUpdateHandler = { [self] stato in
             guard mia == generazione else { return }
             switch stato {
