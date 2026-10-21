@@ -10,10 +10,11 @@ namespace MirrorLoop.Ricevitore;
 /// </summary>
 public sealed class RiproduzioneAudio : IDisposable
 {
-    // ~60 ms di riserva bastano per i piccoli ritardi della rete di casa; oltre 200 ms si torna
-    // indietro (vedi RiservaAudio). La latenza di WASAPI si aggiunge a questi valori.
+    // ~60 ms di riserva per i piccoli ritardi della rete di casa; fuori da ±20 ms si corregge
+    // la velocità, oltre 400 ms si taglia (vedi RiservaAudio). La latenza di WASAPI si aggiunge.
     public static readonly TimeSpan RiservaObiettivo = TimeSpan.FromMilliseconds(60);
-    public static readonly TimeSpan RiservaMassima = TimeSpan.FromMilliseconds(200);
+    public static readonly TimeSpan RiservaTolleranza = TimeSpan.FromMilliseconds(20);
+    public static readonly TimeSpan RiservaMassima = TimeSpan.FromMilliseconds(400);
     private const int LatenzaWasapiMs = 30;
 
     private readonly object _blocco = new();
@@ -27,6 +28,7 @@ public sealed class RiproduzioneAudio : IDisposable
     public TimeSpan Riserva => _riserva?.Riserva ?? TimeSpan.Zero;
     public long Buchi => _riserva?.Buchi ?? 0;
     public long Tagli => _riserva?.Tagli ?? 0;
+    public double Velocita => _riserva?.Velocita ?? 1;
 
     /// <summary>Chiamato dal thread di rete per ogni pacchetto ricevuto.</summary>
     public void Aggiungi(PacchettoAudio audio)
@@ -52,7 +54,7 @@ public sealed class RiproduzioneAudio : IDisposable
         try
         {
             int byteBlocco = canali * 2;
-            var riserva = new RiservaAudio(frequenza * byteBlocco, byteBlocco, RiservaObiettivo, RiservaMassima);
+            var riserva = new RiservaAudio(frequenza * byteBlocco, canali, RiservaObiettivo, RiservaTolleranza, RiservaMassima);
             var uscita = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, LatenzaWasapiMs);
             uscita.Init(new SorgenteRiserva(riserva, new WaveFormat(frequenza, 16, canali)));
             uscita.Play();

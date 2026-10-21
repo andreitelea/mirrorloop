@@ -120,6 +120,8 @@ public partial class FinestraPrincipale : Window
             $"formato audio   {audio.Formato}{(audio.Ignorati > 0 ? $"  ({audio.Ignorati} ignorati)" : "")}\n" +
             $"uscita audio    {_riproduzioneAudio.Stato}\n" +
             $"riserva audio   {_riproduzioneAudio.Riserva.TotalMilliseconds,6:F0} ms  (buchi {_riproduzioneAudio.Buchi}, tagli {_riproduzioneAudio.Tagli})\n" +
+            $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
+            $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             "S: mostra/nascondi";
     }
 

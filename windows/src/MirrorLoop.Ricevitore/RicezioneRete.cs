@@ -34,6 +34,7 @@ public sealed class RicezioneRete(int porta, CodaFrame coda, StatisticheRicezion
 
                 coda.Ricomincia();
                 riproduzioneAudio.Ricomincia();
+                statisticheAudio.Ricomincia();
                 try
                 {
                     await RiceviTuttoAsync(client.GetStream(), stop);
