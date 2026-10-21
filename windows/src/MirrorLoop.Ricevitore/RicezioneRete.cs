@@ -160,6 +160,10 @@ public sealed class RicezioneRete(
             MaxInboundUnidirectionalStreams = 16,
             // Senza notizie per qualche secondo il mittente si considera sparito, come con TCP.
             IdleTimeout = TimeSpan.FromSeconds(5),
+            // Ogni corsia ha la sua connessione: quella del video resta muta quando lo schermo è
+            // fermo. I PING di QUIC (a cui l'iPhone risponde da solo) la tengono viva; un iPhone
+            // sparito davvero non risponde più e la connessione scade comunque.
+            KeepAliveInterval = TimeSpan.FromSeconds(1),
             ServerAuthenticationOptions = new SslServerAuthenticationOptions
             {
                 ApplicationProtocols = [ProtocolloQuic],

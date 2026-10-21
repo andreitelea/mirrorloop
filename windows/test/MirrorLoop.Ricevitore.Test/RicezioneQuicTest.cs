@@ -194,6 +194,30 @@ public sealed class RicezioneQuicTest : IAsyncDisposable
     }
 
     [Fact]
+    public async Task UnaCorsiaMutaOltreLInattivitaRestaViva()
+    {
+        if (!AvviaRicevitore())
+            return;
+        const long numero = 9;
+
+        await using var controllo = await ApriCorsiaAsync(RuoloCorsia.Controllo, numero);
+        Assert.IsType<Ping>(await Protocollo.Protocollo.RiceviMessaggioAsync(controllo, _stop.Token));
+        await using var video = await ApriCorsiaAsync(RuoloCorsia.Video, numero);
+        await Protocollo.Protocollo.InviaFrameAsync(video, new FrameVideo(true, 1, new byte[] { 0, 0, 0, 1, 0x65 }), _stop.Token);
+        Assert.True(_coda.ProvaPrendi(TimeSpan.FromSeconds(5), out _));
+
+        // Schermo fermo: l'iPhone non manda frame e la connessione del video resta muta più a lungo
+        // dei 5 s di inattività. Deve restare viva lo stesso, senza far ripartire la trasmissione.
+        await Task.Delay(TimeSpan.FromSeconds(6.5), _stop.Token);
+        await Protocollo.Protocollo.InviaFrameAsync(video, new FrameVideo(false, 2, new byte[] { 0, 0, 0, 1, 0x41 }), _stop.Token);
+
+        Assert.True(_coda.ProvaPrendi(TimeSpan.FromSeconds(5), out FrameVideo? dopo), "il frame dopo la pausa doveva arrivare");
+        Assert.Equal(2, dopo!.IstanteCatturaMicrosecondi);
+        Assert.Equal(1, _coda.Generazione);
+        Assert.Equal("QUIC", _ricezione.Trasporto);
+    }
+
+    [Fact]
     public async Task UnaCorsiaCheNonSiPresentaVieneRifiutata()
     {
         if (!AvviaRicevitore())
