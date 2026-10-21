@@ -17,7 +17,8 @@ public sealed class RicezioneRete(
     StatisticheRicezione statistiche,
     StatisticheAudio statisticheAudio,
     RiproduzioneAudio riproduzioneAudio,
-    SincroniaOrologi sincronia)
+    SincroniaOrologi sincronia,
+    RegistroPacchetti registro)
 {
     // Un ping al secondo basta: lo scarto tra gli orologi cambia molto lentamente.
     private static readonly TimeSpan IntervalloPing = TimeSpan.FromSeconds(1);
@@ -101,6 +102,10 @@ public sealed class RicezioneRete(
     public long LatenzaMicrosecondi(long istanteCatturaIphone) =>
         Protocollo.Protocollo.AdessoMicrosecondi() - (sincronia.InOraDelPc(istanteCatturaIphone) ?? istanteCatturaIphone);
 
+    private void Registra(char tipo, long istanteIphone, int dimensione, bool keyframe) =>
+        registro.Scrivi(tipo, istanteIphone, Protocollo.Protocollo.AdessoMicrosecondi(),
+            sincronia.Migliore?.ScartoMicrosecondi, dimensione, keyframe);
+
     private double LatenzaMs(long istanteCatturaIphone) => LatenzaMicrosecondi(istanteCatturaIphone) / 1000.0;
 
     /// <summary>
@@ -131,11 +136,13 @@ public sealed class RicezioneRete(
             switch (messaggio)
             {
                 case FrameVideo frame:
+                    Registra('v', frame.IstanteCatturaMicrosecondi, frame.DatiH264.Length, frame.Keyframe);
                     double latenzaMs = LatenzaMs(frame.IstanteCatturaMicrosecondi);
                     statistiche.FrameRicevuto(frame.Keyframe, frame.DatiH264.Length, latenzaMs);
                     coda.Aggiungi(frame);
                     break;
                 case PacchettoAudio audio:
+                    Registra('a', audio.IstanteCatturaMicrosecondi, audio.Dati.Length, false);
                     statisticheAudio.PacchettoRicevuto(audio);
                     riproduzioneAudio.Aggiungi(audio);
                     break;

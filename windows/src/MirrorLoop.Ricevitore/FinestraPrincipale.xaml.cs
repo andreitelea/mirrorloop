@@ -19,6 +19,7 @@ public partial class FinestraPrincipale : Window
     private readonly StatisticheAudio _statisticheAudio = new();
     private readonly RiproduzioneAudio _riproduzioneAudio = new();
     private readonly SincroniaOrologi _sincronia = new();
+    private readonly RegistroPacchetti _registro = new();
     private readonly RicezioneRete _ricezione;
     private readonly Riproduzione _riproduzione;
     private readonly CancellationTokenSource _stop = new();
@@ -35,7 +36,7 @@ public partial class FinestraPrincipale : Window
     {
         InitializeComponent();
 
-        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia);
+        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro);
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
 
@@ -134,7 +135,8 @@ public partial class FinestraPrincipale : Window
             $"riserva audio   {_riproduzioneAudio.Riserva.TotalMilliseconds,6:F0} ms  (buchi {_riproduzioneAudio.Buchi}, tagli {_riproduzioneAudio.Tagli})\n" +
             $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
-            "S: mostra/nascondi";
+            $"registro        {DescriviRegistro()}\n" +
+            "S: mostra/nascondi · R: registro su file";
     }
 
     /// <summary>Dalla cattura sull'iPhone al suono nelle cuffie (stimato con la latenza dell'uscita).</summary>
@@ -170,12 +172,25 @@ public partial class FinestraPrincipale : Window
                 ? Visibility.Collapsed
                 : Visibility.Visible;
         }
+        else if (e.Key == Key.R)
+        {
+            if (_registro.Attivo)
+                _registro.Ferma();
+            else
+                _registro.Avvia();
+        }
     }
+
+    private string DescriviRegistro() =>
+        _registro.Attivo
+            ? $"ATTIVO ({_registro.Righe} righe) → {_registro.Percorso}"
+            : _registro.Percorso is string ultimo ? $"spento (ultimo: {ultimo})" : "spento";
 
     protected override void OnClosing(CancelEventArgs e)
     {
         _stop.Cancel();
         _riproduzioneAudio.Dispose();
+        _registro.Dispose();
         _timerStatistiche.Stop();
         CompositionTarget.Rendering -= MostraUltimaImmagine;
         base.OnClosing(e);
