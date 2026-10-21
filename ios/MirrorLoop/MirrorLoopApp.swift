@@ -65,7 +65,7 @@ struct PannelloCattura: View {
             }
             Text("Cattura: \(cattura.stato)")
             Text("Rete: \(r.stato)")
-            Text("Inviati: \(r.inviati) · scartati \(r.scartati) · connessioni \(r.connessioni)")
+            Text("Inviati: \(r.inviati) · scartati \(r.scartati) · connessioni \(r.connessioni) · ping \(r.pingRisposti)")
             if let erroreRete = r.ultimoErrore {
                 Text("Ultimo errore di rete: \(erroreRete)")
                     .foregroundStyle(.orange)

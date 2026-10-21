@@ -50,25 +50,27 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
     let compressore: CompressoreH264
     private let audio: @Sendable (AudioPcm16) -> Void
     private let eventi: @Sendable (EventoCattura) -> Void
-
-    // Gli istanti dei campioni di ScreenCaptureKit sono sull'orologio di sistema dell'iPhone
-    // (quello di CMClockGetHostTimeClock). Lo scarto lo trasforma nell'ora "da calendario"
-    // del protocollo. Audio e video usano lo stesso scarto: è ciò che li tiene sincronizzati.
-    private let scartoOrologio = Date().timeIntervalSince1970 - CMClockGetTime(CMClockGetHostTimeClock()).seconds
+    private let orologio: OrologioCattura
 
     // ScreenCaptureKit su iOS non permette di chiedere meno fotogrammi al secondo
     // (minimumFrameInterval non esiste): il ritmo lo limitiamo noi. Il margine evita di
     // scartare fotogrammi arrivati con qualche millisecondo di anticipo.
     private let intervalloMinimo = 1.0 / Double(CompressoreH264.fps) - 0.004
 
-    init(compressore: CompressoreH264, audio: @escaping @Sendable (AudioPcm16) -> Void, eventi: @escaping @Sendable (EventoCattura) -> Void) {
+    init(
+        compressore: CompressoreH264,
+        orologio: OrologioCattura,
+        audio: @escaping @Sendable (AudioPcm16) -> Void,
+        eventi: @escaping @Sendable (EventoCattura) -> Void
+    ) {
         self.compressore = compressore
+        self.orologio = orologio
         self.audio = audio
         self.eventi = eventi
     }
 
     private func istanteMicrosecondi(_ tempo: CMTime) -> Int64 {
-        Int64((tempo.seconds + scartoOrologio) * 1_000_000)
+        orologio.microsecondi(tempo)
     }
 
     /// Quanto tempo è passato tra la cattura del campione e il suo arrivo qui. Se gli istanti
@@ -199,8 +201,9 @@ final class Cattura {
         dimensioneRichiesta = "\(larghezza)×\(altezza)"
         // Il compressore e la trasmissione si conoscono a vicenda: uno consegna i frame,
         // l'altra chiede un keyframe quando ne ha bisogno.
+        let orologio = OrologioCattura()
         let scatolaCompressore = Mutex<CompressoreH264?>(nil)
-        let trasmissione = Trasmissione(indirizzo: indirizzoPC) {
+        let trasmissione = Trasmissione(indirizzo: indirizzoPC, orologio: orologio) {
             scatolaCompressore.withLock { $0?.forzaKeyframe() }
         }
         let compressore = CompressoreH264(larghezza: larghezza, altezza: altezza) { frame in
@@ -209,7 +212,7 @@ final class Cattura {
         scatolaCompressore.withLock { $0 = compressore }
         self.trasmissione = trasmissione
         trasmissione.avvia()
-        let ricevitore = Ricevitore(compressore: compressore) { audio in
+        let ricevitore = Ricevitore(compressore: compressore, orologio: orologio) { audio in
             trasmissione.inviaAudio(audio)
         } eventi: { evento in
             Task { @MainActor in self.gestisci(evento) }
