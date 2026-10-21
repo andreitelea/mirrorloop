@@ -39,6 +39,7 @@ struct PannelloCattura: View {
     @Environment(\.scenePhase) private var fase
     // L'indirizzo del PC si ricorda tra un avvio e l'altro.
     @AppStorage("indirizzoPC") private var indirizzoPC = ""
+    @AppStorage("trasporto") private var trasporto = Trasporto.quic
 
     var body: some View {
         let c = cattura.contatori
@@ -52,12 +53,16 @@ struct PannelloCattura: View {
                 .keyboardType(.numbersAndPunctuation)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+            Picker("Trasporto", selection: $trasporto) {
+                ForEach(Trasporto.allCases, id: \.self) { Text($0.rawValue) }
+            }
+            .pickerStyle(.segmented)
             if !cattura.disponibile {
                 Text("La registrazione dello schermo non è disponibile su questo iPhone.")
                     .foregroundStyle(.red)
             }
             HStack {
-                Button("Avvia") { cattura.avvia(indirizzoPC: indirizzoPC.trimmingCharacters(in: .whitespaces)) }
+                Button("Avvia") { cattura.avvia(indirizzoPC: indirizzoPC.trimmingCharacters(in: .whitespaces), trasporto: trasporto) }
                     .buttonStyle(.borderedProminent)
                     .disabled(indirizzoPC.trimmingCharacters(in: .whitespaces).isEmpty)
                 Button("Ferma") { cattura.ferma() }

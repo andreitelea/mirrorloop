@@ -1,6 +1,15 @@
 import Foundation
 import Network
+import Security
 import Synchronization
+
+/// Come viaggiano i dati verso il ricevitore.
+enum Trasporto: String, CaseIterable, Sendable {
+    /// Una sola connessione TCP per tutto: semplice, ma una perdita blocca tutta la fila.
+    case tcp = "TCP"
+    /// QUIC (su UDP) con corsie indipendenti per controllo, video e audio.
+    case quic = "QUIC"
+}
 
 struct StatisticheTrasmissione: Sendable {
     var stato = "Ferma"
@@ -17,34 +26,45 @@ struct StatisticheTrasmissione: Sendable {
     var ultimoErrore: String?
 }
 
-/// Manda i frame compressi al ricevitore Windows via TCP, nel formato di docs/protocollo.md,
+/// Manda i frame compressi e l'audio al ricevitore Windows, nel formato di docs/protocollo.md,
 /// e risponde ai ping del PC (che li usa per misurare lo scarto tra i due orologi).
-/// Tutto lo stato vive sulla coda `coda`; `invia` può essere chiamato da qualsiasi thread.
+/// Tutto lo stato vive sulla coda `coda`; `invia` e `inviaAudio` possono essere chiamati da qualsiasi thread.
 final class Trasmissione: @unchecked Sendable {
     static let porta: UInt16 = 7450
-    // Oltre mezzo secondo di video in attesa di partire, la rete non tiene il passo: si smette
-    // di accodare e si riparte dal keyframe successivo (lezione dei buffer della Fase 1).
-    static let sogliaByteInAttesa = CompressoreH264.bitrate / 8 / 2
+    /// Nome del protocollo applicativo per QUIC (ALPN): deve coincidere con quello del ricevitore.
+    static let protocolloQuic = "mirrorloop/1"
+    // Oltre mezzo secondo di dati in attesa di partire la rete non tiene il passo: si smette di
+    // accodare (per il video si riparte dal keyframe successivo: lezione dei buffer della Fase 1).
+    static let sogliaVideoInAttesa = CompressoreH264.bitrate / 8 / 2
+    static let sogliaAudioInAttesa = 48_000 * 4 / 2
 
     let statistiche = Mutex(StatisticheTrasmissione())
 
     // Dal PC arrivano solo ping da 13 byte: un messaggio enorme vorrebbe dire dati corrotti.
     private static let lunghezzaMassimaInIngresso = 64 * 1024
 
+    private enum Corsia { case controllo, video, audio }
+
     private let host: NWEndpoint.Host
+    private let trasporto: Trasporto
     private let orologio: OrologioCattura
     private let chiediKeyframe: @Sendable () -> Void
     private let coda = DispatchQueue(label: "io.github.andreitelea.mirrorloop.rete")
-    private var connessione: NWConnection?
+
+    // TCP: una connessione. QUIC: un gruppo e una connessione per corsia.
+    private var gruppo: NWConnectionGroup?
+    private var corsie: [Corsia: NWConnection] = [:]
+    private var corsiePronte = Set<Corsia>()
     private var generazione = 0
     private var attivo = false
     private var collegato = false
     private var attendiKeyframe = true
-    private var byteInAttesa = 0
+    private var byteInAttesa: [Corsia: Int] = [:]
     private var ingresso: [UInt8] = []
 
-    init(indirizzo: String, orologio: OrologioCattura, chiediKeyframe: @escaping @Sendable () -> Void) {
+    init(indirizzo: String, trasporto: Trasporto, orologio: OrologioCattura, chiediKeyframe: @escaping @Sendable () -> Void) {
         self.host = NWEndpoint.Host(indirizzo)
+        self.trasporto = trasporto
         self.orologio = orologio
         self.chiediKeyframe = chiediKeyframe
     }
@@ -65,8 +85,8 @@ final class Trasmissione: @unchecked Sendable {
 
     func invia(_ frame: FrameCompresso) {
         coda.async { [self] in
-            guard collegato, let connessione else { return }
-            if byteInAttesa > Self.sogliaByteInAttesa {
+            guard collegato else { return }
+            if inAttesa(per: .video) > Self.sogliaVideoInAttesa {
                 if !attendiKeyframe { chiediKeyframe() }
                 attendiKeyframe = true
                 statistiche.withLock { $0.scartati += 1 }
@@ -77,50 +97,26 @@ final class Trasmissione: @unchecked Sendable {
                 return
             }
             attendiKeyframe = false
-
-            let messaggio = Self.messaggio(frame)
-            byteInAttesa += messaggio.count
-            let picco = byteInAttesa
-            statistiche.withLock { $0.piccoByteInAttesa = max($0.piccoByteInAttesa, picco) }
-            let mia = generazione
-            connessione.send(content: messaggio, completion: .contentProcessed { [self] errore in
-                // Il completamento arriva sulla coda della connessione, cioè `coda`.
-                guard mia == generazione else { return }
-                byteInAttesa -= messaggio.count
-                if errore == nil {
-                    statistiche.withLock { s in
-                        s.inviati += 1
-                        s.byteInviati += messaggio.count
-                    }
-                }
-            })
+            spedisci(Self.messaggio(frame), su: .video) { s, byte in
+                s.inviati += 1
+                s.byteInviati += byte
+            }
         }
     }
 
     func inviaAudio(_ audio: AudioPcm16) {
         coda.async { [self] in
-            guard collegato, let connessione else { return }
+            guard collegato else { return }
             // Con la rete in affanno anche l'audio si scarta: meglio un buco breve che un
-            // ritardo che cresce. Il video intanto riparte dal keyframe successivo.
-            if byteInAttesa > Self.sogliaByteInAttesa {
+            // ritardo che cresce.
+            if inAttesa(per: .audio) > Self.sogliaAudioInAttesa {
                 statistiche.withLock { $0.audioScartati += 1 }
                 return
             }
-            let messaggio = Self.messaggioAudio(audio)
-            byteInAttesa += messaggio.count
-            let picco = byteInAttesa
-            statistiche.withLock { $0.piccoByteInAttesa = max($0.piccoByteInAttesa, picco) }
-            let mia = generazione
-            connessione.send(content: messaggio, completion: .contentProcessed { [self] errore in
-                guard mia == generazione else { return }
-                byteInAttesa -= messaggio.count
-                if errore == nil {
-                    statistiche.withLock { s in
-                        s.audioInviati += 1
-                        s.byteAudio += messaggio.count
-                    }
-                }
-            })
+            spedisci(Self.messaggioAudio(audio), su: .audio) { s, byte in
+                s.audioInviati += 1
+                s.byteAudio += byte
+            }
         }
     }
 
@@ -151,46 +147,167 @@ final class Trasmissione: @unchecked Sendable {
         return dati
     }
 
+    /// Tipo 5 · apertura corsia: messaggio vuoto. In QUIC una corsia esiste per il ricevitore solo
+    /// dopo il primo dato; quella di controllo deve esistere subito, perché è lì che arrivano i ping.
+    private static let aperturaCorsia = Data([0, 0, 0, 1, 5])
+
+    // MARK: - Spedizione
+
+    /// Quanti byte aspettano di partire sulla fila di questa corsia. In TCP c'è una sola fila per
+    /// tutto; in QUIC ogni corsia ha la sua, ed è proprio il motivo per usarlo.
+    private func inAttesa(per corsia: Corsia) -> Int {
+        trasporto == .tcp ? byteInAttesa.values.reduce(0, +) : byteInAttesa[corsia, default: 0]
+    }
+
+    private func spedisci(_ messaggio: Data, su corsia: Corsia, conteggio: @escaping @Sendable (inout StatisticheTrasmissione, Int) -> Void) {
+        guard let connessione = connessione(per: corsia) else { return }
+        byteInAttesa[corsia, default: 0] += messaggio.count
+        let picco = inAttesa(per: corsia)
+        statistiche.withLock { $0.piccoByteInAttesa = max($0.piccoByteInAttesa, picco) }
+        let mia = generazione
+        connessione.send(content: messaggio, completion: .contentProcessed { [self] errore in
+            // Il completamento arriva sulla coda della connessione, cioè `coda`.
+            guard mia == generazione else { return }
+            byteInAttesa[corsia, default: 0] -= messaggio.count
+            if errore == nil {
+                statistiche.withLock { conteggio(&$0, messaggio.count) }
+            }
+        })
+    }
+
+    private func connessione(per corsia: Corsia) -> NWConnection? {
+        trasporto == .tcp ? corsie[.controllo] : corsie[corsia]
+    }
+
+    // MARK: - Collegamento
+
     private func collega() {
         guard attivo else { return }
         generazione += 1
-        let mia = generazione
+        statistiche.withLock { $0.stato = "Collegamento a \(host) (\(trasporto.rawValue))…" }
+        switch trasporto {
+        case .tcp: collegaTcp(generazione: generazione)
+        case .quic: collegaQuic(generazione: generazione)
+        }
+    }
+
+    private func collegaTcp(generazione mia: Int) {
         let tcp = NWProtocolTCP.Options()
         tcp.noDelay = true
         let parametri = NWParameters(tls: nil, tcp: tcp)
-        // Dice al sistema e al Wi-Fi che è un flusso interattivo a ritmo costante: dovrebbe
-        // ridurre le spedizioni "a gruppi" del risparmio energetico, che creano pause nell'audio.
         parametri.serviceClass = .interactiveVideo
         let nuova = NWConnection(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!, using: parametri)
         nuova.stateUpdateHandler = { [self] stato in
             guard mia == generazione else { return }
             switch stato {
             case .ready:
-                collegato = true
-                attendiKeyframe = true
-                byteInAttesa = 0
-                ingresso.removeAll()
                 ricevi(nuova, generazione: mia)
-                // Un keyframe subito, così il ricevitore mostra il video senza aspettare 2 secondi.
-                chiediKeyframe()
-                statistiche.withLock { s in
-                    s.stato = "Collegata a \(host):\(Self.porta)"
-                    s.collegato = true
-                    s.connessioni += 1
-                    s.ultimoErrore = nil
-                }
+                collegamentoRiuscito()
             case .waiting(let errore), .failed(let errore):
-                // Ricevitore spento o irraggiungibile: nuovo tentativo tra un secondo.
-                chiudi(stato: "In attesa del ricevitore…", errore: errore.localizedDescription)
-                coda.asyncAfter(deadline: .now() + 1) { [self] in collega() }
+                riprova(errore.localizedDescription)
             default:
                 break
             }
         }
-        connessione = nuova
-        statistiche.withLock { $0.stato = "Collegamento a \(host)…" }
+        corsie[.controllo] = nuova
         nuova.start(queue: coda)
     }
+
+    private func collegaQuic(generazione mia: Int) {
+        let quic = NWProtocolQUIC.Options(alpn: [Self.protocolloQuic])
+        quic.idleTimeout = 5_000
+        // Il certificato del ricevitore è autofirmato: sulla rete di casa per ora si accetta.
+        // Prima della pubblicazione si memorizzerà la sua impronta al primo collegamento (abbinamento).
+        sec_protocol_options_set_verify_block(quic.securityProtocolOptions, { _, _, completamento in
+            completamento(true)
+        }, coda)
+        let parametri = NWParameters(quic: quic)
+        parametri.serviceClass = .interactiveVideo
+        let endpoint = NWEndpoint.hostPort(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!)
+        let nuovo = NWConnectionGroup(with: NWMultiplexGroup(to: endpoint), using: parametri)
+        nuovo.stateUpdateHandler = { [self] stato in
+            guard mia == generazione else { return }
+            switch stato {
+            case .ready:
+                apriCorsieQuic(nuovo, generazione: mia)
+            case .waiting(let errore), .failed(let errore):
+                riprova(errore.localizedDescription)
+            default:
+                break
+            }
+        }
+        gruppo = nuovo
+        nuovo.start(queue: coda)
+    }
+
+    /// Controllo bidirezionale (ping dal PC, pong dall'iPhone); video e audio in sola andata.
+    private func apriCorsieQuic(_ gruppo: NWConnectionGroup, generazione mia: Int) {
+        for corsia in [Corsia.controllo, .video, .audio] {
+            let opzioni = NWProtocolQUIC.Options()
+            opzioni.direction = corsia == .controllo ? .bidirectional : .unidirectional
+            guard let connessione = NWConnection(from: gruppo, using: opzioni) else {
+                riprova("impossibile aprire la corsia \(corsia)")
+                return
+            }
+            connessione.stateUpdateHandler = { [self] stato in
+                guard mia == generazione else { return }
+                switch stato {
+                case .ready:
+                    corsiePronte.insert(corsia)
+                    if corsia == .controllo {
+                        connessione.send(content: Self.aperturaCorsia, completion: .contentProcessed { _ in })
+                        ricevi(connessione, generazione: mia)
+                    }
+                    if corsiePronte.count == 3 { collegamentoRiuscito() }
+                case .waiting(let errore), .failed(let errore):
+                    riprova(errore.localizedDescription)
+                default:
+                    break
+                }
+            }
+            corsie[corsia] = connessione
+            connessione.start(queue: coda)
+        }
+    }
+
+    private func collegamentoRiuscito() {
+        collegato = true
+        attendiKeyframe = true
+        byteInAttesa.removeAll()
+        ingresso.removeAll()
+        // Un keyframe subito, così il ricevitore mostra il video senza aspettare 2 secondi.
+        chiediKeyframe()
+        statistiche.withLock { s in
+            s.stato = "Collegata a \(host):\(Self.porta) (\(trasporto.rawValue))"
+            s.collegato = true
+            s.connessioni += 1
+            s.ultimoErrore = nil
+        }
+    }
+
+    /// Ricevitore spento o irraggiungibile, o connessione persa: nuovo tentativo tra un secondo.
+    private func riprova(_ errore: String) {
+        chiudi(stato: "In attesa del ricevitore…", errore: errore)
+        coda.asyncAfter(deadline: .now() + 1) { [self] in collega() }
+    }
+
+    private func chiudi(stato: String, errore: String? = nil) {
+        generazione += 1
+        for connessione in corsie.values { connessione.cancel() }
+        corsie.removeAll()
+        corsiePronte.removeAll()
+        gruppo?.cancel()
+        gruppo = nil
+        collegato = false
+        byteInAttesa.removeAll()
+        statistiche.withLock { s in
+            s.stato = stato
+            s.collegato = false
+            if let errore { s.ultimoErrore = errore }
+        }
+    }
+
+    // MARK: - Ping dal PC
 
     /// Legge quello che manda il PC, un pezzo alla volta, finché dura la connessione.
     private func ricevi(_ connessione: NWConnection, generazione mia: Int) {
@@ -238,18 +355,5 @@ final class Trasmissione: @unchecked Sendable {
         withUnsafeBytes(of: t3.bigEndian) { pong.append(contentsOf: $0) }
         connessione.send(content: pong, completion: .contentProcessed { _ in })
         statistiche.withLock { $0.pingRisposti += 1 }
-    }
-
-    private func chiudi(stato: String, errore: String? = nil) {
-        generazione += 1
-        connessione?.cancel()
-        connessione = nil
-        collegato = false
-        byteInAttesa = 0
-        statistiche.withLock { s in
-            s.stato = stato
-            s.collegato = false
-            if let errore { s.ultimoErrore = errore }
-        }
     }
 }

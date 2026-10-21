@@ -6,9 +6,15 @@ Come viaggiano i dati dal mittente (l'app iPhone, oppure `MittenteTest` per le p
 
 ## Trasporto
 
-- **TCP**, una connessione per trasmissione.
-- Il ricevitore resta in ascolto, il mittente si collega.
-- Su ogni socket si disattiva l'algoritmo di Nagle (`NoDelay`), per spedire subito ogni frame.
+Il ricevitore ascolta sulla porta **7450** in due modi; il mittente sceglie quale usare. Un solo mittente alla volta: una connessione nuova chiude la precedente.
+
+- **TCP:** una connessione per trasmissione, tutti i messaggi in un'unica fila. Si disattiva l'algoritmo di Nagle (`NoDelay`), per spedire subito ogni frame.
+- **QUIC** (su UDP, sempre cifrato con TLS 1.3): protocollo applicativo (ALPN) `mirrorloop/1`. Il mittente apre tre **corsie** indipendenti, così una perdita in una non blocca le altre:
+  - **controllo**, bidirezionale: ping (ricevitore → mittente) e pong (mittente → ricevitore). Il mittente vi scrive subito un messaggio di **apertura corsia** (tipo 5), perché in QUIC una corsia esiste per l'altro lato solo dopo il primo dato;
+  - **video**, unidirezionale: frame video (tipo 1);
+  - **audio**, unidirezionale: pacchetti audio (tipo 2).
+  
+  Il certificato del ricevitore è autofirmato. Su ogni corsia i messaggi hanno lo stesso formato descritto qui sotto.
 
 ## Struttura di ogni messaggio
 
@@ -34,6 +40,7 @@ Tutti i numeri sono **big-endian** ("network byte order").
 | 2 | Audio | In uso dalla Fase 4 |
 | 3 | Ping (dal ricevitore al mittente) | In uso dalla Fase 5 |
 | 4 | Pong (dal mittente al ricevitore) | In uso dalla Fase 5 |
+| 5 | Apertura corsia (vuoto, solo QUIC) | In uso dalla Fase 5: il ricevitore lo ignora |
 | altri | Riservati | Il ricevitore **li salta senza errore**, così le versioni future potranno aggiungerne senza rompere i ricevitori più vecchi |
 
 ## Tipo 1 · Frame video
