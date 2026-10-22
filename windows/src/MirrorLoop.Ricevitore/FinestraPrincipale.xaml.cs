@@ -22,6 +22,7 @@ public partial class FinestraPrincipale : Window
     private readonly SincroniaOrologi _sincronia = new();
     private readonly RegistroPacchetti _registro = new();
     private readonly RicezioneRete _ricezione;
+    private readonly AnnuncioBonjour _annuncio;
     private readonly Riproduzione _riproduzione;
     private readonly CancellationTokenSource _stop = new();
     private readonly DispatcherTimer _timerStatistiche;
@@ -46,6 +47,8 @@ public partial class FinestraPrincipale : Window
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
         _riproduzioneAudio.EventoRiserva += evento => _registro.ScriviRiserva(evento, Protocollo.Protocollo.AdessoMicrosecondi());
+        // L'iPhone trova il PC per nome, senza scrivere l'indirizzo.
+        _annuncio = new AnnuncioBonjour(Environment.MachineName, Porta);
 
         _riproduzione = new Riproduzione(_coda);
 
@@ -146,6 +149,7 @@ public partial class FinestraPrincipale : Window
             $"latenza schermo {Latenza(schermo)}\n" +
             $"latenza audio   {DescriviLatenzaAudio()}\n" +
             $"orologi         {DescriviOrologi()}\n" +
+            $"bonjour         {_annuncio.Stato}\n" +
             $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (QUIC spento: {m})" : "")}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
             $"conversione     {_msConversione,6:F1} ms\n" +
@@ -241,6 +245,7 @@ public partial class FinestraPrincipale : Window
     protected override void OnClosing(CancelEventArgs e)
     {
         _stop.Cancel();
+        _annuncio.Dispose();
         _riproduzioneAudio.Dispose();
         _registro.Dispose();
         _timerStatistiche.Stop();
