@@ -28,6 +28,7 @@ public partial class FinestraPrincipale : Window
     private readonly Stopwatch _dallUltimaLettura = Stopwatch.StartNew();
     private WriteableBitmap? _immagine;
     private RotazioneVideo _rotazione = RotazioneVideo.Nessuna;
+    private readonly SceltaRotazione _sceltaRotazione = new();
     private long _keyframeTotali;
     private double _msDecompressione;
     private double _msConversione;
@@ -90,16 +91,8 @@ public partial class FinestraPrincipale : Window
 
         _immagine.WritePixels(new Int32Rect(0, 0, immagine.Larghezza, immagine.Altezza), immagine.Bgra, immagine.Larghezza * 4, 0);
 
-        // La rotazione la fa la scheda video al momento di disegnare: nessun lavoro sui pixel.
-        // LayoutTransform (non RenderTransform) perché anche l'impaginazione deve vedere l'immagine
-        // girata, così in orizzontale riempie la finestra in larghezza.
-        if (immagine.Rotazione != _rotazione)
-        {
-            _rotazione = immagine.Rotazione;
-            var trasformazione = new RotateTransform(90 * (int)_rotazione);
-            trasformazione.Freeze();
-            Video.LayoutTransform = trasformazione;
-        }
+        _sceltaRotazione.DaIPhone(immagine.Rotazione);
+        ApplicaRotazione();
 
         // Latenza "fino allo schermo": dal disegno nel mittente a qui. Manca solo l'ultimo tratto,
         // fino al prossimo aggiornamento del monitor (al massimo circa 16 ms a 60 Hz), non misurabile da qui.
@@ -109,6 +102,21 @@ public partial class FinestraPrincipale : Window
         _msConversione = immagine.MsConversione;
 
         _riproduzione.Restituisci(immagine);
+    }
+
+    /// <summary>
+    /// La rotazione la fa la scheda video al momento di disegnare: nessun lavoro sui pixel.
+    /// LayoutTransform (non RenderTransform) perché anche l'impaginazione deve vedere l'immagine
+    /// girata, così in orizzontale riempie la finestra in larghezza.
+    /// </summary>
+    private void ApplicaRotazione()
+    {
+        if (_sceltaRotazione.Effettiva == _rotazione)
+            return;
+        _rotazione = _sceltaRotazione.Effettiva;
+        var trasformazione = new RotateTransform(90 * (int)_rotazione);
+        trasformazione.Freeze();
+        Video.LayoutTransform = trasformazione;
     }
 
     private void AggiornaStatistiche()
@@ -137,7 +145,7 @@ public partial class FinestraPrincipale : Window
             $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (QUIC spento: {m})" : "")}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
             $"conversione     {_msConversione,6:F1} ms\n" +
-            $"rotazione       {90 * (int)_rotazione,6}°\n" +
+            $"rotazione       {90 * (int)_rotazione,6}°  ({(_sceltaRotazione.Manuale ? $"manuale; dall'iPhone {90 * (int)_sceltaRotazione.Automatica}°" : "automatica")})\n" +
             $"keyframe        {_keyframeTotali,6} (totale)\n" +
             $"scartati        {_coda.Scartati,6} (totale)\n" +
             $"non mostrati    {_riproduzione.NonMostrate,6} (totale)\n" +
@@ -152,7 +160,7 @@ public partial class FinestraPrincipale : Window
             $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             $"registro        {DescriviRegistro()}\n" +
-            "S: mostra/nascondi · R: registro su file";
+            "S: mostra/nascondi · R: registro su file · O: ruota di 90° · A: rotazione automatica";
     }
 
     /// <summary>Senza certificato il ricevitore funziona lo stesso, solo in TCP.</summary>
@@ -207,6 +215,16 @@ public partial class FinestraPrincipale : Window
                 _registro.Ferma();
             else
                 _registro.Avvia();
+        }
+        else if (e.Key == Key.O)
+        {
+            _sceltaRotazione.RuotaManuale();
+            ApplicaRotazione();
+        }
+        else if (e.Key == Key.A)
+        {
+            _sceltaRotazione.TornaAutomatica();
+            ApplicaRotazione();
         }
     }
 
