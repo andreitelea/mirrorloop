@@ -30,6 +30,9 @@ public partial class FinestraPrincipale : Window
     private RotazioneVideo _rotazione = RotazioneVideo.Nessuna;
     private readonly SceltaRotazione _sceltaRotazione = new();
     private long _keyframeTotali;
+    // Quante volte WPF ci chiede un disegno: se sono ~60 al secondo anche con un monitor più veloce,
+    // un video a 60 fps perde per forza qualche immagine.
+    private long _aggiornamentiFinestra;
     private double _msDecompressione;
     private double _msConversione;
     private string _stato = "Avvio...";
@@ -72,6 +75,7 @@ public partial class FinestraPrincipale : Window
 
     private void MostraUltimaImmagine(object? sender, EventArgs e)
     {
+        _aggiornamentiFinestra++;
         long? istanteAudio = _riproduzioneAudio.IstanteInAscolto();
         ImmaginePronta? immagine = _riproduzione.Prendi(istanteAudio);
         if (immagine is null)
@@ -136,7 +140,7 @@ public partial class FinestraPrincipale : Window
         TestoStatistiche.Text =
             $"{_stato}\n" +
             $"ricevuti        {rete.Frame / secondi,6:F1} fps\n" +
-            $"mostrati        {schermo.Frame / secondi,6:F1} fps\n" +
+            $"mostrati        {schermo.Frame / secondi,6:F1} fps  (la finestra si aggiorna {_aggiornamentiFinestra / secondi:F0} volte/s)\n" +
             $"bitrate         {rete.Byte * 8 / secondi / 1_000_000,6:F2} Mbit/s\n" +
             $"latenza rete    {Latenza(rete)}\n" +
             $"latenza schermo {Latenza(schermo)}\n" +
@@ -161,6 +165,7 @@ public partial class FinestraPrincipale : Window
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             $"registro        {DescriviRegistro()}\n" +
             "S: mostra/nascondi · R: registro su file · O: ruota di 90° · A: rotazione automatica";
+        _aggiornamentiFinestra = 0;
     }
 
     /// <summary>Senza certificato il ricevitore funziona lo stesso, solo in TCP.</summary>
