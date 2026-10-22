@@ -28,32 +28,53 @@ public class CodaFrameTest
         Assert.Equal(2, coda.Scartati);
     }
 
+    // Istanti in millisecondi, per leggere i test a mente.
+    private static FrameVideo KeyMs(long ms) => Key(ms * 1000);
+    private static FrameVideo DiffMs(long ms) => Diff(ms * 1000);
+
+    private static List<long> SvuotaMs(CodaFrame coda) => Svuota(coda).Select(us => us / 1000).ToList();
+
     [Fact]
     public void CodaPienaButtaTuttoEAspettaIlKeyframe()
     {
-        var coda = new CodaFrame(capacita: 3);
-        coda.Aggiungi(Key(1));
-        coda.Aggiungi(Diff(2));
-        coda.Aggiungi(Diff(3));
-        // La coda è piena: questo frame svuota la coda e, non essendo un keyframe, viene buttato anche lui.
-        coda.Aggiungi(Diff(4));
-        coda.Aggiungi(Diff(5));
-        coda.Aggiungi(Key(6));
+        var coda = new CodaFrame(TimeSpan.FromMilliseconds(500));
+        coda.Aggiungi(KeyMs(0));
+        coda.Aggiungi(DiffMs(250));
+        coda.Aggiungi(DiffMs(500));
+        // Oltre 500 ms dal più vecchio in coda: questo frame svuota la coda e, non essendo un
+        // keyframe, viene buttato anche lui.
+        coda.Aggiungi(DiffMs(501));
+        coda.Aggiungi(DiffMs(520));
+        coda.Aggiungi(KeyMs(540));
 
-        Assert.Equal([6], Svuota(coda));
+        Assert.Equal([540], SvuotaMs(coda));
         Assert.Equal(5, coda.Scartati);
     }
 
     [Fact]
     public void CodaPienaConKeyframeInArrivoRiparteDaLui()
     {
-        var coda = new CodaFrame(capacita: 2);
-        coda.Aggiungi(Key(1));
-        coda.Aggiungi(Diff(2));
-        coda.Aggiungi(Key(3));
+        var coda = new CodaFrame(TimeSpan.FromMilliseconds(500));
+        coda.Aggiungi(KeyMs(0));
+        coda.Aggiungi(DiffMs(17));
+        coda.Aggiungi(KeyMs(600));
 
-        Assert.Equal([3], Svuota(coda));
+        Assert.Equal([600], SvuotaMs(coda));
         Assert.Equal(2, coda.Scartati);
+    }
+
+    [Fact]
+    public void UnaRafficaA60FpsDopoUnaPausaNonSvuotaLaCoda()
+    {
+        // Il caso della prova del 22/10/2026: dopo una pausa del Wi-Fi arrivano insieme 9 frame
+        // (150 ms di video) mentre il decompressore non ne ha ancora preso nessuno.
+        var coda = new CodaFrame();
+        coda.Aggiungi(KeyMs(0));
+        for (int n = 1; n <= 9; n++)
+            coda.Aggiungi(DiffMs(n * 1000 / 60));
+
+        Assert.Equal(10, Svuota(coda).Count);
+        Assert.Equal(0, coda.Scartati);
     }
 
     [Fact]
