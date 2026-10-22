@@ -80,7 +80,7 @@ struct PannelloCattura: View {
             Text("Catturati: \(c.fotogrammi) (in background \(c.fotogrammiInBackground) in \(c.secondiInBackground, format: .number.precision(.fractionLength(1))) s)")
             Text("Scartati per il ritmo: \(c.scartatiPerRitmo)")
             Text("Dimensione: \(c.larghezza)×\(c.altezza) (richiesta \(cattura.dimensioneRichiesta))")
-            Text("Orientamento: \(c.orientamento.map { String($0) } ?? "—") → rotazione \(Int(Ricevitore.rotazione(da: c.orientamento)) * 90)° · cambi \(c.cambiOrientamento)")
+            Text("Orientamento: \(descrizione(cattura.sensore.posizione)) · rotazione \(Int(c.rotazione) * 90)° · cambi \(cattura.sensore.cambi)\(c.orientamento.map { " · ScreenCaptureKit \($0)" } ?? "")")
             Text("Compressi: \(s.frameCompressi) · keyframe \(s.keyframe)")
             Text("Bitrate: \(cattura.kbitAlSecondo) kbit/s (picco \(cattura.kbitPicco))")
             Text("Compressione: \(s.msUltimaCompressione, format: .number.precision(.fractionLength(1))) ms (max \(s.msCompressioneMassima, format: .number.precision(.fractionLength(1))) ms)")
@@ -94,16 +94,6 @@ struct PannelloCattura: View {
                 Text("Errore: \(errore)")
                     .foregroundStyle(.red)
             }
-            if !c.etichette.isEmpty {
-                Text("Etichette dei fotogrammi (diagnostica della rotazione)")
-                    .font(.caption.bold())
-                    .padding(.top, 8)
-                ForEach(c.etichette.keys.sorted(), id: \.self) { chiave in
-                    let valori = c.etichette[chiave, default: []].joined(separator: " · ")
-                    Text("\(chiave): \(valori)\(c.etichetteMolte.contains(chiave) ? " · …e altri" : "")")
-                        .font(.caption2)
-                }
-            }
         }
         .font(.footnote.monospacedDigit())
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -115,6 +105,16 @@ struct PannelloCattura: View {
                 cattura.aggiorna()
                 try? await Task.sleep(for: .milliseconds(500))
             }
+        }
+    }
+
+    private func descrizione(_ posizione: SensoreOrientamento.Posizione?) -> String {
+        switch posizione {
+        case .verticale: "verticale"
+        case .orizzontaleSinistra: "orizzontale (lato sinistro in basso)"
+        case .orizzontaleDestra: "orizzontale (lato destro in basso)"
+        case .piatto: "appoggiato piatto"
+        case nil: "sensore —"
         }
     }
 }
