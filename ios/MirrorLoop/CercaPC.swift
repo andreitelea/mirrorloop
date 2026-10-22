@@ -22,7 +22,8 @@ enum DestinazionePC: Sendable, Equatable {
 @MainActor
 @Observable
 final class CercaPC {
-    static let tipoServizio = "_mirrorloop._tcp"
+    // Una costante: la legge anche la trasmissione, dal suo thread.
+    nonisolated static let tipoServizio = "_mirrorloop._tcp"
 
     /// I nomi dei PC trovati (di solito il nome del computer), in ordine alfabetico.
     private(set) var trovati: [String] = []
