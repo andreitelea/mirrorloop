@@ -29,6 +29,10 @@ struct Contatori: Sendable {
     // servono a verificare sul telefono che ScreenCaptureKit segua davvero le rotazioni.
     var orientamento: UInt32?
     var cambiOrientamento = 0
+    // Diagnostica della rotazione: per ogni etichetta attaccata ai fotogrammi, i valori diversi
+    // visti (al massimo 4); quelle che hanno avuto di più (per esempio gli istanti) sono "molte".
+    var etichette: [String: [String]] = [:]
+    var etichetteMolte: Set<String> = []
     var pausaMassima: TimeInterval = 0
     var ultimoFotogramma: TimeInterval?
     var ultimoAccettato: Double?
@@ -64,6 +68,8 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
     // (minimumFrameInterval non esiste): il ritmo lo limitiamo noi. Il margine evita di
     // scartare fotogrammi arrivati con qualche millisecondo di anticipo.
     private let intervalloMinimo = 1.0 / Double(CompressoreH264.fps) - 0.004
+    // Usato solo dalla coda di cattura.
+    private var conteggioDiagnostica = 0
 
     init(
         compressore: CompressoreH264,
@@ -86,6 +92,30 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
     private static func orientamento(_ campione: CMSampleBuffer) -> UInt32? {
         let allegati = CMSampleBufferGetSampleAttachmentsArray(campione, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]]
         return (allegati?.first?[.videoOrientation] as? NSNumber)?.uint32Value
+    }
+
+    /// Diagnostica: tutte le etichette attaccate al fotogramma, come testo. Il prefisso dice da dove
+    /// vengono: F = del fotogramma (SCStreamFrameInfo), C = del campione, I e i = dell'immagine
+    /// (che si propagano e che non si propagano).
+    private static func etichette(_ campione: CMSampleBuffer, _ immagine: CVImageBuffer) -> [String: String] {
+        var risultato: [String: String] = [:]
+        func aggiungi(_ prefisso: String, _ dizionario: NSDictionary?) {
+            guard let dizionario else { return }
+            for (chiave, valore) in dizionario {
+                risultato["\(prefisso).\(chiave)"] = compatta(valore)
+            }
+        }
+        let perFotogramma = CMSampleBufferGetSampleAttachmentsArray(campione, createIfNecessary: false) as NSArray?
+        aggiungi("F", perFotogramma?.firstObject as? NSDictionary)
+        aggiungi("C", CMCopyDictionaryOfAttachments(allocator: nil, target: campione, attachmentMode: kCMAttachmentMode_ShouldPropagate) as NSDictionary?)
+        aggiungi("I", CVBufferCopyAttachments(immagine, .shouldPropagate) as NSDictionary?)
+        aggiungi("i", CVBufferCopyAttachments(immagine, .shouldNotPropagate) as NSDictionary?)
+        return risultato
+    }
+
+    private static func compatta(_ valore: Any) -> String {
+        let testo = String(describing: valore).split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return testo.count > 90 ? String(testo.prefix(90)) + "…" : testo
     }
 
     /// Di quanti passi da 90° in senso orario girare l'immagine per mostrarla dritta (protocollo,
@@ -131,7 +161,17 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
             let altezza = CVPixelBufferGetHeight(immagine)
             let ritardo = ritardoConsegnaMs(tempo)
             let orientamento = Self.orientamento(sampleBuffer)
+            // Un fotogramma ogni tre basta: una rotazione dura secondi.
+            conteggioDiagnostica += 1
+            let etichette = conteggioDiagnostica % 3 == 0 ? Self.etichette(sampleBuffer, immagine) : [:]
             let accettato = contatori.withLock { c -> Bool in
+                for (chiave, valore) in etichette {
+                    var visti = c.etichette[chiave, default: []]
+                    if !visti.contains(valore) {
+                        if visti.count < 4 { visti.append(valore) } else { c.etichetteMolte.insert(chiave) }
+                    }
+                    c.etichette[chiave] = visti
+                }
                 c.fotogrammi += 1
                 c.ritardoConsegnaVideoMs = ritardo
                 if c.inBackground { c.fotogrammiInBackground += 1 }

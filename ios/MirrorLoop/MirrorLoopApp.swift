@@ -19,18 +19,20 @@ struct SchermataPrincipale: View {
     }()
 
     var body: some View {
-        VStack(spacing: 32) {
-            VStack(spacing: 12) {
-                Text("MirrorLoop")
-                    .font(.largeTitle)
-                    .bold()
-                Text("Versione \(versione)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(spacing: 32) {
+                VStack(spacing: 12) {
+                    Text("MirrorLoop")
+                        .font(.largeTitle)
+                        .bold()
+                    Text("Versione \(versione)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                PannelloCattura()
             }
-            PannelloCattura()
+            .padding()
         }
-        .padding()
     }
 }
 
@@ -91,6 +93,16 @@ struct PannelloCattura: View {
             if let errore = cattura.errore {
                 Text("Errore: \(errore)")
                     .foregroundStyle(.red)
+            }
+            if !c.etichette.isEmpty {
+                Text("Etichette dei fotogrammi (diagnostica della rotazione)")
+                    .font(.caption.bold())
+                    .padding(.top, 8)
+                ForEach(c.etichette.keys.sorted(), id: \.self) { chiave in
+                    let valori = c.etichette[chiave, default: []].joined(separator: " · ")
+                    Text("\(chiave): \(valori)\(c.etichetteMolte.contains(chiave) ? " · …e altri" : "")")
+                        .font(.caption2)
+                }
             }
         }
         .font(.footnote.monospacedDigit())
