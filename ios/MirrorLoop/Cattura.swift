@@ -233,7 +233,7 @@ final class Cattura {
     // restava bloccato dietro di lui (registro del 21/10/2026: pausa di 481 ms).
     @ObservationIgnored private let codaAudio = DispatchQueue(label: "io.github.andreitelea.mirrorloop.audio", qos: .userInteractive)
 
-    func avvia(indirizzoPC: String, trasporto: Trasporto, qualita: Qualita) {
+    func avvia(destinazione: DestinazionePC, trasporto: Trasporto, qualita: Qualita) {
         ferma()
         self.qualita = qualita
         errore = nil
@@ -251,7 +251,7 @@ final class Cattura {
         // l'altra chiede un keyframe quando ne ha bisogno.
         let orologio = OrologioCattura()
         let scatolaCompressore = Mutex<CompressoreH264?>(nil)
-        let trasmissione = Trasmissione(indirizzo: indirizzoPC, trasporto: trasporto, bitrateVideo: qualita.bitrate,
+        let trasmissione = Trasmissione(destinazione: destinazione, trasporto: trasporto, bitrateVideo: qualita.bitrate,
                                         orologio: orologio) {
             scatolaCompressore.withLock { $0?.forzaKeyframe() }
         }

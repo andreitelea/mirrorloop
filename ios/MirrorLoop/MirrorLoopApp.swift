@@ -38,9 +38,13 @@ struct SchermataPrincipale: View {
 
 struct PannelloCattura: View {
     @State private var cattura = Cattura()
+    @State private var cercaPC = CercaPC()
     @Environment(\.scenePhase) private var fase
-    // L'indirizzo del PC si ricorda tra un avvio e l'altro.
+    // Il PC scelto e l'indirizzo scritto a mano si ricordano tra un avvio e l'altro.
+    // pcScelto: il nome di un PC trovato con Bonjour, `manuale`, oppure vuoto se non ancora scelto.
+    @AppStorage("pcScelto") private var pcScelto = ""
     @AppStorage("indirizzoPC") private var indirizzoPC = ""
+    private static let manuale = "manuale"
     @AppStorage("trasporto") private var trasporto = Trasporto.quic
     @AppStorage("qualita") private var qualita = Qualita.alta
 
@@ -51,11 +55,26 @@ struct PannelloCattura: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Trasmissione al PC")
                 .font(.headline)
-            TextField("Indirizzo del PC (es. 192.168.1.23)", text: $indirizzoPC)
-                .textFieldStyle(.roundedBorder)
-                .keyboardType(.numbersAndPunctuation)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
+            Picker("PC", selection: $pcScelto) {
+                if pcScelto.isEmpty {
+                    Text("Scegli il PC").tag("")
+                }
+                ForEach(opzioniPC, id: \.self) { nome in
+                    Text(cercaPC.trovati.contains(nome) ? nome : "\(nome) · non trovato").tag(nome)
+                }
+                Text("Indirizzo a mano…").tag(Self.manuale)
+            }
+            .pickerStyle(.menu)
+            Text(cercaPC.trovati.isEmpty ? cercaPC.stato : "PC trovati in rete: \(cercaPC.trovati.count)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if pcScelto == Self.manuale {
+                TextField("Indirizzo del PC (es. 192.168.1.23)", text: $indirizzoPC)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.numbersAndPunctuation)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
             Picker("Trasporto", selection: $trasporto) {
                 ForEach(Trasporto.allCases, id: \.self) { Text($0.rawValue) }
             }
@@ -72,10 +91,12 @@ struct PannelloCattura: View {
             }
             HStack {
                 Button("Avvia") {
-                    cattura.avvia(indirizzoPC: indirizzoPC.trimmingCharacters(in: .whitespaces), trasporto: trasporto, qualita: qualita)
+                    if let destinazione {
+                        cattura.avvia(destinazione: destinazione, trasporto: trasporto, qualita: qualita)
+                    }
                 }
                     .buttonStyle(.borderedProminent)
-                    .disabled(indirizzoPC.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(destinazione == nil)
                 Button("Ferma") { cattura.ferma() }
                     .buttonStyle(.bordered)
             }
@@ -110,12 +131,36 @@ struct PannelloCattura: View {
         .onChange(of: fase) { _, nuova in
             cattura.cambiaFase(inBackground: nuova == .background)
         }
+        .onChange(of: cercaPC.trovati) { _, trovati in
+            // Con un solo PC in rete non c'è niente da scegliere.
+            if pcScelto.isEmpty, trovati.count == 1 {
+                pcScelto = trovati[0]
+            }
+        }
         .task {
+            cercaPC.avvia()
             while !Task.isCancelled {
                 cattura.aggiorna()
                 try? await Task.sleep(for: .milliseconds(500))
             }
         }
+    }
+
+    /// I PC trovati, più quello scelto in passato se adesso non risponde (così la scelta non sparisce).
+    private var opzioniPC: [String] {
+        var nomi = cercaPC.trovati
+        if !pcScelto.isEmpty, pcScelto != Self.manuale, !nomi.contains(pcScelto) {
+            nomi.append(pcScelto)
+        }
+        return nomi
+    }
+
+    private var destinazione: DestinazionePC? {
+        if pcScelto == Self.manuale {
+            let indirizzo = indirizzoPC.trimmingCharacters(in: .whitespaces)
+            return indirizzo.isEmpty ? nil : .indirizzo(indirizzo)
+        }
+        return pcScelto.isEmpty ? nil : .servizio(pcScelto)
     }
 
     private func descrizione(_ posizione: SensoreOrientamento.Posizione?) -> String {

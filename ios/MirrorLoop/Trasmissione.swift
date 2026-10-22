@@ -48,7 +48,11 @@ final class Trasmissione: @unchecked Sendable {
     /// Il valore è il "ruolo" scritto nell'apertura della corsia (tipo 5).
     private enum Corsia: UInt8 { case controllo = 1, video = 2, audio = 3 }
 
-    private let host: NWEndpoint.Host
+    private let destinazione: DestinazionePC
+    // L'indirizzo usato dal tentativo in corso: per un PC trovato con Bonjour si ricava ogni volta,
+    // così un cambio di indirizzo del PC (per esempio deciso dal router) non ferma la trasmissione.
+    private var host: NWEndpoint.Host?
+    private var risolutore: NWConnection?
     private let trasporto: Trasporto
     private let orologio: OrologioCattura
     private let chiediKeyframe: @Sendable () -> Void
@@ -68,9 +72,9 @@ final class Trasmissione: @unchecked Sendable {
     /// Mezzo secondo di video al bitrate scelto.
     private let sogliaVideoInAttesa: Int
 
-    init(indirizzo: String, trasporto: Trasporto, bitrateVideo: Int, orologio: OrologioCattura,
+    init(destinazione: DestinazionePC, trasporto: Trasporto, bitrateVideo: Int, orologio: OrologioCattura,
          chiediKeyframe: @escaping @Sendable () -> Void) {
-        self.host = NWEndpoint.Host(indirizzo)
+        self.destinazione = destinazione
         self.trasporto = trasporto
         self.sogliaVideoInAttesa = bitrateVideo / 8 / 2
         self.orologio = orologio
@@ -199,10 +203,13 @@ final class Trasmissione: @unchecked Sendable {
         guard attivo else { return }
         generazione += 1
         let mia = generazione
-        statistiche.withLock { $0.stato = "Collegamento a \(host) (\(trasporto.rawValue))…" }
-        switch trasporto {
-        case .tcp: collegaTcp(generazione: mia)
-        case .quic: collegaQuic(generazione: mia)
+        statistiche.withLock { $0.stato = "Collegamento a \(destinazione.descrizione) (\(trasporto.rawValue))…" }
+        switch destinazione {
+        case .indirizzo(let indirizzo):
+            host = NWEndpoint.Host(indirizzo)
+            collegaTrasporto(generazione: mia)
+        case .servizio(let nome):
+            risolvi(nome, generazione: mia)
         }
         coda.asyncAfter(deadline: .now() + Self.limiteCollegamento) { [self] in
             guard mia == generazione, !collegato else { return }
@@ -210,7 +217,49 @@ final class Trasmissione: @unchecked Sendable {
         }
     }
 
+    private func collegaTrasporto(generazione mia: Int) {
+        switch trasporto {
+        case .tcp: collegaTcp(generazione: mia)
+        case .quic: collegaQuic(generazione: mia)
+        }
+    }
+
+    /// Ricava l'indirizzo IPv4 del PC trovato con Bonjour. Una "connessione" UDP diventa pronta appena
+    /// il nome è risolto, senza spedire niente: il PC non vede nulla. Solo IPv4 perché il ricevitore
+    /// ascolta su IPv4. Poi ci si collega come con un indirizzo scritto a mano, sia in TCP sia in QUIC.
+    private func risolvi(_ nome: String, generazione mia: Int) {
+        let parametri = NWParameters.udp
+        if let ip = parametri.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options {
+            ip.version = .v4
+        }
+        let nuovo = NWConnection(to: .service(name: nome, type: CercaPC.tipoServizio, domain: "local.", interface: nil),
+                                 using: parametri)
+        nuovo.stateUpdateHandler = { [self] stato in
+            guard mia == generazione else { return }
+            switch stato {
+            case .ready:
+                let trovato: NWEndpoint.Host? = if case .hostPort(let risolto, _) = nuovo.currentPath?.remoteEndpoint { risolto } else { nil }
+                nuovo.cancel()
+                risolutore = nil
+                guard let trovato else {
+                    riprova("indirizzo di \(nome) non ricavato")
+                    return
+                }
+                host = trovato
+                statistiche.withLock { $0.stato = "Collegamento a \(nome) (\(trovato)) (\(trasporto.rawValue))…" }
+                collegaTrasporto(generazione: mia)
+            case .waiting(let errore), .failed(let errore):
+                riprova("\(nome) non trovato in rete: \(errore.localizedDescription)")
+            default:
+                break
+            }
+        }
+        risolutore = nuovo
+        nuovo.start(queue: coda)
+    }
+
     private func collegaTcp(generazione mia: Int) {
+        guard let host else { return }
         let tcp = NWProtocolTCP.Options()
         tcp.noDelay = true
         let parametri = NWParameters(tls: nil, tcp: tcp)
@@ -236,6 +285,7 @@ final class Trasmissione: @unchecked Sendable {
     /// (Con `NWConnectionGroup` il gruppo non diventava mai pronto, senza nessun errore.)
     /// Ogni connessione ha il suo recupero delle perdite: l'audio non aspetta mai il video.
     private func collegaQuic(generazione mia: Int) {
+        guard let host else { return }
         // Nuovo a ogni tentativo: il PC riparte sempre da una trasmissione pulita.
         numeroTrasmissione = UInt64.random(in: .min ... .max)
         let numero = numeroTrasmissione
@@ -285,7 +335,11 @@ final class Trasmissione: @unchecked Sendable {
         // Un keyframe subito, così il ricevitore mostra il video senza aspettare 2 secondi.
         chiediKeyframe()
         statistiche.withLock { s in
-            s.stato = "Collegata a \(host):\(Self.porta) (\(trasporto.rawValue))"
+            let indirizzo = host.map { "\($0):\(Self.porta)" } ?? "?"
+            s.stato = switch destinazione {
+            case .servizio(let nome): "Collegata a \(nome) (\(indirizzo), \(trasporto.rawValue))"
+            case .indirizzo: "Collegata a \(indirizzo) (\(trasporto.rawValue))"
+            }
             s.collegato = true
             s.connessioni += 1
             s.ultimoErrore = nil
@@ -300,6 +354,8 @@ final class Trasmissione: @unchecked Sendable {
 
     private func chiudi(stato: String, errore: String? = nil) {
         generazione += 1
+        risolutore?.cancel()
+        risolutore = nil
         for connessione in corsie.values { connessione.cancel() }
         corsie.removeAll()
         corsiePronte.removeAll()
