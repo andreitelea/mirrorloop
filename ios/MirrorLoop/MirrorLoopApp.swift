@@ -42,6 +42,7 @@ struct PannelloCattura: View {
     // L'indirizzo del PC si ricorda tra un avvio e l'altro.
     @AppStorage("indirizzoPC") private var indirizzoPC = ""
     @AppStorage("trasporto") private var trasporto = Trasporto.quic
+    @AppStorage("qualita") private var qualita = Qualita.alta
 
     var body: some View {
         let c = cattura.contatori
@@ -59,12 +60,20 @@ struct PannelloCattura: View {
                 ForEach(Trasporto.allCases, id: \.self) { Text($0.rawValue) }
             }
             .pickerStyle(.segmented)
+            Picker("Qualità", selection: $qualita) {
+                ForEach(Qualita.allCases, id: \.self) { q in
+                    Text("\(q.rawValue) · \(q.latoCorto)p\(q.fps)")
+                }
+            }
+            .pickerStyle(.segmented)
             if !cattura.disponibile {
                 Text("La registrazione dello schermo non è disponibile su questo iPhone.")
                     .foregroundStyle(.red)
             }
             HStack {
-                Button("Avvia") { cattura.avvia(indirizzoPC: indirizzoPC.trimmingCharacters(in: .whitespaces), trasporto: trasporto) }
+                Button("Avvia") {
+                    cattura.avvia(indirizzoPC: indirizzoPC.trimmingCharacters(in: .whitespaces), trasporto: trasporto, qualita: qualita)
+                }
                     .buttonStyle(.borderedProminent)
                     .disabled(indirizzoPC.trimmingCharacters(in: .whitespaces).isEmpty)
                 Button("Ferma") { cattura.ferma() }
@@ -79,6 +88,7 @@ struct PannelloCattura: View {
             }
             Text("Catturati: \(c.fotogrammi) (in background \(c.fotogrammiInBackground) in \(c.secondiInBackground, format: .number.precision(.fractionLength(1))) s)")
             Text("Scartati per il ritmo: \(c.scartatiPerRitmo)")
+            Text("Qualità: \(cattura.qualita.rawValue) · \(cattura.qualita.fps) fps · \(cattura.qualita.bitrate / 1_000_000) Mbit/s")
             Text("Dimensione: \(c.larghezza)×\(c.altezza) (richiesta \(cattura.dimensioneRichiesta))")
             Text("Orientamento: \(descrizione(cattura.sensore.posizione)) · rotazione \(Int(c.rotazione) * 90)° · cambi \(cattura.sensore.cambi)\(c.orientamento.map { " · ScreenCaptureKit \($0)" } ?? "")")
             Text("Compressi: \(s.frameCompressi) · keyframe \(s.keyframe)")

@@ -64,7 +64,7 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
     // ScreenCaptureKit su iOS non permette di chiedere meno fotogrammi al secondo
     // (minimumFrameInterval non esiste): il ritmo lo limitiamo noi. Il margine evita di
     // scartare fotogrammi arrivati con qualche millisecondo di anticipo.
-    private let intervalloMinimo = 1.0 / Double(CompressoreH264.fps) - 0.004
+    private let intervalloMinimo: Double
     let sensore: SensoreOrientamento
 
     init(
@@ -75,6 +75,7 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
         eventi: @escaping @Sendable (EventoCattura) -> Void
     ) {
         self.compressore = compressore
+        self.intervalloMinimo = 1.0 / Double(compressore.fps) - 0.004
         self.orologio = orologio
         self.sensore = sensore
         self.audio = audio
@@ -208,11 +209,8 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
 @MainActor
 @Observable
 final class Cattura {
-    // Larghezza di partenza del video (come i 720p della Fase 1); l'altezza segue le
-    // proporzioni dello schermo, quindi il video è verticale.
-    static let larghezzaVideo = 720
-
     private(set) var stato = "Ferma"
+    private(set) var qualita = Qualita.standard
     private(set) var contatori = Contatori()
     private(set) var compressione = StatisticheCompressione()
     private(set) var kbitAlSecondo = 0
@@ -235,8 +233,9 @@ final class Cattura {
     // restava bloccato dietro di lui (registro del 21/10/2026: pausa di 481 ms).
     @ObservationIgnored private let codaAudio = DispatchQueue(label: "io.github.andreitelea.mirrorloop.audio", qos: .userInteractive)
 
-    func avvia(indirizzoPC: String, trasporto: Trasporto) {
+    func avvia(indirizzoPC: String, trasporto: Trasporto, qualita: Qualita) {
         ferma()
+        self.qualita = qualita
         errore = nil
         contatori = Contatori()
         compressione = StatisticheCompressione()
@@ -246,16 +245,18 @@ final class Cattura {
         kbitPicco = 0
         misuraBitrate = nil
 
-        let (larghezza, altezza) = Self.dimensioniVideo()
+        let (larghezza, altezza) = Self.dimensioniVideo(latoCorto: qualita.latoCorto)
         dimensioneRichiesta = "\(larghezza)×\(altezza)"
         // Il compressore e la trasmissione si conoscono a vicenda: uno consegna i frame,
         // l'altra chiede un keyframe quando ne ha bisogno.
         let orologio = OrologioCattura()
         let scatolaCompressore = Mutex<CompressoreH264?>(nil)
-        let trasmissione = Trasmissione(indirizzo: indirizzoPC, trasporto: trasporto, orologio: orologio) {
+        let trasmissione = Trasmissione(indirizzo: indirizzoPC, trasporto: trasporto, bitrateVideo: qualita.bitrate,
+                                        orologio: orologio) {
             scatolaCompressore.withLock { $0?.forzaKeyframe() }
         }
-        let compressore = CompressoreH264(larghezza: larghezza, altezza: altezza) { frame in
+        let compressore = CompressoreH264(larghezza: larghezza, altezza: altezza, fps: qualita.fps,
+                                          bitrate: qualita.bitrate) { frame in
             trasmissione.invia(frame)
         }
         scatolaCompressore.withLock { $0 = compressore }
@@ -321,15 +322,16 @@ final class Cattura {
         }
     }
 
-    /// 720 pixel di larghezza e altezza in proporzione allo schermo, arrotondata a un multiplo
-    /// di 16: H.264 lavora a blocchi di 16×16 e con altezze diverse il decodificatore di Windows
-    /// aggiunge righe di riempimento in fondo all'immagine. La differenza di proporzioni è minima.
-    private static func dimensioniVideo() -> (Int, Int) {
+    /// Il lato corto della qualità scelta come larghezza (il video è verticale, come il pannello) e
+    /// l'altezza in proporzione allo schermo, arrotondata a un multiplo di 16: H.264 lavora a
+    /// blocchi di 16×16 e con misure diverse il decodificatore di Windows aggiunge righe o colonne
+    /// di riempimento. La differenza di proporzioni è minima.
+    private static func dimensioniVideo(latoCorto: Int) -> (Int, Int) {
         let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         let schermo = scena?.screen.nativeBounds.size ?? CGSize(width: 1170, height: 2532)
         let lato = min(schermo.width, schermo.height)
-        let altezza = Int((Double(larghezzaVideo) * max(schermo.width, schermo.height) / lato).rounded())
-        return (larghezzaVideo, Int((Double(altezza) / 16).rounded(.down)) * 16)
+        let altezza = Int((Double(latoCorto) * max(schermo.width, schermo.height) / lato).rounded())
+        return (latoCorto, Int((Double(altezza) / 16).rounded(.down)) * 16)
     }
 
     private func gestisci(_ evento: EventoCattura) {
@@ -359,7 +361,7 @@ final class Cattura {
 
     private func avviaFlusso(_ filtro: SCContentFilter) {
         guard let ricevitore else { return }
-        let (larghezza, altezza) = Self.dimensioniVideo()
+        let (larghezza, altezza) = Self.dimensioniVideo(latoCorto: qualita.latoCorto)
         let configurazione = SCStreamConfiguration()
         configurazione.width = larghezza
         configurazione.height = altezza

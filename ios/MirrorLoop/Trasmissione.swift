@@ -35,7 +35,6 @@ final class Trasmissione: @unchecked Sendable {
     static let protocolloQuic = "mirrorloop/1"
     // Oltre mezzo secondo di dati in attesa di partire la rete non tiene il passo: si smette di
     // accodare (per il video si riparte dal keyframe successivo: lezione dei buffer della Fase 1).
-    static let sogliaVideoInAttesa = CompressoreH264.bitrate / 8 / 2
     static let sogliaAudioInAttesa = 48_000 * 4 / 2
     /// Se il collegamento non si completa entro questo tempo si considera fallito e si riprova:
     /// un'attesa infinita senza errori (com'è successo con QUIC) non deve passare inosservata.
@@ -66,9 +65,14 @@ final class Trasmissione: @unchecked Sendable {
     private var byteInAttesa: [Corsia: Int] = [:]
     private var ingresso: [UInt8] = []
 
-    init(indirizzo: String, trasporto: Trasporto, orologio: OrologioCattura, chiediKeyframe: @escaping @Sendable () -> Void) {
+    /// Mezzo secondo di video al bitrate scelto.
+    private let sogliaVideoInAttesa: Int
+
+    init(indirizzo: String, trasporto: Trasporto, bitrateVideo: Int, orologio: OrologioCattura,
+         chiediKeyframe: @escaping @Sendable () -> Void) {
         self.host = NWEndpoint.Host(indirizzo)
         self.trasporto = trasporto
+        self.sogliaVideoInAttesa = bitrateVideo / 8 / 2
         self.orologio = orologio
         self.chiediKeyframe = chiediKeyframe
     }
@@ -90,7 +94,7 @@ final class Trasmissione: @unchecked Sendable {
     func invia(_ frame: FrameCompresso) {
         coda.async { [self] in
             guard collegato else { return }
-            if inAttesa(per: .video) > Self.sogliaVideoInAttesa {
+            if inAttesa(per: .video) > sogliaVideoInAttesa {
                 if !attendiKeyframe { chiediKeyframe() }
                 attendiKeyframe = true
                 statistiche.withLock { $0.scartati += 1 }

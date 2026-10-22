@@ -29,12 +29,12 @@ struct StatisticheCompressione: Sendable {
 /// `comprimi` va chiamato sempre dalla stessa coda; i frame compressi arrivano su un thread
 /// di VideoToolbox e vengono passati a `consegna`.
 final class CompressoreH264: @unchecked Sendable {
-    // Stesse impostazioni di partenza della Fase 1: ~4 Mbit/s, keyframe ogni 2 s, niente B-frame.
-    static let bitrate = 4_000_000
-    static let fps = 30
+    // Keyframe ogni 2 s e niente B-frame, come dalla Fase 1; fps e bitrate dipendono dalla qualità scelta.
     static let secondiTraKeyframe = 2
 
     let statistiche = Mutex(StatisticheCompressione())
+    let fps: Int
+    let bitrate: Int
     private let keyframeRichiesto = Mutex(false)
 
     private let larghezza: Int32
@@ -42,9 +42,11 @@ final class CompressoreH264: @unchecked Sendable {
     private let consegna: @Sendable (FrameCompresso) -> Void
     private var sessione: VTCompressionSession?
 
-    init(larghezza: Int, altezza: Int, consegna: @escaping @Sendable (FrameCompresso) -> Void) {
+    init(larghezza: Int, altezza: Int, fps: Int, bitrate: Int, consegna: @escaping @Sendable (FrameCompresso) -> Void) {
         self.larghezza = Int32(larghezza)
         self.altezza = Int32(altezza)
+        self.fps = fps
+        self.bitrate = bitrate
         self.consegna = consegna
     }
 
@@ -117,8 +119,8 @@ final class CompressoreH264: @unchecked Sendable {
             (kVTCompressionPropertyKey_RealTime, kCFBooleanTrue!),
             (kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_ConstrainedHigh_AutoLevel),
             (kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse!),
-            (kVTCompressionPropertyKey_AverageBitRate, Self.bitrate as CFNumber),
-            (kVTCompressionPropertyKey_ExpectedFrameRate, Self.fps as CFNumber),
+            (kVTCompressionPropertyKey_AverageBitRate, bitrate as CFNumber),
+            (kVTCompressionPropertyKey_ExpectedFrameRate, fps as CFNumber),
             (kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, Self.secondiTraKeyframe as CFNumber),
         ]
         for (chiave, valore) in proprieta where VTSessionSetProperty(nuova, key: chiave, value: valore) != noErr {
