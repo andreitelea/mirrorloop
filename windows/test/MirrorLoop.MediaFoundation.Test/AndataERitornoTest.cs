@@ -62,6 +62,44 @@ public class AndataERitornoTest
         }
     }
 
+    [Fact]
+    public void IBufferFornitiDaFuoriSiRiempionoComeQuelliNuovi()
+    {
+        var animazione = new Animazione(Larghezza, Altezza);
+        var compressi = new List<FrameCompresso>();
+        var inizio = new DateTime(2026, 10, 19, 12, 0, 0, DateTimeKind.Utc);
+        using (var compressore = new CompressoreH264(Larghezza, Altezza, Fps, 4_000_000, Fps * 2))
+        {
+            for (int n = 0; n < 10; n++)
+                compressi.AddRange(compressore.Comprimi(animazione.Disegna(n, Fps, inizio.AddSeconds((double)n / Fps)).ToArray()));
+        }
+
+        // Due buffer usati a turno, come farebbe una riserva: dentro c'è ancora l'immagine precedente.
+        var riserva = new[] { new byte[0], new byte[0] };
+        var richieste = new List<int>();
+        byte[] Fornisci(int dimensione)
+        {
+            richieste.Add(dimensione);
+            int i = richieste.Count % 2;
+            if (riserva[i].Length != dimensione)
+                riserva[i] = new byte[dimensione];
+            return riserva[i];
+        }
+
+        using var normale = new DecompressoreH264();
+        using var conRiserva = new DecompressoreH264(Fornisci);
+        foreach (FrameCompresso c in compressi)
+        {
+            FrameDecompresso atteso = normale.Decomprimi(c.DatiH264, c.Numero).Single();
+            FrameDecompresso ottenuto = conRiserva.Decomprimi(c.DatiH264, c.Numero).Single();
+            Assert.Same(riserva[richieste.Count % 2], ottenuto.Nv12);
+            Assert.Equal(atteso.Nv12, ottenuto.Nv12);
+        }
+        Assert.NotEmpty(compressi);
+        Assert.Equal(compressi.Count, richieste.Count);
+        Assert.All(richieste, d => Assert.Equal(richieste[0], d));
+    }
+
     /// <summary>Di quanto differisce in media la luminosità (piano Y, valori 0–255) tra originale e decompresso.</summary>
     private static double DifferenzaMediaLuminosita(byte[] originale, FrameDecompresso d)
     {

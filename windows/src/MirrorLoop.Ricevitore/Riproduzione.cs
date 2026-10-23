@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using MirrorLoop.MediaFoundation;
 using MirrorLoop.Protocollo;
@@ -25,14 +26,16 @@ public sealed record ImmaginePronta(byte[] Nv12, int Larghezza, int Altezza, int
 public sealed class Riproduzione
 {
     private readonly CodaFrame _coda;
+    // Buffer NV12 già usati, da riempire di nuovo: a 60 fps in Alta sarebbero ~230 MB al secondo di
+    // array nuovi, che .NET raccoglie solo ogni tanto e che nel frattempo pesano sulla memoria.
+    private readonly ConcurrentBag<byte[]> _bufferLiberi = [];
     private readonly CodaImmagini _immagini;
     private long _errori;
 
     public Riproduzione(CodaFrame coda)
     {
         _coda = coda;
-        // I buffer NV12 li crea il decompressore, uno per frame: non c'è niente da riusare.
-        _immagini = new CodaImmagini(_ => { });
+        _immagini = new CodaImmagini(Restituisci);
     }
 
     /// <summary>Immagini buttate senza essere mostrate.</summary>
@@ -55,6 +58,9 @@ public sealed class Riproduzione
     /// <param name="istanteAudio">L'istante di cattura che si sta ascoltando, o null senza audio.</param>
     public ImmaginePronta? Prendi(long? istanteAudio) => _immagini.Prendi(istanteAudio);
 
+    /// <summary>Per la finestra: restituisce il buffer di un'immagine già mostrata, così si riusa.</summary>
+    public void Restituisci(ImmaginePronta immagine) => _bufferLiberi.Add(immagine.Nv12);
+
     private void Esegui(CancellationToken stop)
     {
         DecompressoreH264? decompressore = null;
@@ -70,7 +76,7 @@ public sealed class Riproduzione
                 if (_coda.Generazione != generazione || decompressore is null)
                 {
                     decompressore?.Dispose();
-                    decompressore = new DecompressoreH264();
+                    decompressore = new DecompressoreH264(PrendiBuffer);
                     generazione = _coda.Generazione;
                 }
 
@@ -104,5 +110,16 @@ public sealed class Riproduzione
         // esce è quella del frame appena entrato, e ne prende la rotazione.
         foreach (FrameDecompresso d in decompressi)
             _immagini.Aggiungi(new ImmaginePronta(d.Nv12, d.Larghezza, d.Altezza, d.Passo, d.Tempo, msDecompressione, frame.Rotazione));
+    }
+
+    private byte[] PrendiBuffer(int dimensione)
+    {
+        // I buffer di dimensione diversa (risoluzione cambiata) si lasciano al garbage collector.
+        while (_bufferLiberi.TryTake(out byte[]? buffer))
+        {
+            if (buffer.Length == dimensione)
+                return buffer;
+        }
+        return new byte[dimensione];
     }
 }

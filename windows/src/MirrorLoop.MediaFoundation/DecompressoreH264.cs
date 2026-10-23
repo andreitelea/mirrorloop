@@ -19,13 +19,20 @@ public sealed class DecompressoreH264 : IDisposable
     private const int MfENoMoreTypes = unchecked((int)0xC00D36B9);
 
     private readonly Trasformazione _trasformazione;
+    private readonly Func<int, byte[]> _nuovoBuffer;
     private readonly Guid _nv12 = VideoFormatGuids.FromFourCC(new FourCC("NV12"));
     private int _larghezza;
     private int _altezza;
     private int _passo;
 
-    public DecompressoreH264()
+    /// <param name="nuovoBuffer">
+    /// Da dove prendere il buffer per un'immagine di N byte (al massimo N byte vengono scritti). Di
+    /// norma un array nuovo; chi decomprime a 60 fps può passare una riserva di buffer da riusare,
+    /// per non creare centinaia di MB al secondo di memoria da raccogliere.
+    /// </param>
+    public DecompressoreH264(Func<int, byte[]>? nuovoBuffer = null)
     {
+        _nuovoBuffer = nuovoBuffer ?? (dimensione => new byte[dimensione]);
         _trasformazione = new Trasformazione(InteropCom.ClsidDecompressoreH264Microsoft);
         IMFTransform mft = _trasformazione.Mft;
 
@@ -92,7 +99,9 @@ public sealed class DecompressoreH264 : IDisposable
         {
             if (contenuto.Length < dimensione)
                 throw new InvalidDataException($"Frame decompresso troppo corto: {contenuto.Length} byte invece di {dimensione}.");
-            return contenuto[..dimensione].ToArray();
+            byte[] buffer = _nuovoBuffer(dimensione);
+            contenuto[..dimensione].CopyTo(buffer);
+            return buffer;
         });
         return new FrameDecompresso(nv12, _larghezza, _altezza, _passo, campione.SampleTime);
     }

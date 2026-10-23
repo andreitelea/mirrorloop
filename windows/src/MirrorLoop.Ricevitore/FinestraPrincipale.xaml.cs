@@ -120,6 +120,8 @@ public partial class FinestraPrincipale : Window
         double latenzaMs = _ricezione.LatenzaMicrosecondi(immagine.IstanteCatturaMicrosecondi) / 1000.0;
         _statisticheSchermo.FrameRicevuto(false, 0, latenzaMs);
         _msDecompressione = immagine.MsDecompressione;
+
+        _riproduzione.Restituisci(immagine);
     }
 
     /// <summary>
