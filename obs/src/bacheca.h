@@ -53,6 +53,24 @@ uint64_t bacheca_battito(const struct bacheca *b);
 // Firma e versione ancora valide? (un ricevitore di un'altra versione può averla reinizializzata)
 bool bacheca_valida(const struct bacheca *b);
 
+// Un blocco audio copiato dalla bacheca: PCM 16 bit con segno, canali interlacciati.
+struct bacheca_audio {
+	uint64_t numero;
+	uint64_t istante_ns; // istante del primo campione, nel tempo di OBS
+	uint32_t campioni;   // per canale
+	uint32_t canali;
+	uint32_t frequenza;
+	uint8_t *dati; // di proprietà della bacheca, valido fino alla prossima lettura
+};
+
+// Quanti blocchi audio ha scritto finora il ricevitore: da qui si comincia a leggere, per non
+// ripetere l'audio già vecchio rimasto sul nastro.
+uint64_t bacheca_blocchi_scritti(const struct bacheca *b);
+
+// Il prossimo blocco audio da leggere, dal numero `*prossimo`, che avanza. false se non ce ne sono
+// di nuovi. I blocchi già sovrascritti (lettore troppo indietro) o copiati male si saltano.
+bool bacheca_prossimo_audio(struct bacheca *b, uint64_t *prossimo, struct bacheca_audio *audio);
+
 // Copia l'ultima immagine se è più nuova di `dopo_numero`. false se non ce n'è una nuova o se
 // la copia è risultata mista (il ricevitore la stava riscrivendo): basta riprovare.
 bool bacheca_ultima_immagine(struct bacheca *b, uint64_t dopo_numero, struct bacheca_immagine *immagine);

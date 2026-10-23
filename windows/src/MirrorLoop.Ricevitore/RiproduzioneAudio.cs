@@ -7,8 +7,11 @@ namespace MirrorLoop.Ricevitore;
 /// <summary>
 /// Suona l'audio ricevuto sull'uscita predefinita di Windows (WASAPI, modalità condivisa).
 /// L'uscita si apre al primo pacchetto e si riapre se cambia il formato.
+///
+/// Ogni pezzo consegnato alla scheda audio va anche, identico, nella bacheca per OBS: OBS riceve
+/// esattamente quello che si sente, già sincronizzato con le immagini e senza scatti.
 /// </summary>
-public sealed class RiproduzioneAudio : IDisposable
+public sealed class RiproduzioneAudio(BachecaObs? bacheca = null) : IDisposable
 {
     // Riserva da 60 ms con la rete tranquilla, fino a 100 dopo le pause (vedi RiservaAudio). Il
     // tetto è basso di proposito: lo schermo deve restare il più possibile in tempo reale rispetto
@@ -75,7 +78,7 @@ public sealed class RiproduzioneAudio : IDisposable
                 RiservaMassima, Dissolvenza);
             riserva.EventoAvvenuto += e => EventoRiserva?.Invoke(e);
             var uscita = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, LatenzaWasapiMs);
-            uscita.Init(new SorgenteRiserva(riserva, new WaveFormat(frequenza, 16, canali)));
+            uscita.Init(new UscitaRiserva(riserva, new WaveFormat(frequenza, 16, canali), bacheca, LatenzaUscita));
             uscita.Play();
             _riserva = riserva;
             _uscita = uscita;
@@ -104,11 +107,35 @@ public sealed class RiproduzioneAudio : IDisposable
             Chiudi();
     }
 
-    /// <summary>Ponte tra NAudio, che chiede i campioni, e la riserva che li fornisce.</summary>
-    private sealed class SorgenteRiserva(RiservaAudio riserva, WaveFormat formato) : IWaveProvider
+    /// <summary>
+    /// Ponte tra NAudio, che chiede i campioni, e la riserva che li fornisce; ne mette una copia
+    /// nella bacheca per OBS.
+    /// </summary>
+    internal sealed class UscitaRiserva(RiservaAudio riserva, WaveFormat formato, BachecaObs? bacheca, TimeSpan latenzaUscita)
+        : IWaveProvider
     {
         public WaveFormat WaveFormat => formato;
 
-        public int Read(byte[] buffer, int offset, int count) => riserva.Leggi(buffer.AsSpan(offset, count));
+        public int Read(byte[] buffer, int offset, int count)
+        {
+            int letti = riserva.Leggi(buffer.AsSpan(offset, count));
+            if (bacheca is not null)
+            {
+                // Questi campioni si sentiranno tra la latenza dell'uscita: è il momento in cui vanno
+                // in onda anche le immagini con lo stesso istante di cattura (vedi Presentazione).
+                // Così a OBS l'audio arriva un po' in anticipo, mai in ritardo: OBS non deve
+                // aumentare il suo ritardo audio per aspettarlo.
+                ulong istante = BachecaObs.OraNs() + (ulong)(latenzaUscita.Ticks * 100);
+                try
+                {
+                    bacheca.ScriviAudio(buffer.AsSpan(offset, letti), formato.Channels, formato.SampleRate, istante);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Ricevitore in chiusura: la bacheca è già chiusa, la scheda audio non ancora.
+                }
+            }
+            return letti;
+        }
     }
 }

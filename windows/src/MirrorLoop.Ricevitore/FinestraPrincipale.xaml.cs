@@ -18,7 +18,7 @@ public partial class FinestraPrincipale : Window
     private readonly StatisticheRicezione _statistiche = new();
     private readonly StatisticheRicezione _statisticheSchermo = new();
     private readonly StatisticheAudio _statisticheAudio = new();
-    private readonly RiproduzioneAudio _riproduzioneAudio = new();
+    private readonly RiproduzioneAudio _riproduzioneAudio;
     private readonly SincroniaOrologi _sincronia = new();
     private readonly RegistroPacchetti _registro = new();
     private readonly RicezioneRete _ricezione;
@@ -51,6 +51,18 @@ public partial class FinestraPrincipale : Window
     {
         InitializeComponent();
 
+        // La bacheca da cui legge la sorgente MirrorLoop in OBS (immagini e audio). Senza, la
+        // finestra e le cuffie funzionano lo stesso.
+        try
+        {
+            _bacheca = new BachecaObs();
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or WaitHandleCannotBeOpenedException)
+        {
+            _motivoSenzaBacheca = ex.Message;
+        }
+        _riproduzioneAudio = new RiproduzioneAudio(_bacheca);
+
         _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro, CaricaCertificato());
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
@@ -66,15 +78,6 @@ public partial class FinestraPrincipale : Window
 
         _riproduzione = new Riproduzione(_coda);
 
-        // La bacheca da cui legge la sorgente MirrorLoop in OBS. Senza, la finestra funziona lo stesso.
-        try
-        {
-            _bacheca = new BachecaObs();
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or WaitHandleCannotBeOpenedException)
-        {
-            _motivoSenzaBacheca = ex.Message;
-        }
         _presentazione = new Presentazione(_riproduzione, _riproduzioneAudio.IstanteInAscolto, _sceltaRotazione, _bacheca);
         // "Sono ancora qui" per OBS, anche quando non arrivano immagini (schermo fermo, iPhone scollegato).
         _battito = new Timer(_ => _bacheca?.Battito(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
@@ -303,9 +306,9 @@ public partial class FinestraPrincipale : Window
     {
         _stop.Cancel();
         _battito.Dispose();
-        _bacheca?.Dispose();
         _annuncio.Dispose();
         _riproduzioneAudio.Dispose();
+        _bacheca?.Dispose();
         _registro.Dispose();
         _timerStatistiche.Stop();
         CompositionTarget.Rendering -= MostraUltimaImmagine;

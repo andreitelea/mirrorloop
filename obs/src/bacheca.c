@@ -38,6 +38,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define POS_DIMENSIONE 8
 #define POS_BATTITO 16
 #define POS_IMMAGINI_SCRITTE 32
+#define POS_BLOCCHI_SCRITTI 40
 #define POS_NUMERO_CASSETTI 48
 #define POS_DIMENSIONE_CASSETTO 52
 #define POS_NUMERO_BLOCCHI 56
@@ -58,8 +59,16 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #define POS_BYTE 56
 #define INTESTAZIONE_ELEMENTO 64
 
+// Posizioni dentro un blocco audio (le prime quattro come nei cassetti).
+#define POS_CAMPIONI 32
+#define POS_CANALI 36
+#define POS_FREQUENZA 40
+#define POS_FORMATO_AUDIO 44
+#define POS_BYTE_AUDIO 48
+
 #define FORMATO_NV12 1
 #define COLORE_BT709_LIMITATO 1
+#define FORMATO_PCM16 1
 
 struct bacheca {
 	HANDLE memoria;
@@ -68,7 +77,10 @@ struct bacheca {
 	uint64_t dimensione;
 	uint32_t numero_cassetti;
 	uint32_t dimensione_cassetto;
-	uint8_t *copia; // un cassetto intero: l'immagine si copia qui prima di darla a OBS
+	uint32_t numero_blocchi;
+	uint32_t dimensione_blocco;
+	uint8_t *copia;       // un cassetto intero: l'immagine si copia qui prima di darla a OBS
+	uint8_t *copia_audio; // un blocco intero
 };
 
 static uint32_t leggi32(const uint8_t *p)
@@ -108,10 +120,13 @@ struct bacheca *bacheca_apri(void)
 		memcpy(&dimensione, base + POS_DIMENSIONE, sizeof(dimensione));
 		uint32_t numero_cassetti = leggi32(base + POS_NUMERO_CASSETTI);
 		uint32_t dimensione_cassetto = leggi32(base + POS_DIMENSIONE_CASSETTO);
-		uint64_t fine_cassetti = DIMENSIONE_INTESTAZIONE + (uint64_t)numero_cassetti * dimensione_cassetto;
+		uint32_t numero_blocchi = leggi32(base + POS_NUMERO_BLOCCHI);
+		uint32_t dimensione_blocco = leggi32(base + POS_DIMENSIONE_BLOCCO);
+		uint64_t fine_blocchi = DIMENSIONE_INTESTAZIONE + (uint64_t)numero_cassetti * dimensione_cassetto +
+					(uint64_t)numero_blocchi * dimensione_blocco;
 
 		if (dimensione <= dimensione_vista && numero_cassetti > 0 && dimensione_cassetto > INTESTAZIONE_ELEMENTO &&
-		    fine_cassetti <= dimensione) {
+		    numero_blocchi > 0 && dimensione_blocco > INTESTAZIONE_ELEMENTO && fine_blocchi <= dimensione) {
 			HANDLE evento = OpenEventW(SYNCHRONIZE, FALSE, NOME_EVENTO);
 			b = bzalloc(sizeof(*b));
 			b->memoria = memoria;
@@ -120,7 +135,10 @@ struct bacheca *bacheca_apri(void)
 			b->dimensione = dimensione;
 			b->numero_cassetti = numero_cassetti;
 			b->dimensione_cassetto = dimensione_cassetto;
+			b->numero_blocchi = numero_blocchi;
+			b->dimensione_blocco = dimensione_blocco;
 			b->copia = bmalloc(dimensione_cassetto);
+			b->copia_audio = bmalloc(dimensione_blocco);
 		}
 	}
 
@@ -140,6 +158,7 @@ void bacheca_chiudi(struct bacheca *b)
 	UnmapViewOfFile(b->base);
 	CloseHandle(b->memoria);
 	bfree(b->copia);
+	bfree(b->copia_audio);
 	bfree(b);
 }
 
@@ -159,6 +178,52 @@ uint64_t bacheca_battito(const struct bacheca *b)
 bool bacheca_valida(const struct bacheca *b)
 {
 	return memcmp(b->base + POS_FIRMA, "MLOB", 4) == 0 && leggi32(b->base + POS_VERSIONE) == VERSIONE;
+}
+
+uint64_t bacheca_blocchi_scritti(const struct bacheca *b)
+{
+	return leggi64_volatile(b->base + POS_BLOCCHI_SCRITTI);
+}
+
+bool bacheca_prossimo_audio(struct bacheca *b, uint64_t *prossimo, struct bacheca_audio *audio)
+{
+	uint64_t scritti = leggi64_volatile(b->base + POS_BLOCCHI_SCRITTI);
+	// Troppo indietro (o un ricevitore riaperto con il nastro già pieno): i più vecchi sono persi.
+	if (scritti - *prossimo > b->numero_blocchi)
+		*prossimo = scritti - b->numero_blocchi;
+
+	while (*prossimo < scritti) {
+		uint64_t numero = (*prossimo)++;
+		const uint8_t *blocco = b->base + DIMENSIONE_INTESTAZIONE +
+					(uint64_t)b->numero_cassetti * b->dimensione_cassetto +
+					(numero % b->numero_blocchi) * (uint64_t)b->dimensione_blocco;
+
+		uint64_t sequenza = leggi64_volatile(blocco + POS_SEQUENZA);
+		MemoryBarrier();
+		if (sequenza % 2 != 0 || leggi64_volatile(blocco + POS_NUMERO) != numero)
+			continue;
+
+		uint32_t campioni = leggi32(blocco + POS_CAMPIONI);
+		uint32_t canali = leggi32(blocco + POS_CANALI);
+		uint32_t byte = leggi32(blocco + POS_BYTE_AUDIO);
+		bool valido = leggi32(blocco + POS_FORMATO_AUDIO) == FORMATO_PCM16 && canali > 0 && campioni > 0 &&
+			      (uint64_t)campioni * canali * 2 == byte && byte <= b->dimensione_blocco - INTESTAZIONE_ELEMENTO;
+		if (!valido)
+			continue;
+
+		memcpy(b->copia_audio, blocco + INTESTAZIONE_ELEMENTO, byte);
+		audio->numero = numero;
+		audio->istante_ns = leggi64_volatile(blocco + POS_ISTANTE);
+		audio->campioni = campioni;
+		audio->canali = canali;
+		audio->frequenza = leggi32(blocco + POS_FREQUENZA);
+		audio->dati = b->copia_audio;
+
+		MemoryBarrier();
+		if (leggi64_volatile(blocco + POS_SEQUENZA) == sequenza)
+			return true;
+	}
+	return false;
 }
 
 bool bacheca_ultima_immagine(struct bacheca *b, uint64_t dopo_numero, struct bacheca_immagine *immagine)

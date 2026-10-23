@@ -68,6 +68,23 @@ static void consegna(struct sorgente_mirrorloop *s, const struct bacheca_immagin
 	obs_source_output_video(s->sorgente, &fotogramma);
 }
 
+static void consegna_audio(struct sorgente_mirrorloop *s, const struct bacheca_audio *audio)
+{
+	enum speaker_layout canali = audio->canali == 1 ? SPEAKERS_MONO : audio->canali == 2 ? SPEAKERS_STEREO : SPEAKERS_UNKNOWN;
+	if (canali == SPEAKERS_UNKNOWN)
+		return;
+
+	struct obs_source_audio pezzo = {0};
+	pezzo.data[0] = audio->dati;
+	pezzo.frames = audio->campioni;
+	pezzo.speakers = canali;
+	pezzo.format = AUDIO_FORMAT_16BIT;
+	pezzo.samples_per_sec = audio->frequenza;
+	// L'istante in cui il ricevitore lo fa sentire in cuffia: a tempo con le immagini.
+	pezzo.timestamp = audio->istante_ns;
+	obs_source_output_audio(s->sorgente, &pezzo);
+}
+
 static void *mirrorloop_thread(void *dati)
 {
 	struct sorgente_mirrorloop *s = dati;
@@ -75,6 +92,7 @@ static void *mirrorloop_thread(void *dati)
 
 	struct bacheca *bacheca = NULL;
 	uint64_t ultima = 0;
+	uint64_t prossimo_audio = 0;
 	bool in_onda = false;
 
 	while (!os_atomic_load_bool(&s->fermati)) {
@@ -87,6 +105,8 @@ static void *mirrorloop_thread(void *dati)
 			}
 			obs_log(LOG_INFO, "ricevitore trovato");
 			ultima = 0;
+			// L'audio rimasto sul nastro è vecchio: si parte da quello che arriva da adesso.
+			prossimo_audio = bacheca_blocchi_scritti(bacheca);
 		}
 
 		bacheca_aspetta(bacheca, ATTESA_MS);
@@ -107,8 +127,14 @@ static void *mirrorloop_thread(void *dati)
 				in_onda = false;
 				obs_log(LOG_INFO, "ricevitore in silenzio: sorgente vuota");
 			}
+			// Quando il ricevitore torna, l'audio scritto nel frattempo non serve più.
+			prossimo_audio = bacheca_blocchi_scritti(bacheca);
 			continue;
 		}
+
+		struct bacheca_audio audio;
+		while (bacheca_prossimo_audio(bacheca, &prossimo_audio, &audio))
+			consegna_audio(s, &audio);
 
 		struct bacheca_immagine immagine;
 		if (bacheca_ultima_immagine(bacheca, ultima, &immagine)) {
@@ -154,7 +180,7 @@ static void mirrorloop_distruggi(void *dati)
 static struct obs_source_info sorgente_mirrorloop_info = {
 	.id = "mirrorloop_sorgente",
 	.type = OBS_SOURCE_TYPE_INPUT,
-	.output_flags = OBS_SOURCE_ASYNC_VIDEO | OBS_SOURCE_DO_NOT_DUPLICATE,
+	.output_flags = OBS_SOURCE_ASYNC_VIDEO | OBS_SOURCE_AUDIO | OBS_SOURCE_DO_NOT_DUPLICATE,
 	.get_name = mirrorloop_nome,
 	.create = mirrorloop_crea,
 	.destroy = mirrorloop_distruggi,
