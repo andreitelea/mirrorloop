@@ -15,6 +15,13 @@ namespace MirrorLoop.Ricevitore;
 ///
 /// A OBS l'immagine arriva già dritta e con l'istante "adesso" nel tempo di OBS: è già sincronizzata
 /// con l'audio, e OBS deve solo mostrarla subito. La finestra la riceve in BGRA, e la gira da sé.
+///
+/// Con lo schermo dell'iPhone fermo non arrivano immagini nuove (ScreenCaptureKit le manda solo
+/// quando qualcosa cambia): per OBS si ripete allora l'ultima ogni <see cref="IntervalloRipetizione"/>,
+/// come farebbe una telecamera davanti a una scena ferma. Il monitoraggio in cuffia di OBS trattiene
+/// l'audio se è avanti di oltre 75 ms rispetto all'ultima immagine (audio-monitoring/win32/wasapi-output.c,
+/// process_audio_delay): senza ripetizioni, a schermo fermo resterebbe muto. Ogni ripetizione usa la
+/// rotazione attuale, così anche una correzione a mano (tasto O) arriva subito a OBS.
 /// </summary>
 public sealed partial class Presentazione
 {
@@ -25,6 +32,11 @@ public sealed partial class Presentazione
     // Senza immagini in arrivo si ricontrolla comunque ogni tanto (per esempio l'audio che riparte).
     private static readonly TimeSpan AttesaMassima = TimeSpan.FromMilliseconds(50);
 
+    /// <summary>Ogni quanto ripetere per OBS l'ultima immagine se non ne arrivano di nuove (~30 al secondo).</summary>
+    public static readonly TimeSpan IntervalloRipetizione = TimeSpan.FromMilliseconds(33);
+
+    private static readonly Stopwatch Orologio = Stopwatch.StartNew();
+
     private readonly Func<long?, ImmaginePronta?> _prendi;
     private readonly Func<long?> _prossimoIstante;
     private readonly Action<ImmaginePronta> _restituisci;
@@ -32,11 +44,16 @@ public sealed partial class Presentazione
     private readonly Func<long?> _istanteAudio;
     private readonly SceltaRotazione _rotazione;
     private readonly BachecaObs? _bacheca;
+    private readonly Func<TimeSpan> _adesso;
     private readonly ConcurrentBag<byte[]> _bgraLiberi = [];
     private readonly object _bloccoScarti = new();
     private readonly List<double> _scartiAudioVideoMs = [];
     private byte[] _girata = [];
     private ImmagineFinestra? _perFinestra;
+    // L'ultima immagine andata in onda, tenuta per ripeterla a OBS (usata solo dal thread di presentazione).
+    private ImmaginePronta? _ultima;
+    private TimeSpan _ultimaScritturaObs;
+    private long _ripetute;
     private volatile bool _finestraVisibile = true;
     private long _presentate;
     private long _scritteInBacheca;
@@ -49,10 +66,12 @@ public sealed partial class Presentazione
     {
     }
 
-    /// <summary>Con le funzioni della coda separate, per i test.</summary>
+    /// <summary>Con le funzioni della coda e l'orologio separati, per i test.</summary>
     internal Presentazione(Func<long?, ImmaginePronta?> prendi, Func<long?> prossimoIstante, Action<ImmaginePronta> restituisci,
-        WaitHandle nuovaImmagine, Func<long?> istanteAudio, SceltaRotazione rotazione, BachecaObs? bacheca)
+        WaitHandle nuovaImmagine, Func<long?> istanteAudio, SceltaRotazione rotazione, BachecaObs? bacheca,
+        Func<TimeSpan>? adesso = null)
     {
+        _adesso = adesso ?? (() => Orologio.Elapsed);
         _prendi = prendi;
         _prossimoIstante = prossimoIstante;
         _restituisci = restituisci;
@@ -76,6 +95,9 @@ public sealed partial class Presentazione
     public long ScritteInBacheca => Interlocked.Read(ref _scritteInBacheca);
 
     public long ErroriBacheca => Interlocked.Read(ref _erroriBacheca);
+
+    /// <summary>Di queste, quante erano l'ultima immagine ripetuta perché lo schermo era fermo.</summary>
+    public long Ripetute => Interlocked.Read(ref _ripetute);
 
     /// <summary>Tempo dell'ultima rotazione per OBS (0 se l'immagine era già dritta).</summary>
     public double MsRotazione => Volatile.Read(ref _msRotazione);
@@ -128,12 +150,27 @@ public sealed partial class Presentazione
     {
         long? audio = _istanteAudio();
         if (_prendi(audio) is ImmaginePronta immagine)
+        {
             Presenta(immagine, audio);
+        }
+        else if (_bacheca is not null && _ultima is not null && _adesso() - _ultimaScritturaObs >= IntervalloRipetizione)
+        {
+            // Schermo fermo: la stessa immagine, con l'istante di adesso e la rotazione di adesso.
+            if (ScriviInBacheca(_ultima, _rotazione.Effettiva))
+                Interlocked.Increment(ref _ripetute);
+        }
 
         // La prossima immagine andrà in onda quando l'audio raggiungerà il suo istante.
-        if (audio is long adesso && _prossimoIstante() is long prossimo)
-            return TimeSpan.FromMicroseconds(Math.Clamp(prossimo - adesso, 1000, (long)AttesaMassima.TotalMicroseconds));
-        return AttesaMassima;
+        TimeSpan attesa = AttesaMassima;
+        if (audio is long istanteAudio && _prossimoIstante() is long prossimo)
+            attesa = TimeSpan.FromMicroseconds(Math.Clamp(prossimo - istanteAudio, 1000, (long)AttesaMassima.TotalMicroseconds));
+        // E comunque in tempo per la prossima ripetizione.
+        if (_bacheca is not null && _ultima is not null)
+        {
+            TimeSpan allaRipetizione = IntervalloRipetizione - (_adesso() - _ultimaScritturaObs);
+            attesa = TimeSpan.FromTicks(Math.Clamp(allaRipetizione.Ticks, TimeSpan.TicksPerMillisecond, attesa.Ticks));
+        }
+        return attesa;
     }
 
     private void Presenta(ImmaginePronta immagine, long? audio)
@@ -150,11 +187,15 @@ public sealed partial class Presentazione
         if (_finestraVisibile)
             PreparaPerFinestra(immagine, rotazione);
 
-        _restituisci(immagine);
+        // Si tiene per le ripetizioni; quella di prima non serve più.
+        if (_ultima is not null)
+            _restituisci(_ultima);
+        _ultima = immagine;
         Interlocked.Increment(ref _presentate);
     }
 
-    private void ScriviInBacheca(ImmaginePronta immagine, RotazioneVideo rotazione)
+    /// <returns>false se la bacheca non l'ha accettata.</returns>
+    private bool ScriviInBacheca(ImmaginePronta immagine, RotazioneVideo rotazione)
     {
         try
         {
@@ -176,11 +217,14 @@ public sealed partial class Presentazione
                 _bacheca!.ScriviImmagine(_girata, larghezza, altezza, larghezza, adesso);
             }
             Interlocked.Increment(ref _scritteInBacheca);
+            _ultimaScritturaObs = _adesso();
+            return true;
         }
         catch (Exception ex) when (ex is ArgumentException or ObjectDisposedException)
         {
             // Un'immagine che la bacheca non accetta non deve fermare la finestra.
             Interlocked.Increment(ref _erroriBacheca);
+            return false;
         }
     }
 

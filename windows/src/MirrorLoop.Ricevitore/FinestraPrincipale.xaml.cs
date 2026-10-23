@@ -267,7 +267,7 @@ public partial class FinestraPrincipale : Window
             return $"non disponibile: {_motivoSenzaBacheca}";
         string errori = _presentazione.ErroriBacheca > 0 ? $", {_presentazione.ErroriBacheca} errori" : "";
         string rotazione = _presentazione.MsRotazione > 0 ? $", rotazione {_presentazione.MsRotazione:F1} ms" : "";
-        return $"{alSecondo,6:F1} immagini/s  ({_presentazione.ScritteInBacheca} scritte{errori}{rotazione})";
+        return $"{alSecondo,6:F1} immagini/s  ({_presentazione.ScritteInBacheca} scritte, {_presentazione.Ripetute} ripetute a schermo fermo{errori}{rotazione})";
     }
 
     private void SuTastoPremuto(object sender, KeyEventArgs e)

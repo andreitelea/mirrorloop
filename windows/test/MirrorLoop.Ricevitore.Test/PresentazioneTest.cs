@@ -12,6 +12,7 @@ public sealed class PresentazioneTest : IDisposable
     private readonly BachecaObs _bacheca;
     private readonly LettoreBacheca _lettore;
     private long? _audio;
+    private TimeSpan _adesso = TimeSpan.FromSeconds(10);
 
     public PresentazioneTest()
     {
@@ -28,7 +29,7 @@ public sealed class PresentazioneTest : IDisposable
     }
 
     private Presentazione Crea(BachecaObs? bacheca = null) => new(_coda.Prendi, () => _coda.ProssimoIstante,
-        i => { lock (_restituite) _restituite.Add(i); }, _nuova, () => _audio, _rotazione, bacheca ?? _bacheca);
+        i => { lock (_restituite) _restituite.Add(i); }, _nuova, () => _audio, _rotazione, bacheca ?? _bacheca, () => _adesso);
 
     /// <summary>NV12 4×2 con luminosità 1–8 e colore (101, 102) (103, 104), come in RotazioneNv12Test.</summary>
     private static ImmaginePronta Immagine(long istante, RotazioneVideo rotazione = RotazioneVideo.Nessuna) =>
@@ -42,7 +43,8 @@ public sealed class PresentazioneTest : IDisposable
         _coda.Aggiungi(Immagine(200));
         ulong prima = BachecaObs.OraNs();
 
-        Assert.Equal(TimeSpan.FromMilliseconds(50), presentazione.Giro());
+        // Niente audio e niente altro in coda: si torna a guardare in tempo per l'eventuale ripetizione.
+        Assert.Equal(Presentazione.IntervalloRipetizione, presentazione.Giro());
 
         var perObs = _lettore.UltimaImmagine()!;
         Assert.Equal((4, 2), (perObs.Larghezza, perObs.Altezza));
@@ -57,7 +59,8 @@ public sealed class PresentazioneTest : IDisposable
 
         Assert.Equal(1, presentazione.Presentate);
         Assert.Equal(1, presentazione.ScritteInBacheca);
-        Assert.Equal(2, _restituite.Count); // quella saltata dalla coda e quella andata in onda
+        // Quella saltata dalla coda torna subito; quella andata in onda resta per le ripetizioni.
+        Assert.Single(_restituite);
     }
 
     [Fact]
@@ -100,7 +103,7 @@ public sealed class PresentazioneTest : IDisposable
         Assert.Equal(10, presentazione.LeggiSincronia()!.Value.Mediana);
 
         _audio = 131_000;
-        Assert.Equal(TimeSpan.FromMilliseconds(50), presentazione.Giro());
+        Assert.Equal(Presentazione.IntervalloRipetizione, presentazione.Giro());
         Assert.Equal(130_000, presentazione.PrendiPerFinestra()!.IstanteCatturaMicrosecondi);
         Assert.Equal(2, presentazione.ScritteInBacheca);
     }
@@ -151,6 +154,73 @@ public sealed class PresentazioneTest : IDisposable
         presentazione.Giro();
 
         Assert.NotNull(presentazione.PrendiPerFinestra());
+        Assert.Equal(0, presentazione.ScritteInBacheca);
+    }
+
+    [Fact]
+    public void ASchermoFermoSiRipeteLUltimaImmaginePerOBS()
+    {
+        var presentazione = Crea();
+        _coda.Aggiungi(Immagine(100));
+        presentazione.Giro();
+        ulong prima = _lettore.UltimaImmagine()!.Istante;
+
+        // Dopo 10 ms è ancora presto; manca il resto dell'intervallo.
+        _adesso += TimeSpan.FromMilliseconds(10);
+        Assert.Equal(TimeSpan.FromMilliseconds(23), presentazione.Giro());
+        Assert.Equal(1, presentazione.ScritteInBacheca);
+
+        // Dopo 33 ms la stessa immagine, con un istante nuovo.
+        _adesso += TimeSpan.FromMilliseconds(23);
+        presentazione.Giro();
+        var ripetuta = _lettore.UltimaImmagine()!;
+        Assert.Equal((2, 1), (presentazione.ScritteInBacheca, presentazione.Ripetute));
+        Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 101, 102, 103, 104 }, ripetuta.Dati);
+        Assert.True(ripetuta.Istante > prima);
+        // Per la finestra non cambia niente: ha già quell'immagine.
+        Assert.NotNull(presentazione.PrendiPerFinestra());
+        Assert.Null(presentazione.PrendiPerFinestra());
+        Assert.Equal(1, presentazione.Presentate);
+    }
+
+    [Fact]
+    public void LaRotazioneAManoArrivaAOBSAncheASchermoFermo()
+    {
+        var presentazione = Crea();
+        _coda.Aggiungi(Immagine(100));
+        presentazione.Giro();
+        Assert.Equal(4, _lettore.UltimaImmagine()!.Larghezza);
+
+        _rotazione.RuotaManuale(); // tasto O, con lo schermo dell'iPhone fermo
+        _adesso += Presentazione.IntervalloRipetizione;
+        presentazione.Giro();
+
+        var girata = _lettore.UltimaImmagine()!;
+        Assert.Equal((2, 4), (girata.Larghezza, girata.Altezza));
+        Assert.Equal(new byte[] { 5, 1, 6, 2, 7, 3, 8, 4, 101, 102, 103, 104 }, girata.Dati);
+    }
+
+    [Fact]
+    public void UnImmagineNuovaSostituisceQuellaDaRipetere()
+    {
+        var presentazione = Crea();
+        _coda.Aggiungi(Immagine(100));
+        presentazione.Giro();
+        _coda.Aggiungi(Immagine(200));
+        presentazione.Giro();
+
+        // La prima torna nella riserva dei buffer solo ora, quando non serve più per le ripetizioni.
+        Assert.Equal(100, _restituite.Single().IstanteCatturaMicrosecondi);
+        Assert.Equal(0, presentazione.Ripetute);
+    }
+
+    [Fact]
+    public void PrimaDellaPrimaImmagineNonSiRipeteNiente()
+    {
+        var presentazione = Crea();
+        _adesso += TimeSpan.FromSeconds(1);
+
+        Assert.Equal(TimeSpan.FromMilliseconds(50), presentazione.Giro());
         Assert.Equal(0, presentazione.ScritteInBacheca);
     }
 
