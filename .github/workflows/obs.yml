@@ -1,0 +1,59 @@
+# Compila il plugin per OBS (cartella obs/) su una macchina Windows di GitHub, per ogni modifica
+# (anche nelle pull request). Il risultato si scarica dalla pagina dell'esecuzione, come artefatto:
+# una cartella "mirrorloop" pronta da copiare in C:\ProgramData\obs-studio\plugins\.
+name: Plugin OBS
+
+on:
+  push:
+    paths:
+      - "obs/**"
+      - ".github/workflows/obs.yml"
+  pull_request:
+    paths:
+      - "obs/**"
+      - ".github/workflows/obs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compila:
+    # Windows Server 2025: Visual Studio 2022 con il C++, CMake 3.31 e il Windows SDK 10.0.26100,
+    # lo stesso indicato in obs/CMakePresets.json.
+    runs-on: windows-2025
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: obs
+        shell: pwsh
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v7
+
+      # La prima configurazione scarica le dipendenze e i sorgenti di OBS e compila libobs (alcuni
+      # minuti): si conservano tra un'esecuzione e l'altra finché non cambiano le versioni.
+      - name: Dipendenze di OBS (dalla cache se ci sono)
+        uses: actions/cache@v6
+        with:
+          path: obs/.deps
+          key: obs-deps-windows-x64-${{ hashFiles('obs/buildspec.json', 'obs/cmake/**') }}
+
+      - name: Configura
+        # Il preset "ci" tratta gli avvisi del compilatore come errori.
+        run: cmake --preset windows-ci-x64
+
+      - name: Compila
+        run: cmake --build --preset windows-ci-x64
+
+      - name: Prepara la cartella del plugin
+        run: |
+          cmake --install build_x64 --config RelWithDebInfo --prefix pacchetto
+          Get-ChildItem -Recurse pacchetto | Select-Object FullName, Length
+
+      - name: Pubblica il plugin come artefatto
+        uses: actions/upload-artifact@v7
+        with:
+          name: mirrorloop-obs-${{ github.sha }}
+          path: obs/pacchetto
+          if-no-files-found: error
