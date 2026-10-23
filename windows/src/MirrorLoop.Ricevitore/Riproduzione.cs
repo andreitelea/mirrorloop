@@ -1,33 +1,38 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using MirrorLoop.MediaFoundation;
 using MirrorLoop.Protocollo;
 
 namespace MirrorLoop.Ricevitore;
 
-/// <summary>Un'immagine pronta da mostrare, con le misure raccolte lungo la strada.</summary>
+/// <summary>
+/// Un'immagine decompressa, ancora in NV12 (il formato del decompressore): si converte solo se e
+/// quando viene davvero mostrata.
+/// </summary>
+/// <param name="Nv12">Piano Y (altezza righe) seguito dal piano UV (altezza / 2 righe), righe lunghe <paramref name="Passo"/> byte.</param>
 /// <param name="Rotazione">Di quanto girarla in senso orario per mostrarla dritta (la gira la finestra).</param>
-public sealed record ImmaginePronta(byte[] Bgra, int Larghezza, int Altezza, long IstanteCatturaMicrosecondi, double MsDecompressione,
-    double MsConversione, RotazioneVideo Rotazione = RotazioneVideo.Nessuna);
+public sealed record ImmaginePronta(byte[] Nv12, int Larghezza, int Altezza, int Passo, long IstanteCatturaMicrosecondi,
+    double MsDecompressione, RotazioneVideo Rotazione = RotazioneVideo.Nessuna);
 
 /// <summary>
-/// Prende i frame dalla coda, li decomprime e li converte in immagini da mostrare.
+/// Prende i frame dalla coda e li decomprime.
 /// Lavora su un thread tutto suo: Media Foundation va usato sempre dallo stesso thread.
 ///
-/// Le immagini pronte aspettano in una <see cref="CodaImmagini"/>, che decide quale mostrare
-/// in base all'audio (sincronia) o, senza audio, consegna sempre la più recente.
+/// Le immagini decompresse aspettano in una <see cref="CodaImmagini"/>, che decide quale mostrare
+/// in base all'audio (sincronia) o, senza audio, consegna sempre la più recente. Restano in NV12
+/// (1,5 byte per pixel contro i 4 del BGRA della finestra): molte vengono saltate per la sincronia,
+/// ed è inutile convertirle o occupare memoria per loro.
 /// </summary>
 public sealed class Riproduzione
 {
     private readonly CodaFrame _coda;
-    private readonly ConcurrentBag<byte[]> _bufferLiberi = [];
     private readonly CodaImmagini _immagini;
     private long _errori;
 
     public Riproduzione(CodaFrame coda)
     {
         _coda = coda;
-        _immagini = new CodaImmagini(immagine => _bufferLiberi.Add(immagine.Bgra));
+        // I buffer NV12 li crea il decompressore, uno per frame: non c'è niente da riusare.
+        _immagini = new CodaImmagini(_ => { });
     }
 
     /// <summary>Immagini buttate senza essere mostrate.</summary>
@@ -49,9 +54,6 @@ public sealed class Riproduzione
     /// <summary>Per la finestra: l'immagine da mostrare adesso, se ce n'è una nuova.</summary>
     /// <param name="istanteAudio">L'istante di cattura che si sta ascoltando, o null senza audio.</param>
     public ImmaginePronta? Prendi(long? istanteAudio) => _immagini.Prendi(istanteAudio);
-
-    /// <summary>Per la finestra: restituisce il buffer di un'immagine già mostrata, così si riusa.</summary>
-    public void Restituisci(ImmaginePronta immagine) => _bufferLiberi.Add(immagine.Bgra);
 
     private void Esegui(CancellationToken stop)
     {
@@ -98,27 +100,9 @@ public sealed class Riproduzione
         List<FrameDecompresso> decompressi = decompressore.Decomprimi(frame.DatiH264.Span, frame.IstanteCatturaMicrosecondi);
         double msDecompressione = cronometro.Elapsed.TotalMilliseconds;
 
+        // Il decompressore è in bassa latenza (un frame entra, un frame esce): l'immagine che
+        // esce è quella del frame appena entrato, e ne prende la rotazione.
         foreach (FrameDecompresso d in decompressi)
-        {
-            cronometro.Restart();
-            byte[] bgra = PrendiBuffer(d.Larghezza * d.Altezza * 4);
-            ConversioneColori.Nv12ABgra(d.Nv12, d.Larghezza, d.Altezza, d.Passo, bgra, d.Larghezza * 4);
-            double msConversione = cronometro.Elapsed.TotalMilliseconds;
-
-            // Il decompressore è in bassa latenza (un frame entra, un frame esce): l'immagine che
-            // esce è quella del frame appena entrato, e ne prende la rotazione.
-            _immagini.Aggiungi(new ImmaginePronta(bgra, d.Larghezza, d.Altezza, d.Tempo, msDecompressione, msConversione, frame.Rotazione));
-        }
-    }
-
-    private byte[] PrendiBuffer(int dimensione)
-    {
-        // I buffer di dimensione diversa (risoluzione cambiata) si lasciano al garbage collector.
-        while (_bufferLiberi.TryTake(out byte[]? buffer))
-        {
-            if (buffer.Length == dimensione)
-                return buffer;
-        }
-        return new byte[dimensione];
+            _immagini.Aggiungi(new ImmaginePronta(d.Nv12, d.Larghezza, d.Altezza, d.Passo, d.Tempo, msDecompressione, frame.Rotazione));
     }
 }

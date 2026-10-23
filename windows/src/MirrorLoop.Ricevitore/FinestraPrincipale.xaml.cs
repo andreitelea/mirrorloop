@@ -76,7 +76,7 @@ public partial class FinestraPrincipale : Window
         }
     }
 
-    private void MostraUltimaImmagine(object? sender, EventArgs e)
+    private unsafe void MostraUltimaImmagine(object? sender, EventArgs e)
     {
         _aggiornamentiFinestra++;
         long? istanteAudio = _riproduzioneAudio.IstanteInAscolto();
@@ -96,7 +96,21 @@ public partial class FinestraPrincipale : Window
             TestoStato.Visibility = Visibility.Collapsed;
         }
 
-        _immagine.WritePixels(new Int32Rect(0, 0, immagine.Larghezza, immagine.Altezza), immagine.Bgra, immagine.Larghezza * 4, 0);
+        // Si converte direttamente nella memoria dell'immagine di WPF: niente copia intermedia.
+        var cronometro = Stopwatch.StartNew();
+        _immagine.Lock();
+        try
+        {
+            var destinazione = new Span<byte>((void*)_immagine.BackBuffer, _immagine.BackBufferStride * immagine.Altezza);
+            ConversioneColori.Nv12ABgra(immagine.Nv12, immagine.Larghezza, immagine.Altezza, immagine.Passo, destinazione,
+                _immagine.BackBufferStride);
+            _immagine.AddDirtyRect(new Int32Rect(0, 0, immagine.Larghezza, immagine.Altezza));
+        }
+        finally
+        {
+            _immagine.Unlock();
+        }
+        _msConversione = cronometro.Elapsed.TotalMilliseconds;
 
         _sceltaRotazione.DaIPhone(immagine.Rotazione);
         ApplicaRotazione();
@@ -106,9 +120,6 @@ public partial class FinestraPrincipale : Window
         double latenzaMs = _ricezione.LatenzaMicrosecondi(immagine.IstanteCatturaMicrosecondi) / 1000.0;
         _statisticheSchermo.FrameRicevuto(false, 0, latenzaMs);
         _msDecompressione = immagine.MsDecompressione;
-        _msConversione = immagine.MsConversione;
-
-        _riproduzione.Restituisci(immagine);
     }
 
     /// <summary>

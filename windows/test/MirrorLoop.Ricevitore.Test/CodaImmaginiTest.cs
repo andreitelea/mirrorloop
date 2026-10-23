@@ -6,7 +6,7 @@ public class CodaImmaginiTest
 
     private CodaImmagini Crea() => new(_restituite.Add);
 
-    private static ImmaginePronta Immagine(long istante) => new(new byte[4], 1, 1, istante, 0, 0);
+    private static ImmaginePronta Immagine(long istante) => new(new byte[6], 2, 2, 2, istante, 0);
 
     [Fact]
     public void SenzaAudioDaSubitoLaPiuRecente()
