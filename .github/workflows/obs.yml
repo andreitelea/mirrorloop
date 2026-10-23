@@ -19,9 +19,11 @@ permissions:
 
 jobs:
   compila:
-    # Windows Server 2025: Visual Studio 2022 con il C++, CMake 3.31 e il Windows SDK 10.0.26100,
-    # lo stesso indicato in obs/CMakePresets.json.
-    runs-on: windows-2025
+    # Windows Server 2022: Visual Studio 2022 con il C++ (lo stesso compilatore del PC di sviluppo e
+    # del modello di OBS), CMake 3.31 e il Windows SDK 10.0.26100 indicato in obs/CMakePresets.json.
+    # Non "windows-2025": da ottobre 2026 su quell'immagine c'è Visual Studio 2026 e il generatore
+    # "Visual Studio 17 2022" dei preset non trova nessuna installazione.
+    runs-on: windows-2022
     timeout-minutes: 30
     defaults:
       run:
