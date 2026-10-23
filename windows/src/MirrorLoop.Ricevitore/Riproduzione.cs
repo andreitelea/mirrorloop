@@ -30,6 +30,7 @@ public sealed class Riproduzione
     // array nuovi, che .NET raccoglie solo ogni tanto e che nel frattempo pesano sulla memoria.
     private readonly ConcurrentBag<byte[]> _bufferLiberi = [];
     private readonly CodaImmagini _immagini;
+    private readonly AutoResetEvent _nuovaImmagine = new(false);
     private long _errori;
 
     public Riproduzione(CodaFrame coda)
@@ -54,11 +55,17 @@ public sealed class Riproduzione
         return thread;
     }
 
-    /// <summary>Per la finestra: l'immagine da mostrare adesso, se ce n'è una nuova.</summary>
+    /// <summary>Segnalato a ogni immagine decompressa: chi le sceglie può aspettare questo invece di controllare di continuo.</summary>
+    public WaitHandle NuovaImmagine => _nuovaImmagine;
+
+    /// <summary>L'immagine da mostrare adesso, se ce n'è una nuova.</summary>
     /// <param name="istanteAudio">L'istante di cattura che si sta ascoltando, o null senza audio.</param>
     public ImmaginePronta? Prendi(long? istanteAudio) => _immagini.Prendi(istanteAudio);
 
-    /// <summary>Per la finestra: restituisce il buffer di un'immagine già mostrata, così si riusa.</summary>
+    /// <summary>Istante di cattura della prossima immagine in attesa, o null se non ce ne sono.</summary>
+    public long? ProssimoIstante => _immagini.ProssimoIstante;
+
+    /// <summary>Restituisce il buffer di un'immagine già usata, così si riusa.</summary>
     public void Restituisci(ImmaginePronta immagine) => _bufferLiberi.Add(immagine.Nv12);
 
     private void Esegui(CancellationToken stop)
@@ -110,6 +117,8 @@ public sealed class Riproduzione
         // esce è quella del frame appena entrato, e ne prende la rotazione.
         foreach (FrameDecompresso d in decompressi)
             _immagini.Aggiungi(new ImmaginePronta(d.Nv12, d.Larghezza, d.Altezza, d.Passo, d.Tempo, msDecompressione, frame.Rotazione));
+        if (decompressi.Count > 0)
+            _nuovaImmagine.Set();
     }
 
     private byte[] PrendiBuffer(int dimensione)

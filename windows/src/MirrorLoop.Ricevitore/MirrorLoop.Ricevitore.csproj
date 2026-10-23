@@ -9,6 +9,11 @@
     <PackageReference Include="NAudio.Wasapi" Version="2.4.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- I test usano i costruttori interni che separano le classi da Windows e dalla rete. -->
+    <InternalsVisibleTo Include="MirrorLoop.Ricevitore.Test" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

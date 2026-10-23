@@ -72,6 +72,16 @@ public sealed class CodaImmagini(Action<ImmaginePronta> restituisci)
         }
     }
 
+    /// <summary>Istante di cattura della prossima immagine in attesa, o null se la coda è vuota.</summary>
+    public long? ProssimoIstante
+    {
+        get
+        {
+            lock (_blocco)
+                return _immagini.Count > 0 ? _immagini[0].IstanteCatturaMicrosecondi : null;
+        }
+    }
+
     public int Conteggio
     {
         get

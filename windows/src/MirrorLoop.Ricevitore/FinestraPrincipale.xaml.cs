@@ -24,6 +24,10 @@ public partial class FinestraPrincipale : Window
     private readonly RicezioneRete _ricezione;
     private readonly AnnuncioBonjour _annuncio;
     private readonly Riproduzione _riproduzione;
+    private readonly BachecaObs? _bacheca;
+    private readonly string? _motivoSenzaBacheca;
+    private readonly Presentazione _presentazione;
+    private readonly Timer _battito;
     private readonly CancellationTokenSource _stop = new();
     private readonly DispatcherTimer _timerStatistiche;
     private readonly Stopwatch _dallUltimaLettura = Stopwatch.StartNew();
@@ -37,7 +41,11 @@ public partial class FinestraPrincipale : Window
     private double _msDecompressione;
     private double _msConversione;
     private string _stato = "Avvio...";
-    private readonly List<double> _scartiAudioVideoMs = [];
+    private long _mostratiTotali;
+    // Contatori totali ogni mezzo secondo, per le medie degli ultimi 10 secondi: la media di mezzo
+    // secondo salta troppo (le immagini arrivano a grappoli) e trae in inganno.
+    private readonly Queue<(double Secondi, long InOnda, long Mostrati, long Bacheca)> _storico = new();
+    private readonly Stopwatch _orologio = Stopwatch.StartNew();
 
     public FinestraPrincipale()
     {
@@ -46,11 +54,32 @@ public partial class FinestraPrincipale : Window
         _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro, CaricaCertificato());
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
+        // Una trasmissione nuova: OBS deve ripartire pulito (istanti non confrontabili con prima).
+        _ricezione.StatoCambiato += stato =>
+        {
+            if (stato.StartsWith("Collegato"))
+                _bacheca?.NuovaGenerazione();
+        };
         _riproduzioneAudio.EventoRiserva += evento => _registro.ScriviRiserva(evento, Protocollo.Protocollo.AdessoMicrosecondi());
         // L'iPhone trova il PC per nome, senza scrivere l'indirizzo.
         _annuncio = new AnnuncioBonjour(Environment.MachineName, Porta);
 
         _riproduzione = new Riproduzione(_coda);
+
+        // La bacheca da cui legge la sorgente MirrorLoop in OBS. Senza, la finestra funziona lo stesso.
+        try
+        {
+            _bacheca = new BachecaObs();
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or WaitHandleCannotBeOpenedException)
+        {
+            _motivoSenzaBacheca = ex.Message;
+        }
+        _presentazione = new Presentazione(_riproduzione, _riproduzioneAudio.IstanteInAscolto, _sceltaRotazione, _bacheca);
+        // "Sono ancora qui" per OBS, anche quando non arrivano immagini (schermo fermo, iPhone scollegato).
+        _battito = new Timer(_ => _bacheca?.Battito(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
+        // Ridotta a icona la finestra non si disegna: inutile convertire le immagini per lei.
+        StateChanged += (_, _) => _presentazione.FinestraVisibile = WindowState != WindowState.Minimized;
 
         _timerStatistiche = new DispatcherTimer { Interval = IntervalloStatistiche };
         _timerStatistiche.Tick += (_, _) => AggiornaStatistiche();
@@ -61,6 +90,7 @@ public partial class FinestraPrincipale : Window
 
         _ = _ricezione.EseguiAsync(_stop.Token);
         _riproduzione.Avvia(_stop.Token);
+        _presentazione.Avvia(_stop.Token);
     }
 
     private void CambiaStato(string stato)
@@ -76,18 +106,16 @@ public partial class FinestraPrincipale : Window
         }
     }
 
-    private unsafe void MostraUltimaImmagine(object? sender, EventArgs e)
+    /// <summary>
+    /// Disegna l'ultima immagine andata in onda, se è nuova. La scelta (sincronia con l'audio) e la
+    /// conversione le fa <see cref="Presentazione"/> sul suo thread: qui resta solo la copia.
+    /// </summary>
+    private void MostraUltimaImmagine(object? sender, EventArgs e)
     {
         _aggiornamentiFinestra++;
-        long? istanteAudio = _riproduzioneAudio.IstanteInAscolto();
-        ImmaginePronta? immagine = _riproduzione.Prendi(istanteAudio);
+        Presentazione.ImmagineFinestra? immagine = _presentazione.PrendiPerFinestra();
         if (immagine is null)
             return;
-
-        // Quanto l'immagine mostrata è dietro all'audio che si sente: idealmente tra 0 e la durata
-        // di un fotogramma (33 ms a 30 fps). Senza audio non c'è niente da misurare.
-        if (istanteAudio is long audio)
-            _scartiAudioVideoMs.Add((audio - immagine.IstanteCatturaMicrosecondi) / 1000.0);
 
         if (_immagine is null || _immagine.PixelWidth != immagine.Larghezza || _immagine.PixelHeight != immagine.Altezza)
         {
@@ -96,32 +124,18 @@ public partial class FinestraPrincipale : Window
             TestoStato.Visibility = Visibility.Collapsed;
         }
 
-        // Si converte direttamente nella memoria dell'immagine di WPF: niente copia intermedia.
-        var cronometro = Stopwatch.StartNew();
-        _immagine.Lock();
-        try
-        {
-            var destinazione = new Span<byte>((void*)_immagine.BackBuffer, _immagine.BackBufferStride * immagine.Altezza);
-            ConversioneColori.Nv12ABgra(immagine.Nv12, immagine.Larghezza, immagine.Altezza, immagine.Passo, destinazione,
-                _immagine.BackBufferStride);
-            _immagine.AddDirtyRect(new Int32Rect(0, 0, immagine.Larghezza, immagine.Altezza));
-        }
-        finally
-        {
-            _immagine.Unlock();
-        }
-        _msConversione = cronometro.Elapsed.TotalMilliseconds;
-
-        _sceltaRotazione.DaIPhone(immagine.Rotazione);
-        ApplicaRotazione();
+        _immagine.WritePixels(new Int32Rect(0, 0, immagine.Larghezza, immagine.Altezza), immagine.Bgra, immagine.Larghezza * 4, 0);
+        ApplicaRotazione(immagine.Rotazione);
+        _mostratiTotali++;
 
         // Latenza "fino allo schermo": dal disegno nel mittente a qui. Manca solo l'ultimo tratto,
         // fino al prossimo aggiornamento del monitor (al massimo circa 16 ms a 60 Hz), non misurabile da qui.
         double latenzaMs = _ricezione.LatenzaMicrosecondi(immagine.IstanteCatturaMicrosecondi) / 1000.0;
         _statisticheSchermo.FrameRicevuto(false, 0, latenzaMs);
         _msDecompressione = immagine.MsDecompressione;
+        _msConversione = immagine.MsConversione;
 
-        _riproduzione.Restituisci(immagine);
+        _presentazione.RestituisciPerFinestra(immagine);
     }
 
     /// <summary>
@@ -129,11 +143,11 @@ public partial class FinestraPrincipale : Window
     /// LayoutTransform (non RenderTransform) perché anche l'impaginazione deve vedere l'immagine
     /// girata, così in orizzontale riempie la finestra in larghezza.
     /// </summary>
-    private void ApplicaRotazione()
+    private void ApplicaRotazione(RotazioneVideo rotazione)
     {
-        if (_sceltaRotazione.Effettiva == _rotazione)
+        if (rotazione == _rotazione)
             return;
-        _rotazione = _sceltaRotazione.Effettiva;
+        _rotazione = rotazione;
         var trasformazione = new RotateTransform(90 * (int)_rotazione);
         trasformazione.Freeze();
         Video.LayoutTransform = trasformazione;
@@ -143,6 +157,7 @@ public partial class FinestraPrincipale : Window
     {
         var rete = _statistiche.Leggi();
         var schermo = _statisticheSchermo.Leggi();
+        var (inOnda, mostrati, bacheca) = MedieUltimi10Secondi();
         var audio = _statisticheAudio.Leggi();
         double secondi = _dallUltimaLettura.Elapsed.TotalSeconds;
         _dallUltimaLettura.Restart();
@@ -156,7 +171,9 @@ public partial class FinestraPrincipale : Window
         TestoStatistiche.Text =
             $"{_stato}\n" +
             $"ricevuti        {rete.Frame / secondi,6:F1} fps\n" +
-            $"mostrati        {schermo.Frame / secondi,6:F1} fps  (la finestra si aggiorna {_aggiornamentiFinestra / secondi:F0} volte/s)\n" +
+            $"in onda         {inOnda,6:F1} fps  (media 10 s; saltati per la sincronia {DescriviSaltati()} dall'inizio)\n" +
+            $"finestra        {mostrati,6:F1} fps  (media 10 s; si aggiorna {_aggiornamentiFinestra / secondi:F0} volte/s)\n" +
+            $"bacheca OBS     {DescriviBacheca(bacheca)}\n" +
             $"bitrate         {rete.Byte * 8 / secondi / 1_000_000,6:F2} Mbit/s\n" +
             $"latenza rete    {Latenza(rete)}\n" +
             $"latenza schermo {Latenza(schermo)}\n" +
@@ -169,7 +186,6 @@ public partial class FinestraPrincipale : Window
             $"rotazione       {90 * (int)_rotazione,6}°  ({(_sceltaRotazione.Manuale ? $"manuale; dall'iPhone {90 * (int)_sceltaRotazione.Automatica}°" : "automatica")})\n" +
             $"keyframe        {_keyframeTotali,6} (totale)\n" +
             $"scartati        {_coda.Scartati,6} (totale)\n" +
-            $"non mostrati    {_riproduzione.NonMostrate,6} (totale)\n" +
             $"in attesa       {_riproduzione.InAttesa,6} immagini\n" +
             $"sincronia A/V   {DescriviSincronia()}\n" +
             $"errori          {_riproduzione.Errori,6} (totale)\n" +
@@ -214,13 +230,41 @@ public partial class FinestraPrincipale : Window
             : "non sincronizzati (le latenze qui sopra non sono affidabili)";
 
     /// <summary>Mediana e massimo dello scarto audio-video dall'ultima lettura, poi riparte.</summary>
-    private string DescriviSincronia()
+    private string DescriviSincronia() =>
+        _presentazione.LeggiSincronia() is var (mediana, massimo)
+            ? $"{mediana,6:F0} ms video dietro l'audio (max {massimo:F0})"
+            : "     — (niente audio: il video va in onda subito)";
+
+    /// <summary>Immagini al secondo andate in onda, disegnate dalla finestra e scritte per OBS, negli ultimi 10 s.</summary>
+    private (double InOnda, double Mostrati, double Bacheca) MedieUltimi10Secondi()
     {
-        if (_scartiAudioVideoMs.Count == 0)
-            return "     — (niente audio: il video si mostra subito)";
-        var ordinati = _scartiAudioVideoMs.Order().ToArray();
-        _scartiAudioVideoMs.Clear();
-        return $"{ordinati[ordinati.Length / 2],6:F0} ms video dietro l'audio (max {ordinati[^1]:F0})";
+        double adesso = _orologio.Elapsed.TotalSeconds;
+        _storico.Enqueue((adesso, _presentazione.Presentate, _mostratiTotali, _presentazione.ScritteInBacheca));
+        while (_storico.Count > 1 && adesso - _storico.Peek().Secondi > 10)
+            _storico.Dequeue();
+        var (secondi, inOnda, mostrati, bacheca) = _storico.Peek();
+        double durata = adesso - secondi;
+        if (durata <= 0)
+            return (0, 0, 0);
+        return ((_presentazione.Presentate - inOnda) / durata, (_mostratiTotali - mostrati) / durata,
+            (_presentazione.ScritteInBacheca - bacheca) / durata);
+    }
+
+    /// <summary>Quota di immagini decompresse e mai andate in onda (superate da una più adatta all'audio).</summary>
+    private string DescriviSaltati()
+    {
+        long saltati = _riproduzione.NonMostrate;
+        long totale = saltati + _presentazione.Presentate;
+        return totale == 0 ? "—" : $"{100.0 * saltati / totale:F1}% ({saltati})";
+    }
+
+    private string DescriviBacheca(double alSecondo)
+    {
+        if (_bacheca is null)
+            return $"non disponibile: {_motivoSenzaBacheca}";
+        string errori = _presentazione.ErroriBacheca > 0 ? $", {_presentazione.ErroriBacheca} errori" : "";
+        string rotazione = _presentazione.MsRotazione > 0 ? $", rotazione {_presentazione.MsRotazione:F1} ms" : "";
+        return $"{alSecondo,6:F1} immagini/s  ({_presentazione.ScritteInBacheca} scritte{errori}{rotazione})";
     }
 
     private void SuTastoPremuto(object sender, KeyEventArgs e)
@@ -241,12 +285,12 @@ public partial class FinestraPrincipale : Window
         else if (e.Key == Key.O)
         {
             _sceltaRotazione.RuotaManuale();
-            ApplicaRotazione();
+            ApplicaRotazione(_sceltaRotazione.Effettiva);
         }
         else if (e.Key == Key.A)
         {
             _sceltaRotazione.TornaAutomatica();
-            ApplicaRotazione();
+            ApplicaRotazione(_sceltaRotazione.Effettiva);
         }
     }
 
@@ -258,6 +302,8 @@ public partial class FinestraPrincipale : Window
     protected override void OnClosing(CancelEventArgs e)
     {
         _stop.Cancel();
+        _battito.Dispose();
+        _bacheca?.Dispose();
         _annuncio.Dispose();
         _riproduzioneAudio.Dispose();
         _registro.Dispose();

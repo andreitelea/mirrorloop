@@ -8,24 +8,65 @@ namespace MirrorLoop.Ricevitore;
 /// (Home, app solo verticali, blocco della rotazione): lì si corregge con un tasto.
 ///
 /// La scelta manuale non si salva: a ogni avvio si riparte dall'automatica, così una correzione
-/// fatta per un'altra app non resta attiva per sbaglio. Si usa solo dal thread della finestra.
+/// fatta per un'altra app non resta attiva per sbaglio.
+///
+/// Thread-safe: la rotazione dell'iPhone arriva dal thread che sceglie le immagini, i tasti dalla finestra.
 /// </summary>
 public sealed class SceltaRotazione
 {
+    private readonly object _blocco = new();
     private RotazioneVideo? _manuale;
+    private RotazioneVideo _automatica = RotazioneVideo.Nessuna;
 
     /// <summary>L'ultima rotazione arrivata dall'iPhone.</summary>
-    public RotazioneVideo Automatica { get; private set; } = RotazioneVideo.Nessuna;
+    public RotazioneVideo Automatica
+    {
+        get
+        {
+            lock (_blocco)
+                return _automatica;
+        }
+    }
 
-    public bool Manuale => _manuale is not null;
+    public bool Manuale
+    {
+        get
+        {
+            lock (_blocco)
+                return _manuale is not null;
+        }
+    }
 
     /// <summary>Quella da applicare all'immagine.</summary>
-    public RotazioneVideo Effettiva => _manuale ?? Automatica;
+    public RotazioneVideo Effettiva
+    {
+        get
+        {
+            lock (_blocco)
+                return _manuale ?? _automatica;
+        }
+    }
 
-    public void DaIPhone(RotazioneVideo rotazione) => Automatica = rotazione;
+    /// <summary>Registra la rotazione arrivata dall'iPhone e restituisce quella da applicare.</summary>
+    public RotazioneVideo DaIPhone(RotazioneVideo rotazione)
+    {
+        lock (_blocco)
+        {
+            _automatica = rotazione;
+            return _manuale ?? _automatica;
+        }
+    }
 
     /// <summary>Gira di 90° in senso orario rispetto a quanto si vede adesso; da qui in poi decide la mano.</summary>
-    public void RuotaManuale() => _manuale = (RotazioneVideo)(((int)Effettiva + 1) % 4);
+    public void RuotaManuale()
+    {
+        lock (_blocco)
+            _manuale = (RotazioneVideo)(((int)(_manuale ?? _automatica) + 1) % 4);
+    }
 
-    public void TornaAutomatica() => _manuale = null;
+    public void TornaAutomatica()
+    {
+        lock (_blocco)
+            _manuale = null;
+    }
 }
