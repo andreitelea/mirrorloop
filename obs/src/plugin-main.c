@@ -22,24 +22,25 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <util/threading.h>
 #include <plugin-support.h>
 
+#include "bacheca.h"
+
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
-// Per ora un'immagine di prova: stesse misure e stesso formato (NV12) delle
-// immagini che arriveranno dal ricevitore, così questa prova percorre già la
-// strada vera (fotogrammi asincroni consegnati a OBS da un thread nostro).
-#define LARGHEZZA 1088
-#define ALTEZZA 2352
-#define FPS 30
-#define ALTEZZA_BARRA 120
-#define PASSO_BARRA 26
+// Senza battito da più di così il ricevitore è chiuso (o bloccato): la sorgente si svuota.
+#define SILENZIO_MASSIMO_NS 1000000000ULL
+// Il ricevitore suona il campanello a ogni immagine; si ricontrolla comunque ogni tanto.
+#define ATTESA_MS 10
+// Se il ricevitore non c'è, si riprova ad aprire la bacheca ogni secondo (a passi brevi, per
+// chiudersi subito se la sorgente viene tolta).
+#define PASSI_ATTESA_RICEVITORE 10
+#define PASSO_ATTESA_RICEVITORE_MS 100
 
 struct sorgente_mirrorloop {
 	obs_source_t *sorgente;
 	pthread_t thread;
 	bool thread_avviato;
 	volatile bool fermati; // solo con os_atomic_*: lo scrive OBS, lo legge il thread
-	uint8_t *nv12;
 };
 
 static const char *mirrorloop_nome(void *dati_tipo)
@@ -48,52 +49,76 @@ static const char *mirrorloop_nome(void *dati_tipo)
 	return obs_module_text("MirrorLoop");
 }
 
-static void disegna_prova(uint8_t *nv12, int inizio_barra)
+static void consegna(struct sorgente_mirrorloop *s, const struct bacheca_immagine *immagine)
 {
-	uint8_t *y = nv12;
-	uint8_t *uv = nv12 + LARGHEZZA * ALTEZZA;
-
-	for (int riga = 0; riga < ALTEZZA; riga++) {
-		bool in_barra = riga >= inizio_barra && riga < inizio_barra + ALTEZZA_BARRA;
-		// Gamma limitata (16-235), come il video H.264 dell'iPhone.
-		memset(y + (size_t)riga * LARGHEZZA, in_barra ? 235 : 40, LARGHEZZA);
-	}
-	// Croma neutra: immagine in scala di grigi.
-	memset(uv, 128, (size_t)LARGHEZZA * ALTEZZA / 2);
+	struct obs_source_frame fotogramma = {0};
+	fotogramma.width = immagine->larghezza;
+	fotogramma.height = immagine->altezza;
+	fotogramma.format = VIDEO_FORMAT_NV12;
+	fotogramma.data[0] = immagine->dati;
+	fotogramma.data[1] = immagine->dati + (size_t)immagine->larghezza * immagine->altezza;
+	fotogramma.linesize[0] = immagine->larghezza;
+	fotogramma.linesize[1] = immagine->larghezza;
+	fotogramma.full_range = false;
+	video_format_get_parameters(VIDEO_CS_709, VIDEO_RANGE_PARTIAL, fotogramma.color_matrix,
+				    fotogramma.color_range_min, fotogramma.color_range_max);
+	// L'istante è quello di messa in onda nel ricevitore, già nel tempo di OBS.
+	fotogramma.timestamp = immagine->istante_ns;
+	// OBS copia i dati: la copia della bacheca si può riusare subito dopo.
+	obs_source_output_video(s->sorgente, &fotogramma);
 }
 
 static void *mirrorloop_thread(void *dati)
 {
 	struct sorgente_mirrorloop *s = dati;
-	os_set_thread_name("mirrorloop: immagine di prova");
+	os_set_thread_name("mirrorloop: lettura della bacheca");
 
-	struct obs_source_frame fotogramma = {0};
-	fotogramma.width = LARGHEZZA;
-	fotogramma.height = ALTEZZA;
-	fotogramma.format = VIDEO_FORMAT_NV12;
-	fotogramma.data[0] = s->nv12;
-	fotogramma.data[1] = s->nv12 + LARGHEZZA * ALTEZZA;
-	fotogramma.linesize[0] = LARGHEZZA;
-	fotogramma.linesize[1] = LARGHEZZA;
-	fotogramma.full_range = false;
-	video_format_get_parameters(VIDEO_CS_709, VIDEO_RANGE_PARTIAL, fotogramma.color_matrix,
-				    fotogramma.color_range_min, fotogramma.color_range_max);
-
-	const uint64_t intervallo = 1000000000ULL / FPS;
-	uint64_t prossimo = os_gettime_ns();
-	int inizio_barra = 0;
+	struct bacheca *bacheca = NULL;
+	uint64_t ultima = 0;
+	bool in_onda = false;
 
 	while (!os_atomic_load_bool(&s->fermati)) {
-		disegna_prova(s->nv12, inizio_barra);
-		inizio_barra = (inizio_barra + PASSO_BARRA) % ALTEZZA;
+		if (!bacheca) {
+			bacheca = bacheca_apri();
+			if (!bacheca) {
+				for (int i = 0; i < PASSI_ATTESA_RICEVITORE && !os_atomic_load_bool(&s->fermati); i++)
+					os_sleep_ms(PASSO_ATTESA_RICEVITORE_MS);
+				continue;
+			}
+			obs_log(LOG_INFO, "ricevitore trovato");
+			ultima = 0;
+		}
 
-		fotogramma.timestamp = os_gettime_ns();
-		// OBS copia i dati: il buffer si può riusare subito dopo.
-		obs_source_output_video(s->sorgente, &fotogramma);
+		bacheca_aspetta(bacheca, ATTESA_MS);
 
-		prossimo += intervallo;
-		os_sleepto_ns(prossimo);
+		if (!bacheca_valida(bacheca)) {
+			// Reinizializzata da un ricevitore di un'altra versione: si riapre da capo.
+			obs_log(LOG_WARNING, "bacheca non più valida, la riapro");
+			bacheca_chiudi(bacheca);
+			bacheca = NULL;
+			continue;
+		}
+
+		// Ricevitore chiuso o bloccato: niente immagine ferma in onda, la sorgente si svuota.
+		bool vivo = os_gettime_ns() - bacheca_battito(bacheca) < SILENZIO_MASSIMO_NS;
+		if (!vivo) {
+			if (in_onda) {
+				obs_source_output_video(s->sorgente, NULL);
+				in_onda = false;
+				obs_log(LOG_INFO, "ricevitore in silenzio: sorgente vuota");
+			}
+			continue;
+		}
+
+		struct bacheca_immagine immagine;
+		if (bacheca_ultima_immagine(bacheca, ultima, &immagine)) {
+			consegna(s, &immagine);
+			ultima = immagine.numero;
+			in_onda = true;
+		}
 	}
+
+	bacheca_chiudi(bacheca);
 	return NULL;
 }
 
@@ -103,12 +128,14 @@ static void *mirrorloop_crea(obs_data_t *impostazioni, obs_source_t *sorgente)
 
 	struct sorgente_mirrorloop *s = bzalloc(sizeof(*s));
 	s->sorgente = sorgente;
-	s->nv12 = bmalloc((size_t)LARGHEZZA * ALTEZZA * 3 / 2);
+	// Le immagini arrivano già al loro momento (il ricevitore le sincronizza con l'audio): OBS
+	// deve mostrare sempre la più recente, senza tenerne da parte.
+	obs_source_set_async_unbuffered(sorgente, true);
 
 	if (pthread_create(&s->thread, NULL, mirrorloop_thread, s) == 0)
 		s->thread_avviato = true;
 	else
-		obs_log(LOG_ERROR, "impossibile avviare il thread dell'immagine di prova");
+		obs_log(LOG_ERROR, "impossibile avviare il thread di lettura");
 
 	return s;
 }
@@ -121,7 +148,6 @@ static void mirrorloop_distruggi(void *dati)
 		os_atomic_set_bool(&s->fermati, true);
 		pthread_join(s->thread, NULL);
 	}
-	bfree(s->nv12);
 	bfree(s);
 }
 
