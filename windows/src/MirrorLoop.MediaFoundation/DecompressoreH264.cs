@@ -21,8 +21,15 @@ public sealed class DecompressoreH264 : IDisposable
     private readonly Trasformazione _trasformazione;
     private readonly Func<int, byte[]> _nuovoBuffer;
     private readonly Guid _nv12 = VideoFormatGuids.FromFourCC(new FourCC("NV12"));
+    // H.264 lavora a blocchi di 16×16: con misure non multiple di 16 (per esempio 1320×2868, lo
+    // schermo di un iPhone 17 Pro Max) il decompressore restituisce l'immagine con un bordo di
+    // riempimento (1328×2880) e indica a parte la zona vera. Larghezza e altezza sono quelle della
+    // zona vera; l'altezza piena serve a trovare il piano dei colori nel campione.
     private int _larghezza;
     private int _altezza;
+    private int _altezzaPiena;
+    private int _inizioX;
+    private int _inizioY;
     private int _passo;
 
     /// <param name="nuovoBuffer">
@@ -92,15 +99,31 @@ public sealed class DecompressoreH264 : IDisposable
         }
     }
 
+    /// <summary>
+    /// Copia la sola zona vera dell'immagine, senza il bordo di riempimento. Il passo resta quello del
+    /// decompressore e il piano dei colori segue subito le righe vere, come in un NV12 senza bordo.
+    /// </summary>
     private FrameDecompresso Estrai(IMFSample campione)
     {
+        int dimensionePiena = _passo * _altezzaPiena * 3 / 2;
         int dimensione = _passo * _altezza * 3 / 2;
         byte[] nv12 = Campioni.Leggi(campione, contenuto =>
         {
-            if (contenuto.Length < dimensione)
-                throw new InvalidDataException($"Frame decompresso troppo corto: {contenuto.Length} byte invece di {dimensione}.");
+            if (contenuto.Length < dimensionePiena)
+                throw new InvalidDataException($"Frame decompresso troppo corto: {contenuto.Length} byte invece di {dimensionePiena}.");
             byte[] buffer = _nuovoBuffer(dimensione);
-            contenuto[..dimensione].CopyTo(buffer);
+            if (_altezza == _altezzaPiena && _inizioX == 0)
+            {
+                contenuto[..dimensione].CopyTo(buffer);
+                return buffer;
+            }
+            // Luminosità: una riga per pixel; colori (U e V alternati): una riga ogni due pixel.
+            for (int riga = 0; riga < _altezza; riga++)
+                contenuto.Slice((_inizioY + riga) * _passo + _inizioX, _larghezza).CopyTo(buffer.AsSpan(riga * _passo));
+            int coloriPieni = _passo * _altezzaPiena;
+            int colori = _passo * _altezza;
+            for (int riga = 0; riga < _altezza / 2; riga++)
+                contenuto.Slice(coloriPieni + (_inizioY / 2 + riga) * _passo + _inizioX, _larghezza).CopyTo(buffer.AsSpan(colori + riga * _passo));
             return buffer;
         });
         return new FrameDecompresso(nv12, _larghezza, _altezza, _passo, campione.SampleTime);
@@ -129,16 +152,46 @@ public sealed class DecompressoreH264 : IDisposable
 
                 mft.SetOutputType(0, tipo, 0);
                 ulong dimensioni = tipo.GetUInt64(MediaTypeAttributeKeys.FrameSize);
-                _larghezza = (int)(dimensioni >> 32);
-                _altezza = (int)(dimensioni & 0xFFFFFFFF);
+                int larghezzaPiena = (int)(dimensioni >> 32);
+                _altezzaPiena = (int)(dimensioni & 0xFFFFFFFF);
                 // Se il passo non è indicato, ogni riga è lunga esattamente quanto la larghezza.
                 _passo = tipo.GetUInt32(MediaTypeAttributeKeys.DefaultStride, out uint passo).Success && passo > 0
                     ? (int)passo
-                    : _larghezza;
-                _trasformazione.PreparaUscita(_passo * _altezza * 3 / 2);
+                    : larghezzaPiena;
+                (_inizioX, _inizioY, _larghezza, _altezza) = ZonaVera(tipo, larghezzaPiena, _altezzaPiena);
+                _trasformazione.PreparaUscita(_passo * _altezzaPiena * 3 / 2);
                 return;
             }
         }
+    }
+
+    /// <summary>
+    /// La zona vera dell'immagine (MF_MT_MINIMUM_DISPLAY_APERTURE, ricavata dal ritaglio scritto
+    /// nell'SPS). Se manca o non è credibile si usa l'immagine intera. Verificato il 24/10/2026: a
+    /// 1320×2868 il decompressore Microsoft dà 1328×2880 e indica (0,0) 1320×2868.
+    /// </summary>
+    private static (int X, int Y, int Larghezza, int Altezza) ZonaVera(IMFMediaType tipo, int larghezzaPiena, int altezzaPiena)
+    {
+        var intera = (0, 0, larghezzaPiena, altezzaPiena);
+        byte[] area;
+        try
+        {
+            area = tipo.GetBlob(MediaTypeAttributeKeys.MinimumDisplayAperture);
+        }
+        catch (SharpGenException)
+        {
+            return intera;
+        }
+        // MFVideoArea: OffsetX e OffsetY (MFOffset: parte frazionaria, poi intera, 16 bit ciascuna), poi cx e cy (32 bit).
+        if (area.Length < 16)
+            return intera;
+        int x = BitConverter.ToInt16(area, 2), y = BitConverter.ToInt16(area, 6);
+        int larghezza = BitConverter.ToInt32(area, 8), altezza = BitConverter.ToInt32(area, 12);
+        // NV12 ha un colore ogni 2×2 pixel: inizio e misure devono essere pari.
+        bool credibile = larghezza > 0 && altezza > 0 && x >= 0 && y >= 0
+            && x + larghezza <= larghezzaPiena && y + altezza <= altezzaPiena
+            && (x | y | larghezza | altezza) % 2 == 0;
+        return credibile ? (x, y, larghezza, altezza) : intera;
     }
 
     public void Dispose() => _trasformazione.Dispose();

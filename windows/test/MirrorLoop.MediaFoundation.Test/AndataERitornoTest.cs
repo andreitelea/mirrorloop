@@ -100,6 +100,62 @@ public class AndataERitornoTest
         Assert.All(richieste, d => Assert.Equal(richieste[0], d));
     }
 
+    /// <summary>
+    /// Misure non multiple di 16, come lo schermo di un iPhone 17 Pro Max: il decompressore lavora su
+    /// 1328×2880 ma deve restituire esattamente 1320×2868, senza bordo, con luminosità e colori al loro posto.
+    /// </summary>
+    [Fact]
+    public void ConMisureNonMultipleDi16EsceSoloLaZonaVera()
+    {
+        const int larghezza = 1320, altezza = 2868;
+        var animazione = new Animazione(larghezza, altezza);
+        var originali = new List<byte[]>();
+        var compressi = new List<FrameCompresso>();
+        var inizio = new DateTime(2026, 10, 24, 12, 0, 0, DateTimeKind.Utc);
+        using (var compressore = new CompressoreH264(larghezza, altezza, Fps, 10_000_000, Fps * 2))
+        {
+            for (int n = 0; n < 5; n++)
+            {
+                byte[] frame = animazione.Disegna(n, Fps, inizio.AddSeconds((double)n / Fps)).ToArray();
+                originali.Add(frame);
+                compressi.AddRange(compressore.Comprimi(frame));
+            }
+        }
+
+        using var decompressore = new DecompressoreH264();
+        for (int n = 0; n < compressi.Count; n++)
+        {
+            FrameDecompresso d = decompressore.Decomprimi(compressi[n].DatiH264, compressi[n].Numero).Single();
+            Assert.Equal(larghezza, d.Larghezza);
+            Assert.Equal(altezza, d.Altezza);
+            Assert.Equal(d.Passo * altezza * 3 / 2, d.Nv12.Length);
+
+            // Se il piano dei colori fosse preso dal punto sbagliato (dentro il bordo), i colori sarebbero sbagliati.
+            var (luminosita, colori) = DifferenzaMedia(originali[n], larghezza, altezza, d);
+            Assert.True(luminosita < 3.0, $"Frame {n}: differenza media di luminosità {luminosita:F2} (massimo 3).");
+            Assert.True(colori < 3.0, $"Frame {n}: differenza media dei colori {colori:F2} (massimo 3).");
+        }
+        Assert.Equal(5, compressi.Count);
+    }
+
+    /// <summary>Differenza media (valori 0–255) tra originale NV12 compatto e decompresso, per luminosità e colori.</summary>
+    private static (double Luminosita, double Colori) DifferenzaMedia(byte[] originale, int larghezza, int altezza, FrameDecompresso d)
+    {
+        long sommaY = 0, sommaUv = 0;
+        for (int riga = 0; riga < altezza; riga++)
+        {
+            for (int x = 0; x < larghezza; x++)
+                sommaY += Math.Abs(originale[riga * larghezza + x] - d.Nv12[riga * d.Passo + x]);
+        }
+        int inizioOriginale = larghezza * altezza, inizioDecompresso = d.Passo * altezza;
+        for (int riga = 0; riga < altezza / 2; riga++)
+        {
+            for (int x = 0; x < larghezza; x++)
+                sommaUv += Math.Abs(originale[inizioOriginale + riga * larghezza + x] - d.Nv12[inizioDecompresso + riga * d.Passo + x]);
+        }
+        return ((double)sommaY / (larghezza * altezza), (double)sommaUv / (larghezza * altezza / 2));
+    }
+
     /// <summary>Di quanto differisce in media la luminosità (piano Y, valori 0–255) tra originale e decompresso.</summary>
     private static double DifferenzaMediaLuminosita(byte[] originale, FrameDecompresso d)
     {
