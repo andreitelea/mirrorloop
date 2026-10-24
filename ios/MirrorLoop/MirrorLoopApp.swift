@@ -47,11 +47,6 @@ struct PannelloCattura: View {
     private static let manuale = "manuale"
     @AppStorage("trasporto") private var trasporto = Trasporto.quic
     @AppStorage("qualita") private var qualita = Qualita.alta
-    @AppStorage("bitrateMassimaMbit") private var bitrateMassimaMbit = Qualita.massima.bitrate / 1_000_000
-
-    private var bitrateScelto: Int {
-        qualita == .massima ? bitrateMassimaMbit * 1_000_000 : qualita.bitrate
-    }
 
     var body: some View {
         let c = cattura.contatori
@@ -88,14 +83,8 @@ struct PannelloCattura: View {
                 ForEach(Qualita.allCases, id: \.self) { Text($0.rawValue) }
             }
             .pickerStyle(.segmented)
-            if qualita == .massima {
-                Picker("Bitrate di prova", selection: $bitrateMassimaMbit) {
-                    ForEach(Qualita.bitrateDiProvaMbit, id: \.self) { Text("\($0) Mbit/s") }
-                }
-                .pickerStyle(.segmented)
-            }
             let dimensioni = Cattura.dimensioniVideo(qualita: qualita)
-            Text("\(dimensioni.0)×\(dimensioni.1) ·\(qualita.fps) fps · \(bitrateScelto / 1_000_000) Mbit/s")
+            Text("\(dimensioni.0)×\(dimensioni.1) · \(qualita.fps) fps · \(qualita.bitrate / 1_000_000) Mbit/s")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if !cattura.disponibile {
@@ -105,8 +94,7 @@ struct PannelloCattura: View {
             HStack {
                 Button("Avvia") {
                     if let destinazione {
-                        cattura.avvia(destinazione: destinazione, trasporto: trasporto, qualita: qualita,
-                                      bitrate: bitrateScelto)
+                        cattura.avvia(destinazione: destinazione, trasporto: trasporto, qualita: qualita)
                     }
                 }
                     .buttonStyle(.borderedProminent)
@@ -123,7 +111,7 @@ struct PannelloCattura: View {
             }
             Text("Catturati: \(c.fotogrammi) (in background \(c.fotogrammiInBackground) in \(c.secondiInBackground, format: .number.precision(.fractionLength(1))) s)")
             Text("Scartati per il ritmo: \(c.scartatiPerRitmo)")
-            Text("Qualità: \(cattura.qualita.rawValue) · \(cattura.qualita.fps) fps · \(cattura.bitrate / 1_000_000) Mbit/s")
+            Text("Qualità: \(cattura.qualita.rawValue) · \(cattura.qualita.fps) fps · \(cattura.qualita.bitrate / 1_000_000) Mbit/s")
             Text("Dimensione: \(c.larghezza)×\(c.altezza) (richiesta \(cattura.dimensioneRichiesta))")
             Text("Orientamento: \(descrizione(cattura.sensore.posizione)) · rotazione \(Int(c.rotazione) * 90)° · cambi \(cattura.sensore.cambi)\(c.orientamento.map { " · ScreenCaptureKit \($0)" } ?? "")")
             Text("Compressi: \(s.frameCompressi) · keyframe \(s.keyframe)")

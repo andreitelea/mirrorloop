@@ -211,7 +211,6 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
 final class Cattura {
     private(set) var stato = "Ferma"
     private(set) var qualita = Qualita.standard
-    private(set) var bitrate = 0
     private(set) var contatori = Contatori()
     private(set) var compressione = StatisticheCompressione()
     private(set) var kbitAlSecondo = 0
@@ -234,10 +233,9 @@ final class Cattura {
     // restava bloccato dietro di lui (registro del 21/10/2026: pausa di 481 ms).
     @ObservationIgnored private let codaAudio = DispatchQueue(label: "io.github.andreitelea.mirrorloop.audio", qos: .userInteractive)
 
-    func avvia(destinazione: DestinazionePC, trasporto: Trasporto, qualita: Qualita, bitrate: Int) {
+    func avvia(destinazione: DestinazionePC, trasporto: Trasporto, qualita: Qualita) {
         ferma()
         self.qualita = qualita
-        self.bitrate = bitrate
         errore = nil
         contatori = Contatori()
         compressione = StatisticheCompressione()
@@ -253,12 +251,12 @@ final class Cattura {
         // l'altra chiede un keyframe quando ne ha bisogno.
         let orologio = OrologioCattura()
         let scatolaCompressore = Mutex<CompressoreH264?>(nil)
-        let trasmissione = Trasmissione(destinazione: destinazione, trasporto: trasporto, bitrateVideo: bitrate,
+        let trasmissione = Trasmissione(destinazione: destinazione, trasporto: trasporto, bitrateVideo: qualita.bitrate,
                                         orologio: orologio) {
             scatolaCompressore.withLock { $0?.forzaKeyframe() }
         }
         let compressore = CompressoreH264(larghezza: larghezza, altezza: altezza, fps: qualita.fps,
-                                          bitrate: bitrate) { frame in
+                                          bitrate: qualita.bitrate) { frame in
             trasmissione.invia(frame)
         }
         scatolaCompressore.withLock { $0 = compressore }

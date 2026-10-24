@@ -29,17 +29,14 @@ enum Qualita: String, CaseIterable, Sendable {
         }
     }
 
-    /// Bitrate medio chiesto al compressore, in bit al secondo. Per Massima è il valore di partenza:
-    /// nell'app si sceglie tra quelli di prova.
+    /// Bitrate medio chiesto al compressore, in bit al secondo. Massima: prova del 24/10/2026 sul
+    /// 17 Pro Max a 1320×2868: a 40 Mbit/s nessuna immagine persa, a 60 e 80 il Wi-Fi dell'iPhone
+    /// non reggeva (ritardi fino a 2 s, centinaia di immagini scartate). 30 per avere margine.
     var bitrate: Int {
         switch self {
         case .standard: 4_000_000
         case .alta: 10_000_000
-        case .massima: 40_000_000
+        case .massima: 30_000_000
         }
     }
-
-    /// Valori di prova per Massima, in Mbit/s: il traffico resta nella rete di casa, e il limite vero
-    /// sono le pause del Wi-Fi. Da fissare con le misure e poi togliere (prova del 24/10/2026).
-    static let bitrateDiProvaMbit = [20, 40, 60, 80]
 }
