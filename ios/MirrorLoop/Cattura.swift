@@ -211,6 +211,7 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
 final class Cattura {
     private(set) var stato = "Ferma"
     private(set) var qualita = Qualita.standard
+    private(set) var bitrate = 0
     private(set) var contatori = Contatori()
     private(set) var compressione = StatisticheCompressione()
     private(set) var kbitAlSecondo = 0
@@ -233,9 +234,10 @@ final class Cattura {
     // restava bloccato dietro di lui (registro del 21/10/2026: pausa di 481 ms).
     @ObservationIgnored private let codaAudio = DispatchQueue(label: "io.github.andreitelea.mirrorloop.audio", qos: .userInteractive)
 
-    func avvia(destinazione: DestinazionePC, trasporto: Trasporto, qualita: Qualita) {
+    func avvia(destinazione: DestinazionePC, trasporto: Trasporto, qualita: Qualita, bitrate: Int) {
         ferma()
         self.qualita = qualita
+        self.bitrate = bitrate
         errore = nil
         contatori = Contatori()
         compressione = StatisticheCompressione()
@@ -245,18 +247,18 @@ final class Cattura {
         kbitPicco = 0
         misuraBitrate = nil
 
-        let (larghezza, altezza) = Self.dimensioniVideo(latoCorto: qualita.latoCorto)
+        let (larghezza, altezza) = Self.dimensioniVideo(qualita: qualita)
         dimensioneRichiesta = "\(larghezza)×\(altezza)"
         // Il compressore e la trasmissione si conoscono a vicenda: uno consegna i frame,
         // l'altra chiede un keyframe quando ne ha bisogno.
         let orologio = OrologioCattura()
         let scatolaCompressore = Mutex<CompressoreH264?>(nil)
-        let trasmissione = Trasmissione(destinazione: destinazione, trasporto: trasporto, bitrateVideo: qualita.bitrate,
+        let trasmissione = Trasmissione(destinazione: destinazione, trasporto: trasporto, bitrateVideo: bitrate,
                                         orologio: orologio) {
             scatolaCompressore.withLock { $0?.forzaKeyframe() }
         }
         let compressore = CompressoreH264(larghezza: larghezza, altezza: altezza, fps: qualita.fps,
-                                          bitrate: qualita.bitrate) { frame in
+                                          bitrate: bitrate) { frame in
             trasmissione.invia(frame)
         }
         scatolaCompressore.withLock { $0 = compressore }
@@ -322,15 +324,19 @@ final class Cattura {
         }
     }
 
-    /// Il lato corto della qualità scelta come larghezza (il video è verticale, come il pannello) e
-    /// l'altezza in proporzione allo schermo, arrotondata a un multiplo di 16: H.264 lavora a
-    /// blocchi di 16×16 e con misure diverse il decodificatore di Windows aggiunge righe o colonne
-    /// di riempimento. La differenza di proporzioni è minima.
-    private static func dimensioniVideo(latoCorto: Int) -> (Int, Int) {
+    /// Le misure del video, sempre in verticale come il pannello. Massima: quelle dello schermo
+    /// (nativeBounds, in pixel). Le altre: il lato corto della qualità come larghezza e l'altezza in
+    /// proporzione allo schermo, arrotondata a un multiplo di 16 (H.264 lavora a blocchi di 16×16;
+    /// la differenza di proporzioni è minima).
+    static func dimensioniVideo(qualita: Qualita) -> (Int, Int) {
         let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         let schermo = scena?.screen.nativeBounds.size ?? CGSize(width: 1170, height: 2532)
         let lato = min(schermo.width, schermo.height)
-        let altezza = Int((Double(latoCorto) * max(schermo.width, schermo.height) / lato).rounded())
+        let latoLungo = max(schermo.width, schermo.height)
+        guard let latoCorto = qualita.latoCorto else {
+            return (Int(lato), Int(latoLungo))
+        }
+        let altezza = Int((Double(latoCorto) * latoLungo / lato).rounded())
         return (latoCorto, Int((Double(altezza) / 16).rounded(.down)) * 16)
     }
 
@@ -361,7 +367,7 @@ final class Cattura {
 
     private func avviaFlusso(_ filtro: SCContentFilter) {
         guard let ricevitore else { return }
-        let (larghezza, altezza) = Self.dimensioniVideo(latoCorto: qualita.latoCorto)
+        let (larghezza, altezza) = Self.dimensioniVideo(qualita: qualita)
         let configurazione = SCStreamConfiguration()
         configurazione.width = larghezza
         configurazione.height = altezza
