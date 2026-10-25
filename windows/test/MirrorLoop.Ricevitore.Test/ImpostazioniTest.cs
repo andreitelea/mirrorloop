@@ -52,11 +52,14 @@ public sealed class ImpostazioniTest : IDisposable
         var impostazioni = new Impostazioni(_cartella, "PC di Andrei");
         Assert.False(impostazioni.StatisticheVisibili);
 
+        Assert.False(impostazioni.InformazioniVisibili);
         impostazioni.CambiaStatisticheVisibili(true);
+        impostazioni.CambiaInformazioniVisibili(true);
         impostazioni.CambiaNomePC("Studio");
 
         var riaperte = new Impostazioni(_cartella, "PC di Andrei");
         Assert.True(riaperte.StatisticheVisibili);
+        Assert.True(riaperte.InformazioniVisibili);
         Assert.Equal("Studio", riaperte.NomePC);
     }
 

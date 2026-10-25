@@ -54,6 +54,10 @@ public partial class FinestraPrincipale : Window
     private double _msConversione;
     private string _stato = Testi.Avvio;
     private long _mostratiTotali;
+    // Per le informazioni semplici (tasto S).
+    private bool _collegato;
+    private double? _latenzaSchermoMs;
+    private readonly ContoUltimoMinuto _interruzioni = new(TimeSpan.FromMinutes(1));
     // Contatori totali ogni mezzo secondo, per le medie degli ultimi 10 secondi: la media di mezzo
     // secondo salta troppo (le immagini arrivano a grappoli) e trae in inganno.
     private readonly Queue<(double Secondi, long InOnda, long Mostrati, long Bacheca)> _storico = new();
@@ -100,6 +104,7 @@ public partial class FinestraPrincipale : Window
         _annuncio = new AnnuncioBonjour(_impostazioni.NomePC, Porta);
         MostraNomePC();
         MostraStatistiche(_impostazioni.StatisticheVisibili);
+        RiquadroInformazioni.Visibility = _impostazioni.InformazioniVisibili ? Visibility.Visible : Visibility.Collapsed;
 
         _riproduzione = new Riproduzione(_coda);
 
@@ -130,6 +135,11 @@ public partial class FinestraPrincipale : Window
         TestoStato.Text = Testi.Avvio;
         TestoTastiInBasso.Text = Testi.TastiInBasso;
         TestoAiutoTitolo.Text = Testi.AiutoTitolo;
+        TestoInfoTitolo.Text = Testi.InfoTitolo;
+        TestoInfoCollegatoA.Text = Testi.InfoCollegatoA;
+        TestoInfoQualita.Text = Testi.InfoQualita;
+        TestoInfoRitardo.Text = Testi.InfoRitardo;
+        TestoInfoInterruzioni.Text = Testi.InfoInterruzioni;
         TestoAiutoF1.Text = Testi.AiutoF1;
         TestoAiutoS.Text = Testi.AiutoS;
         TestoAiutoO.Text = Testi.AiutoO;
@@ -146,6 +156,9 @@ public partial class FinestraPrincipale : Window
     private void CambiaStato(StatoRicezione stato)
     {
         _stato = stato.Descrizione;
+        _collegato = stato.Collegato;
+        if (!stato.Collegato)
+            _latenzaSchermoMs = null;
         TestoStato.Text = stato.Descrizione;
         // Un iPhone collegato: il rifiuto di prima non interessa più (resta nelle statistiche).
         if (stato.Collegato)
@@ -210,6 +223,10 @@ public partial class FinestraPrincipale : Window
     {
         var rete = _statistiche.Leggi();
         var schermo = _statisticheSchermo.Leggi();
+        if (schermo.LatenzaMedianaMs is double latenza)
+            _latenzaSchermoMs = latenza;
+        long interruzioni = _interruzioni.Aggiungi(_orologio.Elapsed, _riproduzioneAudio.Buchi);
+        AggiornaInformazioni(interruzioni);
         var (inOnda, mostrati, bacheca) = MedieUltimi10Secondi();
         var audio = _statisticheAudio.Leggi();
         double secondi = _dallUltimaLettura.Elapsed.TotalSeconds;
@@ -346,18 +363,18 @@ public partial class FinestraPrincipale : Window
                 RiquadroAiuto.Visibility = Visibility.Visible;
             }
         }
-        else if (e.Key == Key.S)
+        else if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
         {
+            // Le statistiche complete servono per capire un problema: non stanno nell'aiuto.
             bool visibili = RiquadroStatistiche.Visibility != Visibility.Visible;
             MostraStatistiche(visibili);
-            try
-            {
-                _impostazioni.CambiaStatisticheVisibili(visibili);
-            }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
-            {
-                // Solo una preferenza: al prossimo avvio le statistiche saranno com'erano, niente di grave.
-            }
+            RicordaScelta(() => _impostazioni.CambiaStatisticheVisibili(visibili));
+        }
+        else if (e.Key == Key.S)
+        {
+            bool visibili = RiquadroInformazioni.Visibility != Visibility.Visible;
+            RiquadroInformazioni.Visibility = visibili ? Visibility.Visible : Visibility.Collapsed;
+            RicordaScelta(() => _impostazioni.CambiaInformazioniVisibili(visibili));
         }
         else if (e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control)
         {
@@ -396,6 +413,29 @@ public partial class FinestraPrincipale : Window
 
     private void MostraStatistiche(bool visibili) =>
         RiquadroStatistiche.Visibility = visibili ? Visibility.Visible : Visibility.Collapsed;
+
+    private static void RicordaScelta(Action salva)
+    {
+        try
+        {
+            salva();
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            // Solo una preferenza: al prossimo avvio i riquadri saranno com'erano, niente di grave.
+        }
+    }
+
+    /// <summary>Le quattro righe in parole semplici del tasto S.</summary>
+    private void AggiornaInformazioni(long interruzioni)
+    {
+        ValoreInfoCollegatoA.Text = _collegato ? "iPhone" : Testi.InfoNessunIphone;
+        ValoreInfoQualita.Text = _collegato && _immagine is not null
+            ? InformazioniTrasmissione.Qualita(_immagine.PixelWidth, _immagine.PixelHeight)
+            : "—";
+        ValoreInfoRitardo.Text = _collegato ? InformazioniTrasmissione.Ritardo(_latenzaSchermoMs) : "—";
+        ValoreInfoInterruzioni.Text = _collegato ? InformazioniTrasmissione.Interruzioni(interruzioni) : "—";
+    }
 
     /// <summary>Mostra o nasconde l'avviso di rete pubblica (la lettura, via COM, fuori dal thread della finestra).</summary>
     private async Task ControllaReteAsync()

@@ -11,8 +11,7 @@ namespace MirrorLoop.Ricevitore;
 /// Le scelte di chi usa il ricevitore, in impostazioni.json in %LOCALAPPDATA%\MirrorLoop. Un file
 /// illeggibile vale come "nessuna scelta": si torna ai predefiniti.
 ///
-/// Si ricorda se le statistiche erano aperte (chiuse al primo avvio: a chi usa il programma non
-/// servono) e il nome con cui il PC compare nell'elenco dell'iPhone (annuncio Bonjour). Il nome
+/// Si ricorda se le informazioni (S) e le statistiche (Ctrl+S) erano aperte (chiuse al primo avvio) e il nome con cui il PC compare nell'elenco dell'iPhone (annuncio Bonjour). Il nome
 /// di Windows ("DESKTOP-T982V1C") non dice niente a nessuno: si propone "PC di &lt;nome&gt;", come fa
 /// l'iPhone con "iPhone di &lt;nome&gt;", e chi vuole lo cambia. Il predefinito non si salva ma si
 /// ricalcola a ogni avvio, così segue un eventuale cambio del nome dell'account.
@@ -31,7 +30,8 @@ public sealed unsafe partial class Impostazioni
 
     private sealed record Dati(
         [property: JsonPropertyName("nomePC")] string? NomePC,
-        [property: JsonPropertyName("statisticheVisibili")] bool StatisticheVisibili = false);
+        [property: JsonPropertyName("statisticheVisibili")] bool StatisticheVisibili = false,
+        [property: JsonPropertyName("informazioniVisibili")] bool InformazioniVisibili = false);
 
     private static readonly JsonSerializerOptions Formato = new() { WriteIndented = true };
 
@@ -72,6 +72,11 @@ public sealed unsafe partial class Impostazioni
 
     /// <summary>Lancia IOException o UnauthorizedAccessException se non si può scrivere.</summary>
     public void CambiaStatisticheVisibili(bool visibili) => Salva(_dati with { StatisticheVisibili = visibili });
+
+    public bool InformazioniVisibili => _dati.InformazioniVisibili;
+
+    /// <summary>Lancia IOException o UnauthorizedAccessException se non si può scrivere.</summary>
+    public void CambiaInformazioniVisibili(bool visibili) => Salva(_dati with { InformazioniVisibili = visibili });
 
     /// <summary>
     /// Rende il nome adatto all'annuncio: il punto separerebbe le etichette nel nome completo che si

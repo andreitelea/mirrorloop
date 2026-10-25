@@ -74,16 +74,48 @@
                        Foreground="#D09A5A" FontSize="15" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="900" />
         </StackPanel>
 
-        <!-- Riquadro delle statistiche: il tasto S lo mostra e lo nasconde,
-             così non finisce in diretta quando OBS riprende la finestra. -->
-        <Border x:Name="RiquadroStatistiche" Visibility="Collapsed"
-                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
-                Padding="14,10" CornerRadius="10" Background="#E0141220"
-                BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="1">
-            <TextBlock x:Name="TestoStatistiche"
-                       Foreground="#ECEAF5" FontFamily="Consolas" FontSize="14"
-                       Text="—" />
-        </Border>
+        <!-- In alto a sinistra, sopra il video: le informazioni semplici (S) e le statistiche complete
+             per la diagnosi (Ctrl+S). Si mostrano e nascondono a comando, così non finiscono in
+             diretta quando OBS riprende la finestra. -->
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12">
+            <Border x:Name="RiquadroInformazioni" Visibility="Collapsed" HorizontalAlignment="Left" Margin="0,0,0,10"
+                    Padding="16,12" CornerRadius="10" Background="#E0141220"
+                    BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock x:Name="TestoInfoTitolo" Foreground="White" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <Grid TextElement.FontSize="14">
+                        <Grid.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#ECEAF5" />
+                                <Setter Property="Margin" Value="0,2" />
+                            </Style>
+                        </Grid.Resources>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="TestoInfoCollegatoA" Grid.Row="0" Foreground="#9B96B0" Margin="0,2,18,2" />
+                        <TextBlock x:Name="ValoreInfoCollegatoA" Grid.Row="0" Grid.Column="1" />
+                        <TextBlock x:Name="TestoInfoQualita" Grid.Row="1" Foreground="#9B96B0" Margin="0,2,18,2" />
+                        <TextBlock x:Name="ValoreInfoQualita" Grid.Row="1" Grid.Column="1" />
+                        <TextBlock x:Name="TestoInfoRitardo" Grid.Row="2" Foreground="#9B96B0" Margin="0,2,18,2" />
+                        <TextBlock x:Name="ValoreInfoRitardo" Grid.Row="2" Grid.Column="1" />
+                        <TextBlock x:Name="TestoInfoInterruzioni" Grid.Row="3" Foreground="#9B96B0" Margin="0,2,18,2" />
+                        <TextBlock x:Name="ValoreInfoInterruzioni" Grid.Row="3" Grid.Column="1" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <Border x:Name="RiquadroStatistiche" Visibility="Collapsed" HorizontalAlignment="Left"
+                    Padding="14,10" CornerRadius="10" Background="#E0141220"
+                    BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="1">
+                <TextBlock x:Name="TestoStatistiche"
+                           Foreground="#ECEAF5" FontFamily="Consolas" FontSize="14"
+                           Text="—" />
+            </Border>
+        </StackPanel>
 
         <!-- Avviso se la rete di casa è impostata come Pubblica (il firewall lascia passare l'iPhone
              solo sulle reti private). -->

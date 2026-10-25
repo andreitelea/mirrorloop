@@ -16,7 +16,7 @@
     <value>Starting…</value>
   </data>
   <data name="TastiInBasso" xml:space="preserve">
-    <value>F1 help  ·  S statistics  ·  O rotate  ·  A automatic rotation  ·  N PC name</value>
+    <value>F1 help  ·  S info  ·  O rotate  ·  A automatic rotation  ·  N PC name</value>
   </data>
   <data name="SceltaSullIphone" xml:space="preserve">
     <value>On the iPhone, choose “{0}”</value>
@@ -34,7 +34,7 @@
     <value>show or hide this help</value>
   </data>
   <data name="AiutoS" xml:space="preserve">
-    <value>transmission statistics</value>
+    <value>transmission info</value>
   </data>
   <data name="AiutoO" xml:space="preserve">
     <value>rotate the image by 90° (if automatic rotation gets it wrong)</value>
@@ -82,6 +82,45 @@ The code will be needed again at the next connection; the current transmission c
   </data>
   <data name="ErroreNome" xml:space="preserve">
     <value>Unable to save the name: {0}</value>
+  </data>
+  <data name="InfoTitolo" xml:space="preserve">
+    <value>Transmission info</value>
+  </data>
+  <data name="InfoCollegatoA" xml:space="preserve">
+    <value>Connected to</value>
+  </data>
+  <data name="InfoQualita" xml:space="preserve">
+    <value>Quality</value>
+  </data>
+  <data name="InfoRitardo" xml:space="preserve">
+    <value>Delay</value>
+  </data>
+  <data name="InfoInterruzioni" xml:space="preserve">
+    <value>Interruptions</value>
+  </data>
+  <data name="InfoNessunIphone" xml:space="preserve">
+    <value>no iPhone</value>
+  </data>
+  <data name="InfoQualitaHD" xml:space="preserve">
+    <value>HD</value>
+  </data>
+  <data name="InfoQualitaFullHD" xml:space="preserve">
+    <value>Full HD</value>
+  </data>
+  <data name="InfoQualitaMassima" xml:space="preserve">
+    <value>Maximum</value>
+  </data>
+  <data name="InfoRitardoValore" xml:space="preserve">
+    <value>about {0:0.0} s</value>
+  </data>
+  <data name="InfoInterruzioniNessuna" xml:space="preserve">
+    <value>none in the last minute</value>
+  </data>
+  <data name="InfoInterruzioniUna" xml:space="preserve">
+    <value>1 in the last minute</value>
+  </data>
+  <data name="InfoInterruzioniMolte" xml:space="preserve">
+    <value>{0} in the last minute</value>
   </data>
   <data name="NomeTitolo" xml:space="preserve">
     <value>Name of this PC</value>

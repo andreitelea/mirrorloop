@@ -18,6 +18,9 @@ internal static class LinguaDeiTest
     {
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.GetCultureInfo("it-IT");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("it-IT");
+        // Anche i numeri come in Italia (virgola decimale), qualunque sia il formato del PC.
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.GetCultureInfo("it-IT");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("it-IT");
     }
 
     /// <summary>Esegue <paramref name="azione"/> con i testi nella lingua indicata, poi torna all'italiano.</summary>
