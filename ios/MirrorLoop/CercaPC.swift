@@ -27,7 +27,7 @@ final class CercaPC {
 
     /// I nomi dei PC trovati (di solito il nome del computer), in ordine alfabetico.
     private(set) var trovati: [String] = []
-    private(set) var stato = "Ricerca dei PC…"
+    private(set) var stato = String(localized: "Searching for PCs…")
 
     @ObservationIgnored private var browser: NWBrowser?
 
@@ -55,10 +55,10 @@ final class CercaPC {
     private func descrivi(_ statoBrowser: NWBrowser.State) {
         switch statoBrowser {
         case .ready:
-            stato = "Ricerca dei PC attiva"
+            stato = String(localized: "Searching for PCs")
         case .waiting(let errore), .failed(let errore):
             // Il caso tipico è il permesso "Rete locale" negato: senza, iOS blocca Bonjour.
-            stato = "Ricerca dei PC bloccata: \(errore.localizedDescription). Controlla Impostazioni › Privacy e sicurezza › Rete locale."
+            stato = String(localized: "PC search blocked: \(errore.localizedDescription). Check Settings › Privacy & Security › Local Network.")
         default:
             break
         }

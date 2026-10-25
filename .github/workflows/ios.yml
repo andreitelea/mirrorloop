@@ -51,6 +51,10 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
 
+      # Ogni testo del codice deve avere la traduzione italiana nel catalogo.
+      - name: Controlla le traduzioni
+        run: python3 strumenti/controlla_traduzioni.py build MirrorLoop/Localizable.xcstrings
+
       # I calcoli dell'abbinamento confrontati con l'esempio di docs/protocollo.md, su un iPhone
       # simulato: il primo iPhone disponibile con il sistema più recente installato sulla macchina.
       - name: Test dell'abbinamento (simulatore)

@@ -5,16 +5,24 @@ name: MirrorLoop
 
 options:
   bundleIdPrefix: io.github.andreitelea
+  # I testi del codice sono in inglese, la lingua per chi non ha l'iPhone in italiano; le traduzioni
+  # stanno nei cataloghi Localizable.xcstrings e InfoPlist.xcstrings (le lingue dei cataloghi
+  # XcodeGen le aggiunge da solo alle regioni del progetto).
+  developmentLanguage: en
   deploymentTarget:
     iOS: "27.0"
 
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.12.0"
+    MARKETING_VERSION: "0.13.0"
     CURRENT_PROJECT_VERSION: "1"
     # Identificativo del team Apple Developer (non è un segreto: compare in ogni app firmata).
     DEVELOPMENT_TEAM: FVYL9M67QJ
+    # Il compilatore elenca i testi da tradurre (file .stringsdata): il workflow controlla che
+    # ognuno abbia la traduzione italiana nel catalogo.
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
 
 targets:
   MirrorLoop:
@@ -39,6 +47,7 @@ targets:
       path: MirrorLoop/Info.plist
       properties:
         CFBundleDisplayName: MirrorLoop
+        CFBundleDevelopmentRegion: en
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Senza questa chiave iOS mostrerebbe l'app in modalità compatibilità (con bande nere).
@@ -52,8 +61,8 @@ targets:
         # l'app va in background (guida Apple "Capturing screen content on iOS").
         UIBackgroundModes:
           - screen-capture
-        # Testo mostrato da iOS quando chiede il permesso di usare la rete locale.
-        NSLocalNetworkUsageDescription: MirrorLoop si collega al ricevitore sul tuo PC nella rete di casa per trasmettere lo schermo.
+        # Testo mostrato da iOS quando chiede il permesso di usare la rete locale (in italiano in InfoPlist.xcstrings).
+        NSLocalNetworkUsageDescription: MirrorLoop connects to the receiver on your PC over your home network to stream the screen.
         # Il tipo di servizio con cui il ricevitore si annuncia (Bonjour): senza, iOS blocca la ricerca dei PC.
         NSBonjourServices:
           - _mirrorloop._udp

@@ -4,7 +4,7 @@ import Security
 import Synchronization
 
 struct StatisticheTrasmissione: Sendable {
-    var stato = "Ferma"
+    var stato = String(localized: "Stopped")
     var collegato = false
     var inviati = 0
     var scartati = 0
@@ -122,7 +122,7 @@ final class Trasmissione: @unchecked Sendable {
     /// Annulla l'abbinamento: niente nuovi tentativi finché non si preme di nuovo Avvia.
     func annullaAbbinamento() {
         coda.async { [self] in
-            fermaDefinitivamente("Abbinamento annullato")
+            fermaDefinitivamente(String(localized: "Pairing cancelled"))
         }
     }
 
@@ -136,7 +136,7 @@ final class Trasmissione: @unchecked Sendable {
     func ferma() {
         coda.async { [self] in
             attivo = false
-            chiudi(stato: "Ferma")
+            chiudi(stato: String(localized: "Stopped"))
         }
     }
 
@@ -262,7 +262,7 @@ final class Trasmissione: @unchecked Sendable {
         guard attivo else { return }
         generazione += 1
         let mia = generazione
-        statistiche.withLock { $0.stato = "Collegamento a \(destinazione.descrizione)…" }
+        statistiche.withLock { $0.stato = String(localized: "Connecting to \(destinazione.descrizione)…") }
         switch destinazione {
         case .indirizzo(let indirizzo):
             host = NWEndpoint.Host(indirizzo)
@@ -273,7 +273,7 @@ final class Trasmissione: @unchecked Sendable {
         coda.asyncAfter(deadline: .now() + Self.limiteCollegamento) { [self] in
             // Durante un abbinamento si aspettano le persone: vale il limite dell'abbinamento.
             guard mia == generazione, !collegato, !inAbbinamento else { return }
-            riprova("collegamento non riuscito entro \(Int(Self.limiteCollegamento)) s")
+            riprova(String(localized: "no connection within \(Int(Self.limiteCollegamento)) s"))
         }
     }
 
@@ -295,14 +295,14 @@ final class Trasmissione: @unchecked Sendable {
                 nuovo.cancel()
                 risolutore = nil
                 guard let trovato else {
-                    riprova("indirizzo di \(nome) non ricavato")
+                    riprova(String(localized: "couldn't get the address of \(nome)"))
                     return
                 }
                 host = trovato
-                statistiche.withLock { $0.stato = "Collegamento a \(nome) (\(trovato))…" }
+                statistiche.withLock { $0.stato = String(localized: "Connecting to \(nome) (\(String(describing: trovato)))…") }
                 collegaQuic(generazione: mia)
             case .waiting(let errore), .failed(let errore):
-                riprova("\(nome) non trovato in rete: \(errore.localizedDescription)")
+                riprova(String(localized: "\(nome) not found on the network: \(errore.localizedDescription)"))
             default:
                 break
             }
@@ -336,7 +336,7 @@ final class Trasmissione: @unchecked Sendable {
                     corsiePronte.insert(corsia)
                     forseCollegato()
                 case .waiting(let errore), .failed(let errore):
-                    riprova("corsia \(corsia): \(errore.localizedDescription)")
+                    riprova(String(localized: "lane \(String(describing: corsia)): \(errore.localizedDescription)"))
                 default:
                     break
                 }
@@ -376,7 +376,7 @@ final class Trasmissione: @unchecked Sendable {
     /// Presentazione (tipo 6): modo, chiave e impegno sul numero dell'iPhone.
     private func presentati(_ connessione: NWConnection) {
         guard let impronta = impronte[.controllo] else {
-            riprova("certificato del PC non letto")
+            riprova(String(localized: "couldn't read the PC certificate"))
             return
         }
         modo = PCAbbinati.conosciuto(impronta) ? .ricollegamento : .nuovoAbbinamento
@@ -387,7 +387,7 @@ final class Trasmissione: @unchecked Sendable {
             // Da iOS 16 un'app riceve solo il nome generico del dispositivo.
             nome: "iPhone")
         connessione.send(content: presentazione, completion: .contentProcessed { _ in })
-        statistiche.withLock { $0.stato = "Abbinamento con \(destinazione.descrizione)…" }
+        statistiche.withLock { $0.stato = String(localized: "Pairing with \(destinazione.descrizione)…") }
     }
 
     /// Sfida (tipo 7) dal PC: si risponde con la prova (tipo 8).
@@ -400,7 +400,7 @@ final class Trasmissione: @unchecked Sendable {
             connessione.send(content: Abbinamento.messaggioProva(numeroIphone: numeroIphone, firma: firma),
                              completion: .contentProcessed { _ in })
         } catch {
-            fermaDefinitivamente("Firma non riuscita: \(error.localizedDescription)")
+            fermaDefinitivamente(String(localized: "Signing failed: \(error.localizedDescription)"))
         }
     }
 
@@ -412,7 +412,7 @@ final class Trasmissione: @unchecked Sendable {
             if modo == .ricollegamento || confermatoDaIphone {
                 completaAbbinamento()
             } else {
-                statistiche.withLock { $0.stato = "Il PC ha accettato: conferma il codice sull'iPhone" }
+                statistiche.withLock { $0.stato = String(localized: "The PC accepted: confirm the code on the iPhone") }
             }
         case .inAttesa:
             guard let impronta = impronte[.controllo] else { return }
@@ -425,16 +425,16 @@ final class Trasmissione: @unchecked Sendable {
                 serveConferma: nuovo)
             statistiche.withLock {
                 $0.abbinamento = inCorso
-                $0.stato = nuovo ? "Confronta il codice con quello sul PC" : "Consenti il collegamento sul PC"
+                $0.stato = nuovo ? String(localized: "Compare the code with the one on the PC") : String(localized: "Allow the connection on the PC")
             }
             inAbbinamento = true
             let mia = generazione
             coda.asyncAfter(deadline: .now() + Self.limiteAbbinamento) { [self] in
                 guard mia == generazione, !collegato else { return }
-                fermaDefinitivamente("Abbinamento non concluso in tempo")
+                fermaDefinitivamente(String(localized: "Pairing not completed in time"))
             }
         case .rifiutato, nil:
-            fermaDefinitivamente("Il PC ha rifiutato il collegamento")
+            fermaDefinitivamente(String(localized: "The PC rejected the connection"))
         }
     }
 
@@ -455,7 +455,7 @@ final class Trasmissione: @unchecked Sendable {
     private func forseCollegato() {
         guard abbinato, corsiePronte.count == 3, !collegato else { return }
         guard impronte.count == 3, Set(impronte.values).count == 1 else {
-            riprova("le corsie portano a PC diversi")
+            riprova(String(localized: "the lanes lead to different PCs"))
             return
         }
         collegamentoRiuscito()
@@ -479,8 +479,8 @@ final class Trasmissione: @unchecked Sendable {
         statistiche.withLock { s in
             let indirizzo = host.map { "\($0):\(Self.porta)" } ?? "?"
             s.stato = switch destinazione {
-            case .servizio(let nome): "Collegata a \(nome) (\(indirizzo))"
-            case .indirizzo: "Collegata a \(indirizzo)"
+            case .servizio(let nome): String(localized: "Connected to \(nome) (\(indirizzo))")
+            case .indirizzo: String(localized: "Connected to \(indirizzo)")
             }
             s.collegato = true
             s.connessioni += 1
@@ -490,7 +490,7 @@ final class Trasmissione: @unchecked Sendable {
 
     /// Ricevitore spento o irraggiungibile, o connessione persa: nuovo tentativo tra un secondo.
     private func riprova(_ errore: String) {
-        chiudi(stato: "In attesa del ricevitore…", errore: errore)
+        chiudi(stato: String(localized: "Waiting for the receiver…"), errore: errore)
         coda.asyncAfter(deadline: .now() + 1) { [self] in collega() }
     }
 

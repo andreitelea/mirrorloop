@@ -14,6 +14,16 @@ enum Qualita: String, CaseIterable, Sendable {
 
     /// Il lato corto del video in pixel; l'altro segue le proporzioni dello schermo.
     /// Nil per Massima: si usano le misure dello schermo così come sono.
+    /// Il nome mostrato nell'app. Il valore grezzo ("Alta"…) resta quello di sempre perché è salvato
+    /// nelle impostazioni di chi ha già l'app.
+    var nome: String {
+        switch self {
+        case .standard: String(localized: "Standard")
+        case .alta: String(localized: "High")
+        case .massima: String(localized: "Maximum")
+        }
+    }
+
     var latoCorto: Int? {
         switch self {
         case .standard: 720

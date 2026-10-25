@@ -1,0 +1,926 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ %@, %lld channels, %lld Hz, %lld samples": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %@, %lld canali, %lld Hz, %lld campioni"
+          }
+        }
+      }
+    },
+    "%@ not found on the network: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ non trovato in rete: %@"
+          }
+        }
+      }
+    },
+    "%@ · not found": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · non trovato"
+          }
+        }
+      }
+    },
+    "Allow the connection on the PC": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti il collegamento sul PC"
+          }
+        }
+      }
+    },
+    "Allow the connection on the PC.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti il collegamento sul PC."
+          }
+        }
+      }
+    },
+    "Audio format: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato audio: %@"
+          }
+        }
+      }
+    },
+    "Audio: %lld captured · sent %lld · dropped %lld · not converted %lld": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio: %lld catturati · inviati %lld · scartati %lld · non convertiti %lld"
+          }
+        }
+      }
+    },
+    "Bitrate: %lld kbit/s (peak %lld)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitrate: %lld kbit/s (picco %lld)"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
+          }
+        }
+      }
+    },
+    "Cancelled": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annullata"
+          }
+        }
+      }
+    },
+    "Capture gaps: video %@ ms · audio %@ ms": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause in cattura: video %@ ms · audio %@ ms"
+          }
+        }
+      }
+    },
+    "Capture: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cattura: %@"
+          }
+        }
+      }
+    },
+    "Captured: %lld (in background %lld in %@ s)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Catturati: %lld (in background %lld in %@ s)"
+          }
+        }
+      }
+    },
+    "Capturing": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In cattura"
+          }
+        }
+      }
+    },
+    "Choose the PC": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli il PC"
+          }
+        }
+      }
+    },
+    "Choose what to share…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli cosa condividere…"
+          }
+        }
+      }
+    },
+    "Compare the code with the one on the PC": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confronta il codice con quello sul PC"
+          }
+        }
+      }
+    },
+    "Compressed: %lld · keyframes %lld": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compressi: %lld · keyframe %lld"
+          }
+        }
+      }
+    },
+    "Compression: %@ ms (max %@ ms)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compressione: %@ ms (max %@ ms)"
+          }
+        }
+      }
+    },
+    "Confirm only if the PC shows the same code.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conferma solo se sul PC compare lo stesso codice."
+          }
+        }
+      }
+    },
+    "Connected to %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegata a %@"
+          }
+        }
+      }
+    },
+    "Connected to %@ (%@)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegata a %@ (%@)"
+          }
+        }
+      }
+    },
+    "Connecting to %@ (%@)…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegamento a %@ (%@)…"
+          }
+        }
+      }
+    },
+    "Connecting to %@…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegamento a %@…"
+          }
+        }
+      }
+    },
+    "Couldn't start": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore all'avvio"
+          }
+        }
+      }
+    },
+    "Delivery delay: video %@ ms · audio %@ ms": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritardo di consegna: video %@ ms · audio %@ ms"
+          }
+        }
+      }
+    },
+    "Dropped for frame rate: %lld": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scartati per il ritmo: %lld"
+          }
+        }
+      }
+    },
+    "Encoder errors: %lld (last %d) · sessions %lld · rejected settings %lld": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errori codificatore: %lld (ultimo %d) · sessioni %lld · impostazioni rifiutate %lld"
+          }
+        }
+      }
+    },
+    "Enter address…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indirizzo a mano…"
+          }
+        }
+      }
+    },
+    "Error": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore"
+          }
+        }
+      }
+    },
+    "Error: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore: %@"
+          }
+        }
+      }
+    },
+    "Forget": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimentica"
+          }
+        }
+      }
+    },
+    "Forget paired PCs (%lld)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimentica i PC abbinati (%lld)"
+          }
+        }
+      }
+    },
+    "Forget paired PCs?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimenticare i PC abbinati?"
+          }
+        }
+      }
+    },
+    "High": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alta"
+          }
+        }
+      }
+    },
+    "Interrupted": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrotta"
+          }
+        }
+      }
+    },
+    "Keep the iPhone volume low but not at zero: at zero the PC receives no sound.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni il volume dell'iPhone basso ma non a zero: a zero il PC non riceve l'audio."
+          }
+        }
+      }
+    },
+    "Last network error: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo errore di rete: %@"
+          }
+        }
+      }
+    },
+    "Maximum": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Massima"
+          }
+        }
+      }
+    },
+    "Maximum quality needs a strong signal: far from the router, choose High.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La qualità Massima vuole un segnale forte: lontano dal router scegli Alta."
+          }
+        }
+      }
+    },
+    "Needs strong Wi-Fi: far from the router, choose High.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuole un Wi-Fi forte: lontano dal router scegli Alta."
+          }
+        }
+      }
+    },
+    "Network: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rete: %@"
+          }
+        }
+      }
+    },
+    "Now allow the connection on the PC.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ora consenti il collegamento sul PC."
+          }
+        }
+      }
+    },
+    "Orientation: %@ · rotation %lld° · changes %lld%@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orientamento: %@ · rotazione %lld° · cambi %lld%@"
+          }
+        }
+      }
+    },
+    "PC": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PC"
+          }
+        }
+      }
+    },
+    "PC address (e.g. 192.168.1.23)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indirizzo del PC (es. 192.168.1.23)"
+          }
+        }
+      }
+    },
+    "PC search blocked: %@. Check Settings › Privacy & Security › Local Network.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca dei PC bloccata: %@. Controlla Impostazioni › Privacy e sicurezza › Rete locale."
+          }
+        }
+      }
+    },
+    "PCs found on the network: %lld": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PC trovati in rete: %lld"
+          }
+        }
+      }
+    },
+    "Pairing cancelled": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbinamento annullato"
+          }
+        }
+      }
+    },
+    "Pairing not completed in time": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbinamento non concluso in tempo"
+          }
+        }
+      }
+    },
+    "Pairing with %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbinamento con %@"
+          }
+        }
+      }
+    },
+    "Pairing with %@…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbinamento con %@…"
+          }
+        }
+      }
+    },
+    "Quality": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qualità"
+          }
+        }
+      }
+    },
+    "Quality: %@ · %lld fps · %lld Mbit/s": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qualità: %@ · %lld fps · %lld Mbit/s"
+          }
+        }
+      }
+    },
+    "Screen recording isn't available on this iPhone.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La registrazione dello schermo non è disponibile su questo iPhone."
+          }
+        }
+      }
+    },
+    "Searching for PCs": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca dei PC attiva"
+          }
+        }
+      }
+    },
+    "Searching for PCs…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca dei PC…"
+          }
+        }
+      }
+    },
+    "Send queue: peak %lld KB · max wait %lld ms": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coda di invio: picco %lld KB · attesa max %lld ms"
+          }
+        }
+      }
+    },
+    "Sent: %lld · dropped %lld · connections %lld · pings %lld": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inviati: %lld · scartati %lld · connessioni %lld · ping %lld"
+          }
+        }
+      }
+    },
+    "Signing failed: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firma non riuscita: %@"
+          }
+        }
+      }
+    },
+    "Size: %lld×%lld (requested %@)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimensione: %lld×%lld (richiesta %@)"
+          }
+        }
+      }
+    },
+    "Standard": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia"
+          }
+        }
+      }
+    },
+    "Starting…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvio…"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ferma"
+          }
+        }
+      }
+    },
+    "Stopped": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ferma"
+          }
+        }
+      }
+    },
+    "Stream to PC": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trasmissione al PC"
+          }
+        }
+      }
+    },
+    "Technical details": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettagli tecnici"
+          }
+        }
+      }
+    },
+    "The PC accepted: confirm the code on the iPhone": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il PC ha accettato: conferma il codice sull'iPhone"
+          }
+        }
+      }
+    },
+    "The PC rejected the connection": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il PC ha rifiutato il collegamento"
+          }
+        }
+      }
+    },
+    "The code matches": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il codice coincide"
+          }
+        }
+      }
+    },
+    "The code will be needed again at the next connection, on the PC and on the iPhone.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al prossimo collegamento servirà di nuovo il codice, sul PC e sull'iPhone."
+          }
+        }
+      }
+    },
+    "This isn't the PC you paired before: pair only if you reinstalled MirrorLoop on the PC.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo PC non è quello abbinato prima: abbina solo se hai reinstallato MirrorLoop sul PC."
+          }
+        }
+      }
+    },
+    "Tips for smooth streaming": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consigli per una trasmissione fluida"
+          }
+        }
+      }
+    },
+    "Turn on a Focus (such as Do Not Disturb) so notifications don't end up on stream.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attiva una Full immersion (per esempio Non disturbare), così le notifiche non finiscono in diretta."
+          }
+        }
+      }
+    },
+    "Use 5 GHz Wi-Fi and keep the iPhone close to the router. The PC works best connected with a cable.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa il Wi-Fi a 5 GHz e tieni l'iPhone vicino al router. Il PC funziona meglio collegato con il cavo."
+          }
+        }
+      }
+    },
+    "Version %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versione %@"
+          }
+        }
+      }
+    },
+    "Waiting for the receiver…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In attesa del ricevitore…"
+          }
+        }
+      }
+    },
+    "couldn't get the address of %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "indirizzo di %@ non ricavato"
+          }
+        }
+      }
+    },
+    "couldn't read the PC certificate": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "certificato del PC non letto"
+          }
+        }
+      }
+    },
+    "iPhone key not available: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiave dell'iPhone non disponibile: %@"
+          }
+        }
+      }
+    },
+    "interleaved": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "intercalato"
+          }
+        }
+      }
+    },
+    "landscape (left side down)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "orizzontale (lato sinistro in basso)"
+          }
+        }
+      }
+    },
+    "landscape (right side down)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "orizzontale (lato destro in basso)"
+          }
+        }
+      }
+    },
+    "lane %@: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "corsia %@: %@"
+          }
+        }
+      }
+    },
+    "lying flat": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "appoggiato piatto"
+          }
+        }
+      }
+    },
+    "no connection within %lld s": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "collegamento non riuscito entro %lld s"
+          }
+        }
+      }
+    },
+    "other": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "altro"
+          }
+        }
+      }
+    },
+    "planar": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "separato"
+          }
+        }
+      }
+    },
+    "portrait": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "verticale"
+          }
+        }
+      }
+    },
+    "sensor —": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sensore —"
+          }
+        }
+      }
+    },
+    "the lanes lead to different PCs": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "le corsie portano a PC diversi"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

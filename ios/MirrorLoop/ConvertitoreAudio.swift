@@ -61,9 +61,10 @@ enum ConvertitoreAudio {
         let tipo = switch formato.commonFormat {
         case .pcmFormatFloat32: "Float32"
         case .pcmFormatInt16: "Int16"
-        default: "altro"
+        default: String(localized: "other")
         }
-        let descrizione = "\(tipo) \(intercalato ? "intercalato" : "separato"), \(canali) canali, \(Int(formato.sampleRate)) Hz, \(n) campioni"
+        let disposizione = intercalato ? String(localized: "interleaved") : String(localized: "planar")
+        let descrizione = String(localized: "\(tipo) \(disposizione), \(canali) channels, \(Int(formato.sampleRate)) Hz, \(n) samples")
         let audio = AudioPcm16(dati: uscita, canali: canali, frequenza: Int(formato.sampleRate), istanteCatturaMicrosecondi: istante)
         return (audio, descrizione)
     }

@@ -1,0 +1,16 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSLocalNetworkUsageDescription": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MirrorLoop si collega al ricevitore sul tuo PC nella rete di casa per trasmettere lo schermo."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

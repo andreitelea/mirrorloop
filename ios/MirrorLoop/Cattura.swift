@@ -209,7 +209,7 @@ final class Ricevitore: NSObject, SCStreamOutput, SCStreamDelegate, SCContentSha
 @MainActor
 @Observable
 final class Cattura {
-    private(set) var stato = "Ferma"
+    private(set) var stato = String(localized: "Stopped")
     private(set) var qualita = Qualita.standard
     private(set) var contatori = Contatori()
     private(set) var compressione = StatisticheCompressione()
@@ -250,7 +250,7 @@ final class Cattura {
         do {
             chiave = try ChiaveIphone.carica()
         } catch {
-            errore = "Chiave dell'iPhone non disponibile: \(error.localizedDescription)"
+            errore = String(localized: "iPhone key not available: \(error.localizedDescription)")
             return
         }
 
@@ -284,7 +284,7 @@ final class Cattura {
         picker.add(ricevitore)
         picker.isActive = true
         picker.present()
-        stato = "Scegli cosa condividere…"
+        stato = String(localized: "Choose what to share…")
     }
 
     func ferma() {
@@ -302,7 +302,7 @@ final class Cattura {
         ricevitore = nil
         trasmissione?.ferma()
         trasmissione = nil
-        stato = "Ferma"
+        stato = String(localized: "Stopped")
     }
 
     func confermaCodice() {
@@ -366,16 +366,16 @@ final class Cattura {
         case .annullato:
             if stream == nil {
                 ferma()
-                stato = "Annullata"
+                stato = String(localized: "Cancelled")
             }
         case .erroreAvvio(let messaggio):
             errore = messaggio
-            stato = "Errore all'avvio"
+            stato = String(localized: "Couldn't start")
         case .interrotto(let messaggio):
             aggiorna()
             errore = messaggio
             stream = nil
-            stato = "Interrotta"
+            stato = String(localized: "Interrupted")
         }
     }
 
@@ -396,11 +396,11 @@ final class Cattura {
             try stream.addStreamOutput(ricevitore, type: .audio, sampleHandlerQueue: codaAudio)
         } catch {
             errore = error.localizedDescription
-            stato = "Errore"
+            stato = String(localized: "Error")
             return
         }
         self.stream = stream
-        stato = "Avvio…"
+        stato = String(localized: "Starting…")
         stream.startCapture { errore in
             let messaggio = errore?.localizedDescription
             Task { @MainActor in self.avviato(errore: messaggio) }
@@ -411,9 +411,9 @@ final class Cattura {
         if let messaggio {
             errore = messaggio
             stream = nil
-            stato = "Errore all'avvio"
+            stato = String(localized: "Couldn't start")
         } else {
-            stato = "In cattura"
+            stato = String(localized: "Capturing")
         }
     }
 }
