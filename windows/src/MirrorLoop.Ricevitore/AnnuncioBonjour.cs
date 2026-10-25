@@ -156,8 +156,11 @@ public sealed unsafe partial class AnnuncioBonjour : IDisposable
             annuncio.SuCompletato(esito);
     }
 
-    /// <summary>La scheda attiva con un gateway IPv4, cioè quella che porta alla rete di casa.</summary>
-    private static (uint Indice, IPAddress Indirizzo)? InterfacciaDiCasa()
+    /// <summary>
+    /// La scheda attiva con un gateway IPv4, cioè quella che porta alla rete di casa. Id è quello di
+    /// Windows (un GUID), con cui <see cref="CategoriaRete"/> trova il tipo di rete.
+    /// </summary>
+    internal static (uint Indice, IPAddress Indirizzo, string Id)? InterfacciaDiCasa()
     {
         foreach (NetworkInterface scheda in NetworkInterface.GetAllNetworkInterfaces())
         {
@@ -170,7 +173,7 @@ public sealed unsafe partial class AnnuncioBonjour : IDisposable
                 .Select(u => u.Address)
                 .FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork);
             if (conGateway && ipv4 is not null)
-                return ((uint)proprieta.GetIPv4Properties().Index, ipv4);
+                return ((uint)proprieta.GetIPv4Properties().Index, ipv4, scheda.Id);
         }
         return null;
     }

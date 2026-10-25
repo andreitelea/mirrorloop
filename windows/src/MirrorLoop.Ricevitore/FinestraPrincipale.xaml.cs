@@ -27,6 +27,9 @@ public partial class FinestraPrincipale : Window
     private TaskCompletionSource<bool>? _consenso;
     private DateTime _scadenzaConsenso;
     private readonly DispatcherTimer _contoAllaRovescia;
+    // Ogni pochi secondi si rilegge il tipo della rete di casa: chi la imposta come Privata vede
+    // sparire l'avviso senza riavviare.
+    private readonly DispatcherTimer _controlloRete = new() { Interval = TimeSpan.FromSeconds(5) };
     private readonly AnnuncioBonjour _annuncio;
     private readonly Riproduzione _riproduzione;
     private readonly BachecaObs? _bacheca;
@@ -95,6 +98,9 @@ public partial class FinestraPrincipale : Window
         _timerStatistiche = new DispatcherTimer { Interval = IntervalloStatistiche };
         _timerStatistiche.Tick += (_, _) => AggiornaStatistiche();
         _timerStatistiche.Start();
+        _controlloRete.Tick += async (_, _) => await ControllaReteAsync();
+        _controlloRete.Start();
+        _ = ControllaReteAsync();
 
         // Chiamato prima di ogni aggiornamento dello schermo (di solito 60 volte al secondo).
         CompositionTarget.Rendering += MostraUltimaImmagine;
@@ -314,6 +320,14 @@ public partial class FinestraPrincipale : Window
         }
     }
 
+    /// <summary>Mostra o nasconde l'avviso di rete pubblica (la lettura, via COM, fuori dal thread della finestra).</summary>
+    private async Task ControllaReteAsync()
+    {
+        string? avviso = CategoriaRete.Avviso(await Task.Run(CategoriaRete.DellaReteDiCasa));
+        TestoAvvisoRete.Text = avviso ?? "";
+        RiquadroAvvisoRete.Visibility = avviso is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     // ---- Abbinamento ----
 
     /// <summary>
@@ -415,6 +429,7 @@ public partial class FinestraPrincipale : Window
         _bacheca?.Dispose();
         _registro.Dispose();
         _timerStatistiche.Stop();
+        _controlloRete.Stop();
         CompositionTarget.Rendering -= MostraUltimaImmagine;
         base.OnClosing(e);
     }

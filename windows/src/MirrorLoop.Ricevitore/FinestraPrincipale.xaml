@@ -24,6 +24,14 @@
                        Text="—" />
         </Border>
 
+        <!-- Avviso se la rete di casa è impostata come Pubblica (il firewall lascia passare l'iPhone
+             solo sulle reti private). -->
+        <Border x:Name="RiquadroAvvisoRete" Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12,12,12,24"
+                Padding="16,10" CornerRadius="6" Background="#E0402A00" BorderBrush="#FFB000" BorderThickness="1">
+            <TextBlock x:Name="TestoAvvisoRete" Foreground="#FFD27F" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" />
+        </Border>
+
         <!-- Richiesta di abbinamento di un iPhone nuovo: compare solo quando serve. Consenti si
              preme solo con il mouse (un tasto per sbaglio non deve abbinare nessuno); Esc rifiuta. -->
         <Border x:Name="RiquadroAbbinamento" Visibility="Collapsed"
