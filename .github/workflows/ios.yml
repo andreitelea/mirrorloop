@@ -69,7 +69,7 @@ jobs:
           xcrun simctl list devices available | grep "$DISPOSITIVO"
           xcodebuild test \
             -project MirrorLoop.xcodeproj \
-            -scheme MirrorLoop \
+            -scheme MirrorLoopTests \
             -destination "id=$DISPOSITIVO" \
             -derivedDataPath build-test \
             CODE_SIGNING_ALLOWED=NO

@@ -22,10 +22,6 @@ targets:
     platform: iOS
     sources:
       - MirrorLoop
-    # Schema "MirrorLoop" con i test, per `xcodebuild test` nel lavoro "compila".
-    scheme:
-      testTargets:
-        - MirrorLoopTests
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.andreitelea.mirrorloop
@@ -64,10 +60,14 @@ targets:
 
   # Test dei calcoli dell'abbinamento su un iPhone simulato: Swift deve ottenere esattamente
   # l'esempio di docs/protocollo.md, come il ricevitore in C#. Compila Abbinamento.swift
-  # direttamente, senza avviare l'app.
+  # direttamente, senza avviare l'app: l'app non si può compilare per il simulatore, dove
+  # ScreenCaptureKit non c'è. Per questo ha uno schema tutto suo, "MirrorLoopTests".
   MirrorLoopTests:
     type: bundle.unit-test
     platform: iOS
+    scheme:
+      testTargets:
+        - MirrorLoopTests
     sources:
       - MirrorLoopTests
       - path: MirrorLoop/Abbinamento.swift
