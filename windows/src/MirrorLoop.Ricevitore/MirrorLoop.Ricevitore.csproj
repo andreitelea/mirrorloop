@@ -24,6 +24,11 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <!-- La stessa icona per la barra del titolo delle finestre (Icon nello XAML). -->
+    <Resource Include="MirrorLoop.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- I test usano i costruttori interni che separano le classi da Windows e dalla rete. -->
     <InternalsVisibleTo Include="MirrorLoop.Ricevitore.Test" />
   </ItemGroup>
@@ -38,6 +43,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Testi.resx è in inglese: è la lingua per chi non ha Windows in italiano. -->
     <NeutralLanguage>en</NeutralLanguage>
+    <!-- L'icona del programma (Esplora file, barra delle applicazioni), generata da grafica/icona.py. -->
+    <ApplicationIcon>MirrorLoop.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>
