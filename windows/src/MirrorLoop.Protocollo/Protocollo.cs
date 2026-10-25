@@ -45,8 +45,8 @@ public static class Protocollo
     // tipo (1) + ruolo (1) + numero di trasmissione (8)
     private const int LunghezzaAperturaCorsia = 1 + 1 + 8;
 
-    // tipo (1) + chiave (65) + impegno (32), poi il nome
-    private const int IntestazionePresentazione = 1 + Abbinamento.LunghezzaChiave + Abbinamento.LunghezzaHash;
+    // tipo (1) + modo (1) + chiave (65) + impegno (32), poi il nome
+    private const int IntestazionePresentazione = 1 + 1 + Abbinamento.LunghezzaChiave + Abbinamento.LunghezzaHash;
     private const int LunghezzaMassimaNome = 64;
 
     // tipo (1) + numero del PC (32)
@@ -151,8 +151,9 @@ public static class Protocollo
         Span<byte> s = pacchetto;
         BinaryPrimitives.WriteInt32BigEndian(s, lunghezza);
         s[4] = TipoPresentazione;
-        presentazione.Chiave.CopyTo(s[5..]);
-        presentazione.Impegno.CopyTo(s[(5 + Abbinamento.LunghezzaChiave)..]);
+        s[5] = (byte)presentazione.Modo;
+        presentazione.Chiave.CopyTo(s[6..]);
+        presentazione.Impegno.CopyTo(s[(6 + Abbinamento.LunghezzaChiave)..]);
         nome.CopyTo(s[(4 + IntestazionePresentazione)..]);
         await flusso.WriteAsync(pacchetto, ct);
     }
@@ -334,11 +335,13 @@ public static class Protocollo
     {
         if (messaggio.Length < IntestazionePresentazione || messaggio.Length > IntestazionePresentazione + LunghezzaMassimaNome)
             throw new InvalidDataException($"Presentazione di {messaggio.Length} byte.");
-        byte[] chiave = messaggio[1..(1 + Abbinamento.LunghezzaChiave)];
-        byte[] impegno = messaggio[(1 + Abbinamento.LunghezzaChiave)..IntestazionePresentazione];
+        if (!Enum.IsDefined((ModoPresentazione)messaggio[1]))
+            throw new InvalidDataException($"Modo di presentazione sconosciuto: {messaggio[1]}.");
+        byte[] chiave = messaggio[2..(2 + Abbinamento.LunghezzaChiave)];
+        byte[] impegno = messaggio[(2 + Abbinamento.LunghezzaChiave)..IntestazionePresentazione];
         // UTF-8 non valido diventa "�": il nome serve solo da mostrare.
         string nome = System.Text.Encoding.UTF8.GetString(messaggio, IntestazionePresentazione, messaggio.Length - IntestazionePresentazione);
-        return new Presentazione(chiave, impegno, nome);
+        return new Presentazione((ModoPresentazione)messaggio[1], chiave, impegno, nome);
     }
 
     private static Sfida LeggiSfida(byte[] messaggio)

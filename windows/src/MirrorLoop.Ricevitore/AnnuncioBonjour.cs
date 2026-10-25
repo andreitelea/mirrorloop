@@ -18,8 +18,11 @@ namespace MirrorLoop.Ricevitore;
 /// </summary>
 public sealed unsafe partial class AnnuncioBonjour : IDisposable
 {
-    /// <summary>Tipo di servizio DNS-SD: deve coincidere con NSBonjourServices dell'app.</summary>
-    public const string TipoServizio = "_mirrorloop._tcp";
+    /// <summary>
+    /// Tipo di servizio DNS-SD: deve coincidere con NSBonjourServices dell'app. "_udp" perché
+    /// QUIC viaggia su UDP (RFC 6763: "_tcp" solo per i servizi su TCP); fino alla versione 1 era "_tcp".
+    /// </summary>
+    public const string TipoServizio = "_mirrorloop._udp";
 
     private const uint DnsQueryRequestVersion1 = 1;
     private const uint DnsRequestPending = 9506;
@@ -46,7 +49,7 @@ public sealed unsafe partial class AnnuncioBonjour : IDisposable
 
         // Una proprietà nel record TXT: la versione del protocollo, per riconoscere ricevitori futuri incompatibili.
         nint chiave = Marshal.StringToHGlobalUni("versione");
-        nint valore = Marshal.StringToHGlobalUni("1");
+        nint valore = Marshal.StringToHGlobalUni("2");
         try
         {
             _istanza = DnsServiceConstructInstance(

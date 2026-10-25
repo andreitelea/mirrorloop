@@ -63,7 +63,9 @@ public partial class FinestraPrincipale : Window
         }
         _riproduzioneAudio = new RiproduzioneAudio(_bacheca);
 
-        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro, CaricaCertificato());
+        // Per ora senza domanda di conferma: i telefoni nuovi sono rifiutati (la finestra la mostrerà).
+        _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro, CaricaCertificato(),
+            new TelefoniAbbinati(), chiediConsenso: null);
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
         // Una trasmissione nuova: OBS deve ripartire pulito (istanti non confrontabili con prima).

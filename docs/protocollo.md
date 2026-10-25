@@ -169,6 +169,7 @@ Il primo messaggio di ogni corsia QUIC. Serve anche perché in QUIC una corsia e
 Il ricevitore, per ogni corsia nuova:
 
 - se il primo messaggio non arriva entro 5 secondi, o non è un'apertura corsia, chiude la corsia;
+- aspetta che la trasmissione sia accettata dall'abbinamento (tipi 6–9, sulla corsia di controllo);
 - se il numero è quello della trasmissione in corso, aggiunge la corsia alla trasmissione;
 - se il numero è nuovo, chiude la trasmissione in corso (tutte le sue corsie e connessioni) e ne comincia una nuova;
 - quando una corsia di una trasmissione si chiude, chiude tutta la trasmissione: il mittente si ricollegherà con un numero nuovo.
@@ -183,24 +184,32 @@ Per distinguere le versioni, il nome del protocollo QUIC (ALPN) diventa `mirrorl
 
 ### Sequenza, sulla corsia di controllo, subito dopo l'apertura (tipo 5)
 
-1. **iPhone → PC · presentazione (6):** chiave pubblica e **impegno** = SHA-256(`"MirrorLoop impegno v1"` ‖ chiave ‖ numero dell'iPhone), dove il numero dell'iPhone sono 32 byte casuali nuovi a ogni collegamento.
+1. **iPhone → PC · presentazione (6):** il **modo** (0 = ricollegamento a un PC che l'iPhone conosce già, 1 = nuovo abbinamento), la chiave pubblica e l'**impegno** = SHA-256(`"MirrorLoop impegno v1"` ‖ chiave ‖ numero dell'iPhone), dove il numero dell'iPhone sono 32 byte casuali nuovi a ogni collegamento.
 2. **PC → iPhone · sfida (7):** il numero del PC, 32 byte casuali nuovi a ogni collegamento.
 3. **iPhone → PC · prova (8):** il numero dell'iPhone (ora rivelato) e la **firma** ECDSA P-256 con SHA-256 di `"MirrorLoop prova v1"` ‖ impronta del PC ‖ chiave ‖ numero del PC ‖ numero dell'iPhone. L'impronta è quella del certificato che l'iPhone ha visto nella connessione.
 4. **PC → iPhone · esito (9):** il PC controlla impegno e firma, poi:
-   - iPhone già abbinato → **accettato** (0);
-   - iPhone nuovo → **in attesa** (1): il PC mostra il codice e chiede di consentire o rifiutare; poi manda un secondo esito, accettato o rifiutato;
+   - modo 0 e iPhone già abbinato → **accettato** (0);
+   - iPhone nuovo, oppure modo 1 → **in attesa** (1): il PC mostra il codice e chiede di consentire o rifiutare; poi manda un secondo esito, accettato o rifiutato. Il modo 1 serve quando l'iPhone non conosce il PC ma il PC conosce l'iPhone (per esempio dopo una reinstallazione dell'app, che cancella i PC conosciuti ma non la chiave nel portachiavi): senza, il PC accetterebbe subito e non ci sarebbe un codice da confrontare;
    - impegno o firma sbagliati, richiesta rifiutata o scaduta → **rifiutato** (2), e il PC chiude la trasmissione.
 
 Il **codice** si calcola da SHA-256(`"MirrorLoop codice v1"` ‖ impronta ‖ chiave ‖ numero del PC ‖ numero dell'iPhone): i primi 4 byte come intero big-endian senza segno, modulo 1 000 000, scritti con 6 cifre (zeri iniziali compresi). Se in mezzo ci fosse un impostore, i due schermi mostrerebbero codici diversi; l'impegno gli impedisce di provare chiavi finché coincidono per caso (gli resta una possibilità su un milione).
 
 Le etichette tra virgolette sono in ASCII, senza terminatore; ‖ vuol dire "seguito da".
 
-L'iPhone memorizza l'impronta del PC solo dopo la conferma della persona **e** l'esito accettato; le volte successive, un'impronta diversa per lo stesso PC è un allarme, non un nuovo abbinamento automatico. Video e audio partono solo dopo l'esito accettato.
+L'iPhone memorizza l'impronta del PC solo dopo la conferma della persona **e** l'esito accettato; le volte successive, un'impronta diversa per lo stesso PC è un allarme, non un nuovo abbinamento automatico. Se l'iPhone riceve "in attesa" in un ricollegamento (il PC lo ha dimenticato), mostra anche lui il codice e chiede conferma. Video e audio partono solo dopo l'esito accettato.
+
+Il ricevitore:
+
+- apre la trasmissione (azzera code e statistiche, chiude quella precedente, manda i ping) solo dopo aver accettato la corsia di controllo: chi non è abbinato non interrompe una trasmissione in corso;
+- tiene in sospeso le corsie video e audio finché la corsia di controllo con lo stesso numero non è accettata, e le chiude senza leggerle se viene rifiutata;
+- aspetta ogni messaggio dell'abbinamento al massimo 5 secondi e la conferma della persona al massimo 60;
+- gestisce una sola richiesta di conferma alla volta: le altre, nel frattempo, sono rifiutate subito;
+- memorizza i telefoni abbinati in `%LOCALAPPDATA%\MirrorLoop\telefoni-abbinati.json`.
 
 ### Formato
 
 ```
-presentazione:  tipo = 6 (1) │ chiave (65) │ impegno (32) │ nome (0–64, UTF-8)
+presentazione:  tipo = 6 (1) │ modo (1) │ chiave (65) │ impegno (32) │ nome (0–64, UTF-8)
 sfida:          tipo = 7 (1) │ numero del PC (32)
 prova:          tipo = 8 (1) │ numero dell'iPhone (32) │ firma (64)
 esito:          tipo = 9 (1) │ esito (1): 0 accettato, 1 in attesa, 2 rifiutato
@@ -208,6 +217,7 @@ esito:          tipo = 9 (1) │ esito (1): 0 accettato, 1 in attesa, 2 rifiutat
 
 - **chiave:** punto P-256 non compresso, `04` ‖ X (32 byte) ‖ Y (32 byte), come `x963Representation` di CryptoKit.
 - **firma:** r ‖ s, 32 byte ciascuno, come `rawRepresentation` di CryptoKit.
+- **modo:** 0 o 1; altri valori sono un errore.
 - **nome:** da mostrare sul PC (iOS dà alle app solo "iPhone"); oltre 64 byte è un errore.
 - Lunghezze fisse per sfida (33), prova (97) ed esito (2); un esito diverso da 0, 1, 2 è un errore.
 

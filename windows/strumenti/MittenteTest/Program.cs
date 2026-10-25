@@ -4,11 +4,13 @@ using System.Net.Quic;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
+using System.Security.Cryptography;
 using MirrorLoop.Protocollo;
 using MittenteTest;
 
 // La "telecamera finta": genera l'animazione di prova, la comprime in H.264 e la spedisce
-// al ricevitore (in QUIC, sulla sola corsia video) e/o la salva in un file .h264 grezzo da aprire con VLC.
+// al ricevitore (in QUIC, dopo l'abbinamento: sul ricevitore va consentito il codice mostrato qui)
+// e/o la salva in un file .h264 grezzo da aprire con VLC.
 //
 // Uso:  MittenteTest [--ricevitore host:porta] [--file percorso.h264] [--secondi N]
 //   --ricevitore   trasmette finché non si preme Ctrl+C (o per N secondi)
@@ -61,6 +63,8 @@ if (host is not null && !QuicConnection.IsSupported)
 }
 
 using var stop = new CancellationTokenSource();
+// La "chiave dell'iPhone" del mittente di prova: nuova a ogni avvio, quindi sempre da consentire sul ricevitore.
+using var chiave = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 Console.CancelKeyPress += (_, e) =>
 {
     // Ctrl+C: chiudiamo con ordine invece di lasciare che il programma venga ucciso.
@@ -109,38 +113,60 @@ return statistiche.KeyframeSenzaIstruzioni == 0 ? 0 : 2;
 
 bool Finito() => stop.IsCancellationRequested || (scadenza is not null && orologio.Elapsed >= scadenza);
 
-// Come l'app iPhone: una connessione QUIC per corsia, presentata dall'apertura (tipo 5) con un
-// numero di trasmissione nuovo a ogni collegamento. Qui c'è solo la corsia video.
+// Come l'app iPhone: una connessione QUIC per corsia (controllo e video), presentate dall'apertura
+// (tipo 5) con un numero di trasmissione nuovo, e l'abbinamento sulla corsia di controllo. La chiave
+// è nuova a ogni avvio: il mittente di prova è sempre un telefono sconosciuto, da consentire sul PC.
 Collegamento? Collegati(string host, int porta)
 {
     bool avvisato = false;
     while (!Finito())
     {
-        QuicConnection? connessione = null;
-        try
+        var connessioni = new List<QuicConnection>();
+        byte[] impronta = [];
+        QuicStream Apri(RuoloCorsia ruolo, long numero, QuicStreamType tipo)
         {
-            connessione = QuicConnection.ConnectAsync(new QuicClientConnectionOptions
+            var connessione = QuicConnection.ConnectAsync(new QuicClientConnectionOptions
             {
                 RemoteEndPoint = new DnsEndPoint(host, porta),
                 DefaultStreamErrorCode = 1,
                 DefaultCloseErrorCode = 0,
                 ClientAuthenticationOptions = new SslClientAuthenticationOptions
                 {
-                    ApplicationProtocols = [new SslApplicationProtocol("mirrorloop/1")],
+                    ApplicationProtocols = [new SslApplicationProtocol("mirrorloop/2")],
                     TargetHost = "mirrorloop",
-                    // Il certificato del ricevitore è autofirmato: per le prove sul PC si accetta.
-                    RemoteCertificateValidationCallback = (_, _, _, _) => true,
+                    // Si accetta il certificato autofirmato, ma se ne prende l'impronta: va nella firma.
+                    RemoteCertificateValidationCallback = (_, certificato, _, _) =>
+                    {
+                        impronta = Abbinamento.Impronta(certificato!.GetRawCertData());
+                        return true;
+                    },
                 },
             }, stop.Token).AsTask().GetAwaiter().GetResult();
-            QuicStream video = connessione.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, stop.Token).AsTask().GetAwaiter().GetResult();
-            Protocollo.InviaAperturaCorsiaAsync(video, new AperturaCorsia(RuoloCorsia.Video, Random.Shared.NextInt64()), stop.Token)
-                .GetAwaiter().GetResult();
-            Console.WriteLine($"Collegato al ricevitore {host}:{porta} (QUIC).");
-            return new Collegamento(connessione, video);
+            connessioni.Add(connessione);
+            QuicStream corsia = connessione.OpenOutboundStreamAsync(tipo, stop.Token).AsTask().GetAwaiter().GetResult();
+            Protocollo.InviaAperturaCorsiaAsync(corsia, new AperturaCorsia(ruolo, numero), stop.Token).GetAwaiter().GetResult();
+            return corsia;
         }
-        catch (Exception ex) when (ex is QuicException or SocketException or AuthenticationException or OperationCanceledException)
+
+        try
         {
-            connessione?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            long numero = Random.Shared.NextInt64();
+            QuicStream controllo = Apri(RuoloCorsia.Controllo, numero, QuicStreamType.Bidirectional);
+            if (!AbbinaAsync(controllo, impronta).GetAwaiter().GetResult())
+            {
+                Console.WriteLine("Il ricevitore ha rifiutato il collegamento.");
+                new Collegamento(connessioni, controllo, null, Task.CompletedTask).Chiudi();
+                return null;
+            }
+            QuicStream video = Apri(RuoloCorsia.Video, numero, QuicStreamType.Unidirectional);
+            Console.WriteLine($"Collegato al ricevitore {host}:{porta} (QUIC).");
+            return new Collegamento(connessioni, controllo, video, RispondiAiPingAsync(controllo));
+        }
+        catch (Exception ex) when (ex is QuicException or SocketException or AuthenticationException or OperationCanceledException
+                                   or IOException or InvalidDataException)
+        {
+            foreach (var connessione in connessioni)
+                connessione.DisposeAsync().AsTask().GetAwaiter().GetResult();
             if (!avvisato && ex is not OperationCanceledException)
             {
                 Console.WriteLine($"Ricevitore {host}:{porta} non raggiungibile, riprovo ogni secondo...");
@@ -150,6 +176,47 @@ Collegamento? Collegati(string host, int porta)
         }
     }
     return null;
+}
+
+// Presentazione, sfida, prova ed esito (docs/protocollo.md, "Abbinamento"), sempre come nuovo abbinamento.
+async Task<bool> AbbinaAsync(QuicStream controllo, byte[] impronta)
+{
+    byte[] pubblica = Abbinamento.ChiavePubblica(chiave);
+    byte[] numeroIphone = Abbinamento.NuovoNumero();
+    await Protocollo.InviaPresentazioneAsync(controllo,
+        new Presentazione(ModoPresentazione.NuovoAbbinamento, pubblica, Abbinamento.Impegno(pubblica, numeroIphone), "MittenteTest"), stop.Token);
+    if (await Protocollo.RiceviMessaggioAsync(controllo, stop.Token) is not Sfida sfida)
+        return false;
+    await Protocollo.InviaProvaAsync(controllo, new Prova(numeroIphone, Abbinamento.Firma(chiave, impronta, sfida.NumeroPc, numeroIphone)), stop.Token);
+
+    var esito = await Protocollo.RiceviMessaggioAsync(controllo, stop.Token) as Esito;
+    if (esito?.Valore == ValoreEsito.InAttesa)
+    {
+        string codice = Abbinamento.Codice(impronta, pubblica, sfida.NumeroPc, numeroIphone);
+        Console.WriteLine($"Codice di abbinamento: {codice[..3]} {codice[3..]}. Consenti sul ricevitore se è lo stesso.");
+        esito = await Protocollo.RiceviMessaggioAsync(controllo, stop.Token) as Esito;
+    }
+    return esito?.Valore == ValoreEsito.Accettato;
+}
+
+// Risponde ai ping del ricevitore (con l'orologio del PC: lo scarto viene circa zero).
+async Task RispondiAiPingAsync(QuicStream controllo)
+{
+    try
+    {
+        while (await Protocollo.RiceviMessaggioAsync(controllo, stop.Token) is Messaggio messaggio)
+        {
+            if (messaggio is Ping ping)
+            {
+                long adesso = Protocollo.AdessoMicrosecondi();
+                await Protocollo.InviaPongAsync(controllo, new Pong(ping.Numero, ping.T1, adesso, adesso), stop.Token);
+            }
+        }
+    }
+    catch (Exception ex) when (ex is QuicException or IOException or InvalidDataException or OperationCanceledException or ObjectDisposedException)
+    {
+        // Fine del collegamento: se ne accorge anche l'invio dei frame.
+    }
 }
 
 // Trasmette finché non è finito il tempo, non si preme Ctrl+C o non cade la connessione.
@@ -237,13 +304,16 @@ static bool LeggiIndirizzo(string testo, out string? host, out int porta)
     return true;
 }
 
-/// <summary>La connessione QUIC con il ricevitore e la sua corsia video.</summary>
-sealed record Collegamento(QuicConnection Connessione, QuicStream Video)
+/// <summary>Le connessioni QUIC con il ricevitore, le corsie di controllo e video e la risposta ai ping.</summary>
+sealed record Collegamento(List<QuicConnection> Connessioni, QuicStream Controllo, QuicStream? Video, Task Ping)
 {
     public void Chiudi()
     {
-        Video.Dispose();
-        Connessione.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        Video?.Dispose();
+        Controllo.Dispose();
+        foreach (var connessione in Connessioni)
+            connessione.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        Ping.GetAwaiter().GetResult();
     }
 }
 

@@ -58,7 +58,7 @@ internal sealed unsafe partial class RicercaBonjour : IDisposable
         Assert.Equal(DnsRequestPending, DnsServiceBrowse(_richiesta, _annulla));
     }
 
-    /// <summary>I nomi delle istanze trovate, per esempio "Nome._mirrorloop._tcp.local".</summary>
+    /// <summary>I nomi delle istanze trovate, per esempio "Nome._mirrorloop._udp.local".</summary>
     public IReadOnlyCollection<string> Istanze => _istanze;
 
     /// <summary>Completato quando compare l'istanza cercata.</summary>

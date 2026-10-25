@@ -105,7 +105,7 @@ public class AbbinamentoTest
     [Fact]
     public async Task IMessaggiDellAbbinamentoAndataERitorno()
     {
-        var presentazione = new Presentazione(new byte[65], Abbinamento.NuovoNumero(), "iPhone");
+        var presentazione = new Presentazione(ModoPresentazione.NuovoAbbinamento, new byte[65], Abbinamento.NuovoNumero(), "iPhone");
         presentazione.Chiave[0] = 0x04;
         var sfida = new Sfida(Abbinamento.NuovoNumero());
         var prova = new Prova(Abbinamento.NuovoNumero(), RandomNumberGenerator.GetBytes(64));
@@ -118,6 +118,7 @@ public class AbbinamentoTest
         flusso.Position = 0;
 
         var p = Assert.IsType<Presentazione>(await Protocollo.RiceviMessaggioAsync(flusso));
+        Assert.Equal(ModoPresentazione.NuovoAbbinamento, p.Modo);
         Assert.Equal(presentazione.Chiave, p.Chiave);
         Assert.Equal(presentazione.Impegno, p.Impegno);
         Assert.Equal("iPhone", p.Nome);
@@ -135,30 +136,34 @@ public class AbbinamentoTest
         var flusso = new MemoryStream();
         byte[] chiave = Enumerable.Range(0, 65).Select(i => (byte)i).ToArray();
         byte[] impegno = Enumerable.Repeat((byte)0xAA, 32).ToArray();
-        await Protocollo.InviaPresentazioneAsync(flusso, new Presentazione(chiave, impegno, "Né"));
+        await Protocollo.InviaPresentazioneAsync(flusso, new Presentazione(ModoPresentazione.NuovoAbbinamento, chiave, impegno, "Né"));
         await Protocollo.InviaEsitoAsync(flusso, new Esito(ValoreEsito.Rifiutato));
         byte[] scritto = flusso.ToArray();
 
-        // Lunghezza = tipo + chiave + impegno + "Né" in UTF-8 (3 byte).
-        Assert.Equal(new byte[] { 0, 0, 0, 1 + 65 + 32 + 3, 6 }, scritto[..5]);
-        Assert.Equal(chiave, scritto[5..70]);
-        Assert.Equal(impegno, scritto[70..102]);
-        Assert.Equal(new byte[] { (byte)'N', 0xC3, 0xA9 }, scritto[102..105]);
-        Assert.Equal(new byte[] { 0, 0, 0, 2, 9, 2 }, scritto[105..]);
+        // Lunghezza = tipo + modo + chiave + impegno + "Né" in UTF-8 (3 byte).
+        Assert.Equal(new byte[] { 0, 0, 0, 1 + 1 + 65 + 32 + 3, 6, 1 }, scritto[..6]);
+        Assert.Equal(chiave, scritto[6..71]);
+        Assert.Equal(impegno, scritto[71..103]);
+        Assert.Equal(new byte[] { (byte)'N', 0xC3, 0xA9 }, scritto[103..106]);
+        Assert.Equal(new byte[] { 0, 0, 0, 2, 9, 2 }, scritto[106..]);
     }
 
     [Fact]
     public async Task MessaggiDiAbbinamentoMalformati()
     {
         // Nome più lungo di 64 byte: non si spedisce e non si accetta.
-        var lunga = new Presentazione(new byte[65], new byte[32], new string('x', 65));
+        var lunga = new Presentazione(ModoPresentazione.Ricollegamento, new byte[65], new byte[32], new string('x', 65));
         await Assert.ThrowsAsync<ArgumentException>(() => Protocollo.InviaPresentazioneAsync(new MemoryStream(), lunga));
-        byte[] presentazioneLunga = [0, 0, 0, 1 + 65 + 32 + 65, 6, .. new byte[65 + 32 + 65]];
+        byte[] presentazioneLunga = [0, 0, 0, 1 + 1 + 65 + 32 + 65, 6, 0, .. new byte[65 + 32 + 65]];
         await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(new MemoryStream(presentazioneLunga)));
+
+        // Modo sconosciuto.
+        byte[] modoSconosciuto = [0, 0, 0, 1 + 1 + 65 + 32, 6, 2, .. new byte[65 + 32]];
+        await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(new MemoryStream(modoSconosciuto)));
 
         // Chiave corta.
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            Protocollo.InviaPresentazioneAsync(new MemoryStream(), new Presentazione(new byte[64], new byte[32], "")));
+            Protocollo.InviaPresentazioneAsync(new MemoryStream(), new Presentazione(ModoPresentazione.Ricollegamento, new byte[64], new byte[32], "")));
 
         // Sfida corta, esito sconosciuto.
         await Assert.ThrowsAsync<InvalidDataException>(() => Protocollo.RiceviMessaggioAsync(new MemoryStream([0, 0, 0, 2, 7, 1])));
