@@ -10,6 +10,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- I testi dell'interfaccia: Testi.resx in inglese (la lingua di riserva), Testi.it.resx in
+         italiano. La classe Testi la genera MSBuild a ogni compilazione (niente file generati nel
+         repository, niente Visual Studio). Lo XAML non la usa (x:Static): WPF compilerebbe un assembly
+         provvisorio prima che Testi esista. I testi delle finestre li assegna il codice. -->
+    <EmbeddedResource Update="Lingue\Testi.resx">
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>MirrorLoop.Ricevitore</StronglyTypedNamespace>
+      <StronglyTypedClassName>Testi</StronglyTypedClassName>
+      <!-- Il nome con cui i testi sono inclusi nell'assembly contiene la cartella Lingue. -->
+      <StronglyTypedManifestPrefix>MirrorLoop.Ricevitore.Lingue</StronglyTypedManifestPrefix>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Testi.Designer.cs</StronglyTypedFileName>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
     <!-- I test usano i costruttori interni che separano le classi da Windows e dalla rete. -->
     <InternalsVisibleTo Include="MirrorLoop.Ricevitore.Test" />
   </ItemGroup>
@@ -22,6 +36,8 @@
     <UseWPF>true</UseWPF>
     <!-- Per le chiamate dirette a dnsapi.dll (annuncio Bonjour). -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Testi.resx è in inglese: è la lingua per chi non ha Windows in italiano. -->
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
 
 </Project>

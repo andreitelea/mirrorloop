@@ -55,10 +55,7 @@ public static class CategoriaRete
 
     /// <summary>Il testo da mostrare nella finestra, o null se non serve.</summary>
     public static string? Avviso(CategoriaDiRete? categoria) =>
-        categoria == CategoriaDiRete.Pubblica
-            ? "⚠ Questa rete è impostata come Pubblica: l'iPhone non potrà collegarsi.\n" +
-              "Impostala come Privata: Impostazioni → Rete e Internet → (la tua rete) → Tipo di profilo di rete."
-            : null;
+        categoria == CategoriaDiRete.Pubblica ? Testi.AvvisoRetePubblica : null;
 
     // ---- Windows (netlistmgr.h, Windows SDK 10.0.26100) ----
     // Interfacce "dual" (derivano da IDispatch): i metodi vanno elencati nell'ordine dell'header,

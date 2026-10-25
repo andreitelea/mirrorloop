@@ -1,18 +1,17 @@
 <Window x:Class="MirrorLoop.Ricevitore.FinestraNome"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Nome di questo PC"
         SizeToContent="WidthAndHeight" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         FocusManager.FocusedElement="{Binding ElementName=CampoNome}">
     <StackPanel Margin="20" MinWidth="380">
-        <TextBlock Text="È il nome che compare nell'elenco dei PC sull'iPhone." FontSize="14" />
+        <TextBlock x:Name="TestoNomeSpiegazione" FontSize="14" />
         <TextBox x:Name="CampoNome" FontSize="16" Padding="4,3" Margin="0,10,0,0" />
         <TextBlock x:Name="TestoPredefinito" Foreground="#606060" FontSize="12" Margin="0,6,0,0" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button Content="Predefinito" Click="SuPredefinito" MinWidth="100" Padding="10,4" Margin="0,0,24,0" />
-            <Button Content="Salva" Click="SuSalva" IsDefault="True" MinWidth="90" Padding="10,4" Margin="0,0,8,0" />
-            <Button Content="Annulla" IsCancel="True" MinWidth="90" Padding="10,4" />
+            <Button x:Name="PulsantePredefinito" Click="SuPredefinito" MinWidth="100" Padding="10,4" Margin="0,0,24,0" />
+            <Button x:Name="PulsanteSalva" Click="SuSalva" IsDefault="True" MinWidth="90" Padding="10,4" Margin="0,0,8,0" />
+            <Button x:Name="PulsanteAnnulla" IsCancel="True" MinWidth="90" Padding="10,4" />
         </StackPanel>
     </StackPanel>
 </Window>

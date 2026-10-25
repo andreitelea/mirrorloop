@@ -36,7 +36,7 @@ public sealed class RiproduzioneAudio(BachecaObs? bacheca = null) : IDisposable
     private (int Canali, int Frequenza) _formato;
 
     /// <summary>Nome del dispositivo audio in uso, o il motivo per cui non suona.</summary>
-    public string Stato { get; private set; } = "in attesa di audio";
+    public string Stato { get; private set; } = Testi.AudioInAttesa;
 
     public TimeSpan Riserva => _riserva?.Riserva ?? TimeSpan.Zero;
     public TimeSpan Obiettivo => _riserva?.Obiettivo ?? RiservaMinima;
@@ -89,7 +89,7 @@ public sealed class RiproduzioneAudio(BachecaObs? bacheca = null) : IDisposable
         {
             // Senza scheda audio (o con il dispositivo occupato) il video deve continuare lo stesso.
             Chiudi();
-            Stato = $"audio non disponibile: {ex.Message}";
+            Stato = string.Format(Testi.AudioNonDisponibile, ex.Message);
         }
     }
 

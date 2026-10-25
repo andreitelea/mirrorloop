@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Avvio" xml:space="preserve">
+    <value>Avvio...</value>
+  </data>
+  <data name="TastiInBasso" xml:space="preserve">
+    <value>F1 aiuto  ·  S statistiche  ·  O ruota  ·  A rotazione automatica  ·  N nome del PC</value>
+  </data>
+  <data name="SceltaSullIphone" xml:space="preserve">
+    <value>Sull'iPhone scegli «{0}»  ·  N per cambiare il nome</value>
+  </data>
+  <data name="UltimoRifiutato" xml:space="preserve">
+    <value>Ultimo iPhone rifiutato alle {0}</value>
+  </data>
+  <data name="AiutoTitolo" xml:space="preserve">
+    <value>Tasti</value>
+  </data>
+  <data name="AiutoF1" xml:space="preserve">
+    <value>mostra o nasconde questo aiuto</value>
+  </data>
+  <data name="AiutoS" xml:space="preserve">
+    <value>statistiche della trasmissione</value>
+  </data>
+  <data name="AiutoO" xml:space="preserve">
+    <value>ruota l'immagine di 90° (se la rotazione automatica sbaglia)</value>
+  </data>
+  <data name="AiutoA" xml:space="preserve">
+    <value>torna alla rotazione automatica</value>
+  </data>
+  <data name="AiutoN" xml:space="preserve">
+    <value>nome di questo PC sull'iPhone</value>
+  </data>
+  <data name="AiutoD" xml:space="preserve">
+    <value>dimentica gli iPhone abbinati</value>
+  </data>
+  <data name="AiutoEsc" xml:space="preserve">
+    <value>rifiuta una richiesta di abbinamento; chiude questo aiuto</value>
+  </data>
+  <data name="AbbinamentoTitolo" xml:space="preserve">
+    <value>Un iPhone vuole collegarsi</value>
+  </data>
+  <data name="AbbinamentoIstruzioni" xml:space="preserve">
+    <value>Consenti solo se sull'iPhone compare lo stesso codice.</value>
+  </data>
+  <data name="Consenti" xml:space="preserve">
+    <value>Consenti</value>
+  </data>
+  <data name="Rifiuta" xml:space="preserve">
+    <value>Rifiuta</value>
+  </data>
+  <data name="ScadeTra" xml:space="preserve">
+    <value>Scade tra {0} s</value>
+  </data>
+  <data name="NessunIphoneAbbinato" xml:space="preserve">
+    <value>Nessun iPhone abbinato.</value>
+  </data>
+  <data name="DimenticaUno" xml:space="preserve">
+    <value>Dimenticare l'iPhone abbinato?
+Al prossimo collegamento servirà di nuovo il codice; la trasmissione in corso continua.</value>
+  </data>
+  <data name="DimenticaMolti" xml:space="preserve">
+    <value>Dimenticare i {0} iPhone abbinati?
+Al prossimo collegamento servirà di nuovo il codice; la trasmissione in corso continua.</value>
+  </data>
+  <data name="ErroreElenco" xml:space="preserve">
+    <value>Impossibile aggiornare l'elenco: {0}</value>
+  </data>
+  <data name="ErroreNome" xml:space="preserve">
+    <value>Impossibile salvare il nome: {0}</value>
+  </data>
+  <data name="NomeTitolo" xml:space="preserve">
+    <value>Nome di questo PC</value>
+  </data>
+  <data name="NomeSpiegazione" xml:space="preserve">
+    <value>È il nome che compare nell'elenco dei PC sull'iPhone.</value>
+  </data>
+  <data name="NomePredefinitoPulsante" xml:space="preserve">
+    <value>Predefinito</value>
+  </data>
+  <data name="NomePredefinitoInfo" xml:space="preserve">
+    <value>Predefinito: {0}</value>
+  </data>
+  <data name="Salva" xml:space="preserve">
+    <value>Salva</value>
+  </data>
+  <data name="Annulla" xml:space="preserve">
+    <value>Annulla</value>
+  </data>
+  <data name="NomePCPredefinito" xml:space="preserve">
+    <value>PC di {0}</value>
+  </data>
+  <data name="StatRicevuti" xml:space="preserve">
+    <value>ricevuti</value>
+  </data>
+  <data name="StatInOnda" xml:space="preserve">
+    <value>in onda</value>
+  </data>
+  <data name="StatFinestra" xml:space="preserve">
+    <value>finestra</value>
+  </data>
+  <data name="StatBacheca" xml:space="preserve">
+    <value>bacheca OBS</value>
+  </data>
+  <data name="StatBitrate" xml:space="preserve">
+    <value>bitrate</value>
+  </data>
+  <data name="StatLatenzaRete" xml:space="preserve">
+    <value>latenza rete</value>
+  </data>
+  <data name="StatLatenzaSchermo" xml:space="preserve">
+    <value>latenza schermo</value>
+  </data>
+  <data name="StatLatenzaAudio" xml:space="preserve">
+    <value>latenza audio</value>
+  </data>
+  <data name="StatOrologi" xml:space="preserve">
+    <value>orologi</value>
+  </data>
+  <data name="StatBonjour" xml:space="preserve">
+    <value>bonjour</value>
+  </data>
+  <data name="StatTrasporto" xml:space="preserve">
+    <value>trasporto</value>
+  </data>
+  <data name="StatAbbinati" xml:space="preserve">
+    <value>iPhone abbinati</value>
+  </data>
+  <data name="StatUltimoRifiuto" xml:space="preserve">
+    <value>ultimo rifiuto</value>
+  </data>
+  <data name="StatDecompressione" xml:space="preserve">
+    <value>decompressione</value>
+  </data>
+  <data name="StatConversione" xml:space="preserve">
+    <value>conversione</value>
+  </data>
+  <data name="StatRotazione" xml:space="preserve">
+    <value>rotazione</value>
+  </data>
+  <data name="StatKeyframe" xml:space="preserve">
+    <value>keyframe</value>
+  </data>
+  <data name="StatScartati" xml:space="preserve">
+    <value>scartati</value>
+  </data>
+  <data name="StatInAttesa" xml:space="preserve">
+    <value>in attesa</value>
+  </data>
+  <data name="StatSincronia" xml:space="preserve">
+    <value>sincronia A/V</value>
+  </data>
+  <data name="StatErrori" xml:space="preserve">
+    <value>errori</value>
+  </data>
+  <data name="StatAudio" xml:space="preserve">
+    <value>audio</value>
+  </data>
+  <data name="StatAudioRicevuto" xml:space="preserve">
+    <value>audio ricevuto</value>
+  </data>
+  <data name="StatFormatoAudio" xml:space="preserve">
+    <value>formato audio</value>
+  </data>
+  <data name="StatUscitaAudio" xml:space="preserve">
+    <value>uscita audio</value>
+  </data>
+  <data name="StatRiserva" xml:space="preserve">
+    <value>riserva audio</value>
+  </data>
+  <data name="StatVelocita" xml:space="preserve">
+    <value>velocità audio</value>
+  </data>
+  <data name="StatPausa" xml:space="preserve">
+    <value>pausa audio</value>
+  </data>
+  <data name="StatRegistro" xml:space="preserve">
+    <value>registro</value>
+  </data>
+  <data name="StatTasti" xml:space="preserve">
+    <value>F1: tasti</value>
+  </data>
+  <data name="ValInOnda" xml:space="preserve">
+    <value>{0,6:F1} fps  (media 10 s; saltati per la sincronia {1} dall'inizio)</value>
+  </data>
+  <data name="ValFinestra" xml:space="preserve">
+    <value>{0,6:F1} fps  (media 10 s; si aggiorna {1:F0} volte/s)</value>
+  </data>
+  <data name="ValTotale" xml:space="preserve">
+    <value>{0,6} (totale)</value>
+  </data>
+  <data name="ValInAttesa" xml:space="preserve">
+    <value>{0,6} immagini</value>
+  </data>
+  <data name="ValAudio" xml:space="preserve">
+    <value>{0,6:F1} pacchetti/s  {1,5:F0} kbit/s</value>
+  </data>
+  <data name="ValAudioRicevuto" xml:space="preserve">
+    <value>{0,6:F0} ms al secondo (~1000 = completo)</value>
+  </data>
+  <data name="ValIgnorati" xml:space="preserve">
+    <value>  ({0} ignorati)</value>
+  </data>
+  <data name="ValRiserva" xml:space="preserve">
+    <value>{0,6:F0} ms  (obiettivo {1:F0}, buchi {2}, tagli {3})</value>
+  </data>
+  <data name="ValPausa" xml:space="preserve">
+    <value>{0,6:F0} ms  (massima {1:F0} ms)</value>
+  </data>
+  <data name="ValRotazioneManuale" xml:space="preserve">
+    <value>{0,6}°  (manuale; dall'iPhone {1}°)</value>
+  </data>
+  <data name="ValRotazioneAutomatica" xml:space="preserve">
+    <value>{0,6}°  (automatica)</value>
+  </data>
+  <data name="ValTrasportoImpossibile" xml:space="preserve">
+    <value>  (impossibile ricevere: {0})</value>
+  </data>
+  <data name="CambioNomeInCorso" xml:space="preserve">
+    <value>cambio del nome in corso…</value>
+  </data>
+  <data name="ValOrologi" xml:space="preserve">
+    <value>scarto {0:+0.0;-0.0} ms · andata/ritorno {1:F1} ms</value>
+  </data>
+  <data name="OrologiNonSincronizzati" xml:space="preserve">
+    <value>non sincronizzati (le latenze qui sopra non sono affidabili)</value>
+  </data>
+  <data name="ValSincronia" xml:space="preserve">
+    <value>{0,6:F0} ms video dietro l'audio (max {1:F0})</value>
+  </data>
+  <data name="SincroniaSenzaAudio" xml:space="preserve">
+    <value>     — (niente audio: il video va in onda subito)</value>
+  </data>
+  <data name="BachecaNonDisponibile" xml:space="preserve">
+    <value>non disponibile: {0}</value>
+  </data>
+  <data name="BachecaErrori" xml:space="preserve">
+    <value>, {0} errori</value>
+  </data>
+  <data name="BachecaRotazione" xml:space="preserve">
+    <value>, rotazione {0:F1} ms</value>
+  </data>
+  <data name="ValBacheca" xml:space="preserve">
+    <value>{0,6:F1} immagini/s  ({1} scritte, {2} ripetute a schermo fermo{3}{4})</value>
+  </data>
+  <data name="RegistroAttivo" xml:space="preserve">
+    <value>ATTIVO ({0} righe) → {1}</value>
+  </data>
+  <data name="RegistroSpentoUltimo" xml:space="preserve">
+    <value>spento (ultimo: {0})</value>
+  </data>
+  <data name="RegistroSpento" xml:space="preserve">
+    <value>spento</value>
+  </data>
+  <data name="BonjourInCorso" xml:space="preserve">
+    <value>annuncio in corso…</value>
+  </data>
+  <data name="BonjourImpossibile" xml:space="preserve">
+    <value>impossibile preparare l'annuncio</value>
+  </data>
+  <data name="BonjourRifiutato" xml:space="preserve">
+    <value>annuncio rifiutato da Windows (errore {0})</value>
+  </data>
+  <data name="BonjourVisibile" xml:space="preserve">
+    <value>visibile in rete come {0}</value>
+  </data>
+  <data name="BonjourNonRiuscito" xml:space="preserve">
+    <value>annuncio non riuscito (errore {0})</value>
+  </data>
+  <data name="AvvisoRetePubblica" xml:space="preserve">
+    <value>⚠ Questa rete è impostata come Pubblica: l'iPhone non potrà collegarsi.
+Impostala come Privata: Impostazioni → Rete e Internet → (la tua rete) → Tipo di profilo di rete.</value>
+  </data>
+  <data name="StatoCollegato" xml:space="preserve">
+    <value>Collegato a {0} (QUIC)</value>
+  </data>
+  <data name="StatoImpossibile" xml:space="preserve">
+    <value>Impossibile ricevere: {0}</value>
+  </data>
+  <data name="StatoInAttesa" xml:space="preserve">
+    <value>In attesa dell'iPhone su {0} (QUIC)</value>
+  </data>
+  <data name="StatoConnessionePersa" xml:space="preserve">
+    <value>Connessione persa: {0}</value>
+  </data>
+  <data name="QuicNonSupportato" xml:space="preserve">
+    <value>QUIC non supportato da questo Windows (serve Windows 11)</value>
+  </data>
+  <data name="CertificatoNonDisponibile" xml:space="preserve">
+    <value>certificato non disponibile</value>
+  </data>
+  <data name="QuicNonInAscolto" xml:space="preserve">
+    <value>impossibile ascoltare in QUIC: {0}</value>
+  </data>
+  <data name="AudioInAttesa" xml:space="preserve">
+    <value>in attesa di audio</value>
+  </data>
+  <data name="AudioNonDisponibile" xml:space="preserve">
+    <value>audio non disponibile: {0}</value>
+  </data>
+  <data name="FormatoAudio" xml:space="preserve">
+    <value>PCM 16 bit, {0} canali, {1} Hz</value>
+  </data>
+  <data name="RifiutoUnIphone" xml:space="preserve">
+    <value>un iPhone</value>
+  </data>
+  <data name="RifiutoNomeTelefono" xml:space="preserve">
+    <value>«{0}»</value>
+  </data>
+  <data name="RifiutoNessunaPresentazione" xml:space="preserve">
+    <value>l'iPhone non si è presentato in tempo</value>
+  </data>
+  <data name="RifiutoNessunaProva" xml:space="preserve">
+    <value>l'iPhone non ha risposto in tempo durante la verifica</value>
+  </data>
+  <data name="RifiutoVerificaFallita" xml:space="preserve">
+    <value>verifica di sicurezza non riuscita (chiave o firma non valide)</value>
+  </data>
+  <data name="RifiutoAltraRichiesta" xml:space="preserve">
+    <value>c'era già un'altra richiesta di abbinamento in corso</value>
+  </data>
+  <data name="RifiutoDalPC" xml:space="preserve">
+    <value>rifiutato da questo PC</value>
+  </data>
+  <data name="RifiutoScaduto" xml:space="preserve">
+    <value>nessuna risposta su questo PC</value>
+  </data>
+  <data name="RifiutoTelefonoScollegato" xml:space="preserve">
+    <value>l'iPhone ha annullato o si è scollegato</value>
+  </data>
+  <data name="RifiutoMessaggioNonValido" xml:space="preserve">
+    <value>messaggio non valido dall'iPhone</value>
+  </data>
+  <data name="RifiutoNuoviNonAmmessi" xml:space="preserve">
+    <value>questo ricevitore non accetta telefoni nuovi</value>
+  </data>
+</root>

@@ -14,7 +14,7 @@
             <TextBlock x:Name="TestoStato"
                        HorizontalAlignment="Center"
                        Foreground="#B0B0B0" FontSize="22" TextAlignment="Center"
-                       Text="Avvio..." />
+                       />
             <TextBlock x:Name="TestoNomePC"
                        HorizontalAlignment="Center" Margin="0,14,0,0"
                        Foreground="#808080" FontSize="16" TextAlignment="Center" />
@@ -42,9 +42,9 @@
                 <TextBlock x:Name="TestoAvvisoRete" Foreground="#FFD27F" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" />
             </Border>
             <!-- I tasti principali, solo finché non c'è video (sparisce con la schermata di attesa). -->
-            <TextBlock Visibility="{Binding Visibility, ElementName=PannelloAttesa}"
+            <TextBlock x:Name="TestoTastiInBasso" Visibility="{Binding Visibility, ElementName=PannelloAttesa}"
                        HorizontalAlignment="Center" Foreground="#707070" FontSize="14"
-                       Text="F1 aiuto  ·  S statistiche  ·  O ruota  ·  A rotazione automatica  ·  N nome del PC" />
+                       />
         </StackPanel>
 
         <!-- Aiuto (F1): tutti i tasti, anche durante la trasmissione. -->
@@ -53,7 +53,7 @@
                 Padding="32,24" CornerRadius="8" Background="#F0202020"
                 BorderBrush="#606060" BorderThickness="1">
             <StackPanel>
-                <TextBlock Text="Tasti" Foreground="White" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12" />
+                <TextBlock x:Name="TestoAiutoTitolo" Foreground="White" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12" />
                 <Grid TextElement.FontSize="16">
                     <Grid.Resources>
                         <Style TargetType="TextBlock">
@@ -70,19 +70,19 @@
                         <RowDefinition /><RowDefinition /><RowDefinition />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Text="F1" Foreground="White" FontFamily="Consolas" />
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="mostra o nasconde questo aiuto" />
+                    <TextBlock x:Name="TestoAiutoF1" Grid.Row="0" Grid.Column="1" />
                     <TextBlock Grid.Row="1" Text="S" Foreground="White" FontFamily="Consolas" />
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="statistiche della trasmissione" />
+                    <TextBlock x:Name="TestoAiutoS" Grid.Row="1" Grid.Column="1" />
                     <TextBlock Grid.Row="2" Text="O" Foreground="White" FontFamily="Consolas" />
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="ruota l'immagine di 90° (se la rotazione automatica sbaglia)" />
+                    <TextBlock x:Name="TestoAiutoO" Grid.Row="2" Grid.Column="1" />
                     <TextBlock Grid.Row="3" Text="A" Foreground="White" FontFamily="Consolas" />
-                    <TextBlock Grid.Row="3" Grid.Column="1" Text="torna alla rotazione automatica" />
+                    <TextBlock x:Name="TestoAiutoA" Grid.Row="3" Grid.Column="1" />
                     <TextBlock Grid.Row="4" Text="N" Foreground="White" FontFamily="Consolas" />
-                    <TextBlock Grid.Row="4" Grid.Column="1" Text="nome di questo PC sull'iPhone" />
+                    <TextBlock x:Name="TestoAiutoN" Grid.Row="4" Grid.Column="1" />
                     <TextBlock Grid.Row="5" Text="D" Foreground="White" FontFamily="Consolas" />
-                    <TextBlock Grid.Row="5" Grid.Column="1" Text="dimentica gli iPhone abbinati" />
+                    <TextBlock x:Name="TestoAiutoD" Grid.Row="5" Grid.Column="1" />
                     <TextBlock Grid.Row="6" Text="Esc" Foreground="White" FontFamily="Consolas" />
-                    <TextBlock Grid.Row="6" Grid.Column="1" Text="rifiuta una richiesta di abbinamento; chiude questo aiuto" />
+                    <TextBlock x:Name="TestoAiutoEsc" Grid.Row="6" Grid.Column="1" />
                 </Grid>
             </StackPanel>
         </Border>
@@ -94,20 +94,20 @@
                 Padding="32,24" CornerRadius="8" Background="#F0202020"
                 BorderBrush="#606060" BorderThickness="1">
             <StackPanel MinWidth="380">
-                <TextBlock Text="Un iPhone vuole collegarsi" Foreground="White" FontSize="22" FontWeight="SemiBold"
+                <TextBlock x:Name="TestoAbbinamentoTitolo" Foreground="White" FontSize="22" FontWeight="SemiBold"
                            HorizontalAlignment="Center" />
                 <TextBlock x:Name="NomeAbbinamento" Foreground="#B0B0B0" FontSize="16" Margin="0,4,0,0"
                            HorizontalAlignment="Center" />
                 <TextBlock x:Name="CodiceAbbinamento" Foreground="White" FontFamily="Consolas" FontSize="56"
                            Margin="0,16,0,8" HorizontalAlignment="Center" />
-                <TextBlock Text="Consenti solo se sull'iPhone compare lo stesso codice." Foreground="#D0D0D0" FontSize="16"
+                <TextBlock x:Name="TestoAbbinamentoIstruzioni" Foreground="#D0D0D0" FontSize="16"
                            HorizontalAlignment="Center" />
                 <TextBlock x:Name="ScadenzaAbbinamento" Foreground="#909090" FontSize="14" Margin="0,6,0,0"
                            HorizontalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                    <Button x:Name="PulsanteConsenti" Content="Consenti" Click="SuConsenti" Focusable="False"
+                    <Button x:Name="PulsanteConsenti" Click="SuConsenti" Focusable="False"
                             MinWidth="120" Padding="12,6" Margin="0,0,12,0" FontSize="16" />
-                    <Button x:Name="PulsanteRifiuta" Content="Rifiuta" Click="SuRifiuta" Focusable="False"
+                    <Button x:Name="PulsanteRifiuta" Click="SuRifiuta" Focusable="False"
                             MinWidth="120" Padding="12,6" FontSize="16" />
                 </StackPanel>
             </StackPanel>

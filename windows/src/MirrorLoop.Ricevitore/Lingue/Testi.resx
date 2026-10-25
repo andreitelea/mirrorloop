@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Avvio" xml:space="preserve">
+    <value>Starting…</value>
+  </data>
+  <data name="TastiInBasso" xml:space="preserve">
+    <value>F1 help  ·  S statistics  ·  O rotate  ·  A automatic rotation  ·  N PC name</value>
+  </data>
+  <data name="SceltaSullIphone" xml:space="preserve">
+    <value>On the iPhone, choose “{0}”  ·  N to change the name</value>
+  </data>
+  <data name="UltimoRifiutato" xml:space="preserve">
+    <value>Last iPhone rejected at {0}</value>
+  </data>
+  <data name="AiutoTitolo" xml:space="preserve">
+    <value>Keys</value>
+  </data>
+  <data name="AiutoF1" xml:space="preserve">
+    <value>show or hide this help</value>
+  </data>
+  <data name="AiutoS" xml:space="preserve">
+    <value>transmission statistics</value>
+  </data>
+  <data name="AiutoO" xml:space="preserve">
+    <value>rotate the image by 90° (if automatic rotation gets it wrong)</value>
+  </data>
+  <data name="AiutoA" xml:space="preserve">
+    <value>back to automatic rotation</value>
+  </data>
+  <data name="AiutoN" xml:space="preserve">
+    <value>name of this PC on the iPhone</value>
+  </data>
+  <data name="AiutoD" xml:space="preserve">
+    <value>forget the paired iPhones</value>
+  </data>
+  <data name="AiutoEsc" xml:space="preserve">
+    <value>reject a pairing request; close this help</value>
+  </data>
+  <data name="AbbinamentoTitolo" xml:space="preserve">
+    <value>An iPhone wants to connect</value>
+  </data>
+  <data name="AbbinamentoIstruzioni" xml:space="preserve">
+    <value>Allow only if the iPhone shows the same code.</value>
+  </data>
+  <data name="Consenti" xml:space="preserve">
+    <value>Allow</value>
+  </data>
+  <data name="Rifiuta" xml:space="preserve">
+    <value>Reject</value>
+  </data>
+  <data name="ScadeTra" xml:space="preserve">
+    <value>Expires in {0} s</value>
+  </data>
+  <data name="NessunIphoneAbbinato" xml:space="preserve">
+    <value>No paired iPhones.</value>
+  </data>
+  <data name="DimenticaUno" xml:space="preserve">
+    <value>Forget the paired iPhone?
+The code will be needed again at the next connection; the current transmission continues.</value>
+  </data>
+  <data name="DimenticaMolti" xml:space="preserve">
+    <value>Forget the {0} paired iPhones?
+The code will be needed again at the next connection; the current transmission continues.</value>
+  </data>
+  <data name="ErroreElenco" xml:space="preserve">
+    <value>Unable to update the list: {0}</value>
+  </data>
+  <data name="ErroreNome" xml:space="preserve">
+    <value>Unable to save the name: {0}</value>
+  </data>
+  <data name="NomeTitolo" xml:space="preserve">
+    <value>Name of this PC</value>
+  </data>
+  <data name="NomeSpiegazione" xml:space="preserve">
+    <value>This is the name shown in the list of PCs on the iPhone.</value>
+  </data>
+  <data name="NomePredefinitoPulsante" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="NomePredefinitoInfo" xml:space="preserve">
+    <value>Default: {0}</value>
+  </data>
+  <data name="Salva" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Annulla" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="NomePCPredefinito" xml:space="preserve">
+    <value>{0}'s PC</value>
+  </data>
+  <data name="StatRicevuti" xml:space="preserve">
+    <value>received</value>
+  </data>
+  <data name="StatInOnda" xml:space="preserve">
+    <value>on air</value>
+  </data>
+  <data name="StatFinestra" xml:space="preserve">
+    <value>window</value>
+  </data>
+  <data name="StatBacheca" xml:space="preserve">
+    <value>OBS feed</value>
+  </data>
+  <data name="StatBitrate" xml:space="preserve">
+    <value>bitrate</value>
+  </data>
+  <data name="StatLatenzaRete" xml:space="preserve">
+    <value>network latency</value>
+  </data>
+  <data name="StatLatenzaSchermo" xml:space="preserve">
+    <value>screen latency</value>
+  </data>
+  <data name="StatLatenzaAudio" xml:space="preserve">
+    <value>audio latency</value>
+  </data>
+  <data name="StatOrologi" xml:space="preserve">
+    <value>clocks</value>
+  </data>
+  <data name="StatBonjour" xml:space="preserve">
+    <value>bonjour</value>
+  </data>
+  <data name="StatTrasporto" xml:space="preserve">
+    <value>transport</value>
+  </data>
+  <data name="StatAbbinati" xml:space="preserve">
+    <value>paired iPhones</value>
+  </data>
+  <data name="StatUltimoRifiuto" xml:space="preserve">
+    <value>last rejection</value>
+  </data>
+  <data name="StatDecompressione" xml:space="preserve">
+    <value>decoding</value>
+  </data>
+  <data name="StatConversione" xml:space="preserve">
+    <value>conversion</value>
+  </data>
+  <data name="StatRotazione" xml:space="preserve">
+    <value>rotation</value>
+  </data>
+  <data name="StatKeyframe" xml:space="preserve">
+    <value>keyframes</value>
+  </data>
+  <data name="StatScartati" xml:space="preserve">
+    <value>dropped</value>
+  </data>
+  <data name="StatInAttesa" xml:space="preserve">
+    <value>waiting</value>
+  </data>
+  <data name="StatSincronia" xml:space="preserve">
+    <value>A/V sync</value>
+  </data>
+  <data name="StatErrori" xml:space="preserve">
+    <value>errors</value>
+  </data>
+  <data name="StatAudio" xml:space="preserve">
+    <value>audio</value>
+  </data>
+  <data name="StatAudioRicevuto" xml:space="preserve">
+    <value>audio received</value>
+  </data>
+  <data name="StatFormatoAudio" xml:space="preserve">
+    <value>audio format</value>
+  </data>
+  <data name="StatUscitaAudio" xml:space="preserve">
+    <value>audio output</value>
+  </data>
+  <data name="StatRiserva" xml:space="preserve">
+    <value>audio buffer</value>
+  </data>
+  <data name="StatVelocita" xml:space="preserve">
+    <value>audio speed</value>
+  </data>
+  <data name="StatPausa" xml:space="preserve">
+    <value>audio gap</value>
+  </data>
+  <data name="StatRegistro" xml:space="preserve">
+    <value>log</value>
+  </data>
+  <data name="StatTasti" xml:space="preserve">
+    <value>F1: keys</value>
+  </data>
+  <data name="ValInOnda" xml:space="preserve">
+    <value>{0,6:F1} fps  (10 s average; skipped for sync {1} since start)</value>
+  </data>
+  <data name="ValFinestra" xml:space="preserve">
+    <value>{0,6:F1} fps  (10 s average; refreshes {1:F0} times/s)</value>
+  </data>
+  <data name="ValTotale" xml:space="preserve">
+    <value>{0,6} (total)</value>
+  </data>
+  <data name="ValInAttesa" xml:space="preserve">
+    <value>{0,6} images</value>
+  </data>
+  <data name="ValAudio" xml:space="preserve">
+    <value>{0,6:F1} packets/s  {1,5:F0} kbit/s</value>
+  </data>
+  <data name="ValAudioRicevuto" xml:space="preserve">
+    <value>{0,6:F0} ms per second (~1000 = complete)</value>
+  </data>
+  <data name="ValIgnorati" xml:space="preserve">
+    <value>  ({0} ignored)</value>
+  </data>
+  <data name="ValRiserva" xml:space="preserve">
+    <value>{0,6:F0} ms  (target {1:F0}, gaps {2}, cuts {3})</value>
+  </data>
+  <data name="ValPausa" xml:space="preserve">
+    <value>{0,6:F0} ms  (max {1:F0} ms)</value>
+  </data>
+  <data name="ValRotazioneManuale" xml:space="preserve">
+    <value>{0,6}°  (manual; from the iPhone {1}°)</value>
+  </data>
+  <data name="ValRotazioneAutomatica" xml:space="preserve">
+    <value>{0,6}°  (automatic)</value>
+  </data>
+  <data name="ValTrasportoImpossibile" xml:space="preserve">
+    <value>  (unable to receive: {0})</value>
+  </data>
+  <data name="CambioNomeInCorso" xml:space="preserve">
+    <value>changing the name…</value>
+  </data>
+  <data name="ValOrologi" xml:space="preserve">
+    <value>offset {0:+0.0;-0.0} ms · round trip {1:F1} ms</value>
+  </data>
+  <data name="OrologiNonSincronizzati" xml:space="preserve">
+    <value>not synchronized (the latencies above are not reliable)</value>
+  </data>
+  <data name="ValSincronia" xml:space="preserve">
+    <value>{0,6:F0} ms video behind audio (max {1:F0})</value>
+  </data>
+  <data name="SincroniaSenzaAudio" xml:space="preserve">
+    <value>     — (no audio: video goes on air immediately)</value>
+  </data>
+  <data name="BachecaNonDisponibile" xml:space="preserve">
+    <value>not available: {0}</value>
+  </data>
+  <data name="BachecaErrori" xml:space="preserve">
+    <value>, {0} errors</value>
+  </data>
+  <data name="BachecaRotazione" xml:space="preserve">
+    <value>, rotation {0:F1} ms</value>
+  </data>
+  <data name="ValBacheca" xml:space="preserve">
+    <value>{0,6:F1} images/s  ({1} written, {2} repeated while the screen is still{3}{4})</value>
+  </data>
+  <data name="RegistroAttivo" xml:space="preserve">
+    <value>ON ({0} rows) → {1}</value>
+  </data>
+  <data name="RegistroSpentoUltimo" xml:space="preserve">
+    <value>off (last: {0})</value>
+  </data>
+  <data name="RegistroSpento" xml:space="preserve">
+    <value>off</value>
+  </data>
+  <data name="BonjourInCorso" xml:space="preserve">
+    <value>announcing…</value>
+  </data>
+  <data name="BonjourImpossibile" xml:space="preserve">
+    <value>unable to prepare the announcement</value>
+  </data>
+  <data name="BonjourRifiutato" xml:space="preserve">
+    <value>announcement rejected by Windows (error {0})</value>
+  </data>
+  <data name="BonjourVisibile" xml:space="preserve">
+    <value>visible on the network as {0}</value>
+  </data>
+  <data name="BonjourNonRiuscito" xml:space="preserve">
+    <value>announcement failed (error {0})</value>
+  </data>
+  <data name="AvvisoRetePubblica" xml:space="preserve">
+    <value>⚠ This network is set as Public: the iPhone won't be able to connect.
+Set it as Private: Settings → Network &amp; internet → (your network) → Network profile type.</value>
+  </data>
+  <data name="StatoCollegato" xml:space="preserve">
+    <value>Connected to {0} (QUIC)</value>
+  </data>
+  <data name="StatoImpossibile" xml:space="preserve">
+    <value>Unable to receive: {0}</value>
+  </data>
+  <data name="StatoInAttesa" xml:space="preserve">
+    <value>Waiting for the iPhone on {0} (QUIC)</value>
+  </data>
+  <data name="StatoConnessionePersa" xml:space="preserve">
+    <value>Connection lost: {0}</value>
+  </data>
+  <data name="QuicNonSupportato" xml:space="preserve">
+    <value>QUIC not supported by this Windows (Windows 11 required)</value>
+  </data>
+  <data name="CertificatoNonDisponibile" xml:space="preserve">
+    <value>certificate not available</value>
+  </data>
+  <data name="QuicNonInAscolto" xml:space="preserve">
+    <value>unable to listen with QUIC: {0}</value>
+  </data>
+  <data name="AudioInAttesa" xml:space="preserve">
+    <value>waiting for audio</value>
+  </data>
+  <data name="AudioNonDisponibile" xml:space="preserve">
+    <value>audio not available: {0}</value>
+  </data>
+  <data name="FormatoAudio" xml:space="preserve">
+    <value>PCM 16 bit, {0} channels, {1} Hz</value>
+  </data>
+  <data name="RifiutoUnIphone" xml:space="preserve">
+    <value>an iPhone</value>
+  </data>
+  <data name="RifiutoNomeTelefono" xml:space="preserve">
+    <value>“{0}”</value>
+  </data>
+  <data name="RifiutoNessunaPresentazione" xml:space="preserve">
+    <value>the iPhone didn't introduce itself in time</value>
+  </data>
+  <data name="RifiutoNessunaProva" xml:space="preserve">
+    <value>the iPhone didn't respond in time during verification</value>
+  </data>
+  <data name="RifiutoVerificaFallita" xml:space="preserve">
+    <value>security check failed (invalid key or signature)</value>
+  </data>
+  <data name="RifiutoAltraRichiesta" xml:space="preserve">
+    <value>another pairing request was already in progress</value>
+  </data>
+  <data name="RifiutoDalPC" xml:space="preserve">
+    <value>rejected on this PC</value>
+  </data>
+  <data name="RifiutoScaduto" xml:space="preserve">
+    <value>no answer on this PC</value>
+  </data>
+  <data name="RifiutoTelefonoScollegato" xml:space="preserve">
+    <value>the iPhone cancelled or disconnected</value>
+  </data>
+  <data name="RifiutoMessaggioNonValido" xml:space="preserve">
+    <value>invalid message from the iPhone</value>
+  </data>
+  <data name="RifiutoNuoviNonAmmessi" xml:space="preserve">
+    <value>this receiver doesn't accept new phones</value>
+  </data>
+</root>

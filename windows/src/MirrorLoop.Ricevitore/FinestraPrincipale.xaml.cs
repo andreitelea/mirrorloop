@@ -51,7 +51,7 @@ public partial class FinestraPrincipale : Window
     private long _aggiornamentiFinestra;
     private double _msDecompressione;
     private double _msConversione;
-    private string _stato = "Avvio...";
+    private string _stato = Testi.Avvio;
     private long _mostratiTotali;
     // Contatori totali ogni mezzo secondo, per le medie degli ultimi 10 secondi: la media di mezzo
     // secondo salta troppo (le immagini arrivano a grappoli) e trae in inganno.
@@ -61,6 +61,7 @@ public partial class FinestraPrincipale : Window
     public FinestraPrincipale()
     {
         InitializeComponent();
+        ApplicaTesti();
 
         // La bacheca da cui legge la sorgente MirrorLoop in OBS (immagini e audio). Senza, la
         // finestra e le cuffie funzionano lo stesso.
@@ -83,12 +84,12 @@ public partial class FinestraPrincipale : Window
         // Una trasmissione nuova: OBS deve ripartire pulito (istanti non confrontabili con prima).
         _ricezione.StatoCambiato += stato =>
         {
-            if (stato.StartsWith("Collegato"))
+            if (stato.Collegato)
                 _bacheca?.NuovaGenerazione();
         };
         _ricezione.AbbinamentoRifiutato += rifiuto => Dispatcher.BeginInvoke(() =>
         {
-            TestoRifiuto.Text = $"Ultimo iPhone rifiutato alle {rifiuto.Riga}";
+            TestoRifiuto.Text = string.Format(Testi.UltimoRifiutato, rifiuto.Riga);
             TestoRifiuto.Visibility = Visibility.Visible;
         });
         _riproduzioneAudio.EventoRiserva +=evento => _registro.ScriviRiserva(evento, Protocollo.Protocollo.AdessoMicrosecondi());
@@ -120,15 +121,34 @@ public partial class FinestraPrincipale : Window
         _presentazione.Avvia(_stop.Token);
     }
 
-    private void CambiaStato(string stato)
+    /// <summary>I testi fissi della finestra, nella lingua di Windows (Lingue\Testi*.resx).</summary>
+    private void ApplicaTesti()
     {
-        _stato = stato;
-        TestoStato.Text = stato;
+        TestoStato.Text = Testi.Avvio;
+        TestoTastiInBasso.Text = Testi.TastiInBasso;
+        TestoAiutoTitolo.Text = Testi.AiutoTitolo;
+        TestoAiutoF1.Text = Testi.AiutoF1;
+        TestoAiutoS.Text = Testi.AiutoS;
+        TestoAiutoO.Text = Testi.AiutoO;
+        TestoAiutoA.Text = Testi.AiutoA;
+        TestoAiutoN.Text = Testi.AiutoN;
+        TestoAiutoD.Text = Testi.AiutoD;
+        TestoAiutoEsc.Text = Testi.AiutoEsc;
+        TestoAbbinamentoTitolo.Text = Testi.AbbinamentoTitolo;
+        TestoAbbinamentoIstruzioni.Text = Testi.AbbinamentoIstruzioni;
+        PulsanteConsenti.Content = Testi.Consenti;
+        PulsanteRifiuta.Content = Testi.Rifiuta;
+    }
+
+    private void CambiaStato(StatoRicezione stato)
+    {
+        _stato = stato.Descrizione;
+        TestoStato.Text = stato.Descrizione;
         // Un iPhone collegato: il rifiuto di prima non interessa più (resta nelle statistiche).
-        if (stato.StartsWith("Collegato"))
+        if (stato.Collegato)
             TestoRifiuto.Visibility = Visibility.Collapsed;
         // Senza mittente non c'è video da mostrare: si torna alla scritta di stato.
-        if (!stato.StartsWith("Collegato"))
+        else
         {
             Video.Source = null;
             _immagine = null;
@@ -197,39 +217,46 @@ public partial class FinestraPrincipale : Window
         static string Latenza(StatisticheRicezione.Istantanea s) => s.LatenzaMedianaMs is double mediana
             ? $"{mediana,6:F1} ms (max {s.LatenzaMassimaMs:F1})"
             : "     —";
+        // Etichette allineate in colonna (carattere a larghezza fissa): al massimo 15 caratteri in ogni lingua.
+        static string Riga(string etichetta, string valore) => $"{etichetta,-15} {valore}\n";
+        string rotazione = _sceltaRotazione.Manuale
+            ? string.Format(Testi.ValRotazioneManuale, 90 * (int)_rotazione, 90 * (int)_sceltaRotazione.Automatica)
+            : string.Format(Testi.ValRotazioneAutomatica, 90 * (int)_rotazione);
 
         TestoStatistiche.Text =
             $"{_stato}\n" +
-            $"ricevuti        {rete.Frame / secondi,6:F1} fps\n" +
-            $"in onda         {inOnda,6:F1} fps  (media 10 s; saltati per la sincronia {DescriviSaltati()} dall'inizio)\n" +
-            $"finestra        {mostrati,6:F1} fps  (media 10 s; si aggiorna {_aggiornamentiFinestra / secondi:F0} volte/s)\n" +
-            $"bacheca OBS     {DescriviBacheca(bacheca)}\n" +
-            $"bitrate         {rete.Byte * 8 / secondi / 1_000_000,6:F2} Mbit/s\n" +
-            $"latenza rete    {Latenza(rete)}\n" +
-            $"latenza schermo {Latenza(schermo)}\n" +
-            $"latenza audio   {DescriviLatenzaAudio()}\n" +
-            $"orologi         {DescriviOrologi()}\n" +
-            $"bonjour         {_annuncio?.Stato ?? "cambio del nome in corso…"}\n" +
-            $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (impossibile ricevere: {m})" : "")}\n" +
-            $"iPhone abbinati {_telefoni.Numero,6}\n" +
-            $"ultimo rifiuto  {_ricezione.UltimoRifiuto?.Riga ?? "     —"}\n" +
-            $"decompressione  {_msDecompressione,6:F1} ms\n" +
-            $"conversione     {_msConversione,6:F1} ms\n" +
-            $"rotazione       {90 * (int)_rotazione,6}°  ({(_sceltaRotazione.Manuale ? $"manuale; dall'iPhone {90 * (int)_sceltaRotazione.Automatica}°" : "automatica")})\n" +
-            $"keyframe        {_keyframeTotali,6} (totale)\n" +
-            $"scartati        {_coda.Scartati,6} (totale)\n" +
-            $"in attesa       {_riproduzione.InAttesa,6} immagini\n" +
-            $"sincronia A/V   {DescriviSincronia()}\n" +
-            $"errori          {_riproduzione.Errori,6} (totale)\n" +
-            $"audio           {audio.Pacchetti / secondi,6:F1} pacchetti/s  {audio.Byte * 8 / secondi / 1000,5:F0} kbit/s\n" +
-            $"audio ricevuto  {audio.MsAudio / secondi,6:F0} ms al secondo (~1000 = completo)\n" +
-            $"formato audio   {audio.Formato}{(audio.Ignorati > 0 ? $"  ({audio.Ignorati} ignorati)" : "")}\n" +
-            $"uscita audio    {_riproduzioneAudio.Stato}\n" +
-            $"riserva audio   {_riproduzioneAudio.Riserva.TotalMilliseconds,6:F0} ms  (obiettivo {_riproduzioneAudio.Obiettivo.TotalMilliseconds:F0}, buchi {_riproduzioneAudio.Buchi}, tagli {_riproduzioneAudio.Tagli})\n" +
-            $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
-            $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
-            $"registro        {DescriviRegistro()}  (Ctrl+R)\n" +
-            "F1: tasti";
+            Riga(Testi.StatRicevuti, $"{rete.Frame / secondi,6:F1} fps") +
+            Riga(Testi.StatInOnda, string.Format(Testi.ValInOnda, inOnda, DescriviSaltati())) +
+            Riga(Testi.StatFinestra, string.Format(Testi.ValFinestra, mostrati, _aggiornamentiFinestra / secondi)) +
+            Riga(Testi.StatBacheca, DescriviBacheca(bacheca)) +
+            Riga(Testi.StatBitrate, $"{rete.Byte * 8 / secondi / 1_000_000,6:F2} Mbit/s") +
+            Riga(Testi.StatLatenzaRete, Latenza(rete)) +
+            Riga(Testi.StatLatenzaSchermo, Latenza(schermo)) +
+            Riga(Testi.StatLatenzaAudio, DescriviLatenzaAudio()) +
+            Riga(Testi.StatOrologi, DescriviOrologi()) +
+            Riga(Testi.StatBonjour, _annuncio?.Stato ?? Testi.CambioNomeInCorso) +
+            Riga(Testi.StatTrasporto, (_ricezione.Trasporto ?? "—")
+                + (_ricezione.MotivoSenzaQuic is string m ? string.Format(Testi.ValTrasportoImpossibile, m) : "")) +
+            Riga(Testi.StatAbbinati, $"{_telefoni.Numero,6}") +
+            Riga(Testi.StatUltimoRifiuto, _ricezione.UltimoRifiuto?.Riga ?? "     —") +
+            Riga(Testi.StatDecompressione, $"{_msDecompressione,6:F1} ms") +
+            Riga(Testi.StatConversione, $"{_msConversione,6:F1} ms") +
+            Riga(Testi.StatRotazione, rotazione) +
+            Riga(Testi.StatKeyframe, string.Format(Testi.ValTotale, _keyframeTotali)) +
+            Riga(Testi.StatScartati, string.Format(Testi.ValTotale, _coda.Scartati)) +
+            Riga(Testi.StatInAttesa, string.Format(Testi.ValInAttesa, _riproduzione.InAttesa)) +
+            Riga(Testi.StatSincronia, DescriviSincronia()) +
+            Riga(Testi.StatErrori, string.Format(Testi.ValTotale, _riproduzione.Errori)) +
+            Riga(Testi.StatAudio, string.Format(Testi.ValAudio, audio.Pacchetti / secondi, audio.Byte * 8 / secondi / 1000)) +
+            Riga(Testi.StatAudioRicevuto, string.Format(Testi.ValAudioRicevuto, audio.MsAudio / secondi)) +
+            Riga(Testi.StatFormatoAudio, audio.Formato + (audio.Ignorati > 0 ? string.Format(Testi.ValIgnorati, audio.Ignorati) : "")) +
+            Riga(Testi.StatUscitaAudio, _riproduzioneAudio.Stato) +
+            Riga(Testi.StatRiserva, string.Format(Testi.ValRiserva, _riproduzioneAudio.Riserva.TotalMilliseconds,
+                _riproduzioneAudio.Obiettivo.TotalMilliseconds, _riproduzioneAudio.Buchi, _riproduzioneAudio.Tagli)) +
+            Riga(Testi.StatVelocita, $"{_riproduzioneAudio.Velocita,6:F3}×") +
+            Riga(Testi.StatPausa, string.Format(Testi.ValPausa, audio.PausaMassimaMs, audio.PausaMassimaTotaleMs)) +
+            Riga(Testi.StatRegistro, $"{DescriviRegistro()}  (Ctrl+R)") +
+            Testi.StatTasti;
         _aggiornamentiFinestra = 0;
     }
 
@@ -258,14 +285,14 @@ public partial class FinestraPrincipale : Window
     /// </summary>
     private string DescriviOrologi() =>
         _sincronia.Migliore is SincroniaOrologi.Misura m
-            ? $"scarto {m.ScartoMicrosecondi / 1000.0:+0.0;-0.0} ms · andata/ritorno {m.AndataRitornoMicrosecondi / 1000.0:F1} ms"
-            : "non sincronizzati (le latenze qui sopra non sono affidabili)";
+            ? string.Format(Testi.ValOrologi, m.ScartoMicrosecondi / 1000.0, m.AndataRitornoMicrosecondi / 1000.0)
+            : Testi.OrologiNonSincronizzati;
 
     /// <summary>Mediana e massimo dello scarto audio-video dall'ultima lettura, poi riparte.</summary>
     private string DescriviSincronia() =>
         _presentazione.LeggiSincronia() is var (mediana, massimo)
-            ? $"{mediana,6:F0} ms video dietro l'audio (max {massimo:F0})"
-            : "     — (niente audio: il video va in onda subito)";
+            ? string.Format(Testi.ValSincronia, mediana, massimo)
+            : Testi.SincroniaSenzaAudio;
 
     /// <summary>Immagini al secondo andate in onda, disegnate dalla finestra e scritte per OBS, negli ultimi 10 s.</summary>
     private (double InOnda, double Mostrati, double Bacheca) MedieUltimi10Secondi()
@@ -293,10 +320,10 @@ public partial class FinestraPrincipale : Window
     private string DescriviBacheca(double alSecondo)
     {
         if (_bacheca is null)
-            return $"non disponibile: {_motivoSenzaBacheca}";
-        string errori = _presentazione.ErroriBacheca > 0 ? $", {_presentazione.ErroriBacheca} errori" : "";
-        string rotazione = _presentazione.MsRotazione > 0 ? $", rotazione {_presentazione.MsRotazione:F1} ms" : "";
-        return $"{alSecondo,6:F1} immagini/s  ({_presentazione.ScritteInBacheca} scritte, {_presentazione.Ripetute} ripetute a schermo fermo{errori}{rotazione})";
+            return string.Format(Testi.BachecaNonDisponibile, _motivoSenzaBacheca);
+        string errori = _presentazione.ErroriBacheca > 0 ? string.Format(Testi.BachecaErrori, _presentazione.ErroriBacheca) : "";
+        string rotazione = _presentazione.MsRotazione > 0 ? string.Format(Testi.BachecaRotazione, _presentazione.MsRotazione) : "";
+        return string.Format(Testi.ValBacheca, alSecondo, _presentazione.ScritteInBacheca, _presentazione.Ripetute, errori, rotazione);
     }
 
     private void SuTastoPremuto(object sender, KeyEventArgs e)
@@ -367,7 +394,7 @@ public partial class FinestraPrincipale : Window
     // ---- Nome del PC ----
 
     private void MostraNomePC() =>
-        TestoNomePC.Text = $"Sull'iPhone scegli «{_impostazioni.NomePC}» · N per cambiare il nome";
+        TestoNomePC.Text = string.Format(Testi.SceltaSullIphone, _impostazioni.NomePC);
 
     /// <summary>
     /// Tasto N: chiede il nome nuovo e rifà l'annuncio Bonjour. Gli abbinamenti restano validi;
@@ -386,7 +413,7 @@ public partial class FinestraPrincipale : Window
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, $"Impossibile salvare il nome: {ex.Message}", "MirrorLoop", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, string.Format(Testi.ErroreNome, ex.Message), "MirrorLoop", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         MostraNomePC();
@@ -467,7 +494,7 @@ public partial class FinestraPrincipale : Window
     private void AggiornaScadenza()
     {
         int secondi = Math.Max(0, (int)Math.Ceiling((_scadenzaConsenso - DateTime.UtcNow).TotalSeconds));
-        ScadenzaAbbinamento.Text = $"Scade tra {secondi} s";
+        ScadenzaAbbinamento.Text = string.Format(Testi.ScadeTra, secondi);
     }
 
     private void SuConsenti(object sender, RoutedEventArgs e) => _consenso?.TrySetResult(true);
@@ -480,13 +507,11 @@ public partial class FinestraPrincipale : Window
         int numero = _telefoni.Numero;
         if (numero == 0)
         {
-            MessageBox.Show(this, "Nessun iPhone abbinato.", "MirrorLoop");
+            MessageBox.Show(this, Testi.NessunIphoneAbbinato, "MirrorLoop");
             return;
         }
-        string quali = numero == 1 ? "l'iPhone abbinato" : $"i {numero} iPhone abbinati";
-        var scelta = MessageBox.Show(this,
-            $"Dimenticare {quali}?\nAl prossimo collegamento servirà di nuovo il codice; la trasmissione in corso continua.",
-            "MirrorLoop", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+        string domanda = numero == 1 ? Testi.DimenticaUno : string.Format(Testi.DimenticaMolti, numero);
+        var scelta = MessageBox.Show(this, domanda, "MirrorLoop", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
         if (scelta != MessageBoxResult.Yes)
             return;
         try
@@ -495,14 +520,14 @@ public partial class FinestraPrincipale : Window
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, $"Impossibile aggiornare l'elenco: {ex.Message}", "MirrorLoop", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, string.Format(Testi.ErroreElenco, ex.Message), "MirrorLoop", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
     private string DescriviRegistro() =>
         _registro.Attivo
-            ? $"ATTIVO ({_registro.Righe} righe) → {_registro.Percorso}"
-            : _registro.Percorso is string ultimo ? $"spento (ultimo: {ultimo})" : "spento";
+            ? string.Format(Testi.RegistroAttivo, _registro.Righe, _registro.Percorso)
+            : _registro.Percorso is string ultimo ? string.Format(Testi.RegistroSpentoUltimo, ultimo) : Testi.RegistroSpento;
 
     protected override void OnClosing(CancelEventArgs e)
     {

@@ -37,15 +37,15 @@ public sealed record RifiutoAbbinamento(MotivoRifiuto Motivo, string? NomeTelefo
         {
             string motivo = Motivo switch
             {
-                MotivoRifiuto.NessunaPresentazione => "l'iPhone non si è presentato in tempo",
-                MotivoRifiuto.NessunaProva => "l'iPhone non ha risposto in tempo durante la verifica",
-                MotivoRifiuto.VerificaFallita => "verifica di sicurezza non riuscita (chiave o firma non valide)",
-                MotivoRifiuto.AltraRichiestaInCorso => "c'era già un'altra richiesta di abbinamento in corso",
-                MotivoRifiuto.RifiutatoDalPC => "rifiutato da questo PC",
-                MotivoRifiuto.Scaduto => "nessuna risposta su questo PC",
-                MotivoRifiuto.TelefonoScollegato => "l'iPhone ha annullato o si è scollegato",
-                MotivoRifiuto.MessaggioNonValido => "messaggio non valido dall'iPhone",
-                MotivoRifiuto.NuoviTelefoniNonAmmessi => "questo ricevitore non accetta telefoni nuovi",
+                MotivoRifiuto.NessunaPresentazione => Testi.RifiutoNessunaPresentazione,
+                MotivoRifiuto.NessunaProva => Testi.RifiutoNessunaProva,
+                MotivoRifiuto.VerificaFallita => Testi.RifiutoVerificaFallita,
+                MotivoRifiuto.AltraRichiestaInCorso => Testi.RifiutoAltraRichiesta,
+                MotivoRifiuto.RifiutatoDalPC => Testi.RifiutoDalPC,
+                MotivoRifiuto.Scaduto => Testi.RifiutoScaduto,
+                MotivoRifiuto.TelefonoScollegato => Testi.RifiutoTelefonoScollegato,
+                MotivoRifiuto.MessaggioNonValido => Testi.RifiutoMessaggioNonValido,
+                MotivoRifiuto.NuoviTelefoniNonAmmessi => Testi.RifiutoNuoviNonAmmessi,
                 _ => Motivo.ToString(),
             };
             return Dettaglio is null ? motivo : $"{motivo} ({Dettaglio})";
@@ -53,5 +53,6 @@ public sealed record RifiutoAbbinamento(MotivoRifiuto Motivo, string? NomeTelefo
     }
 
     /// <summary>Una riga per la finestra: ora, telefono e motivo.</summary>
-    public string Riga => $"{Ora:HH:mm:ss} {(NomeTelefono is null ? "un iPhone" : $"«{NomeTelefono}»")}: {Descrizione}";
+    public string Riga =>
+        $"{Ora:HH:mm:ss} {(NomeTelefono is null ? Testi.RifiutoUnIphone : string.Format(Testi.RifiutoNomeTelefono, NomeTelefono))}: {Descrizione}";
 }

@@ -37,7 +37,7 @@ public sealed class StatisticheAudio
             if (audio.Codifica == CodificaAudio.Pcm16)
             {
                 _msAudio += audio.Durata.TotalMilliseconds;
-                _formato = $"PCM 16 bit, {audio.Canali} canali, {audio.Frequenza} Hz";
+                _formato = string.Format(Testi.FormatoAudio, audio.Canali, audio.Frequenza);
             }
             else
             {

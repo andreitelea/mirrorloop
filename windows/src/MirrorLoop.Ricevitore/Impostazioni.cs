@@ -101,7 +101,7 @@ public sealed unsafe partial class Impostazioni
     }
 
     /// <summary>
-    /// "PC di" e il nome proprio dell'account (la prima parola del nome completo: basta a riconoscerlo
+    /// "PC di" (in inglese "…'s PC") e il nome proprio dell'account (la prima parola del nome completo: basta a riconoscerlo
     /// e non annuncia il cognome in rete); senza nome completo, il nome utente; al limite il nome di Windows.
     /// </summary>
     internal static string NomePredefinito(string? nomeCompleto, string utente, string nomeWindows)
@@ -109,7 +109,7 @@ public sealed unsafe partial class Impostazioni
         string? nome = nomeCompleto?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
         if (string.IsNullOrWhiteSpace(nome))
             nome = utente;
-        string proposto = string.IsNullOrWhiteSpace(nome) ? "" : Pulisci($"PC di {nome}");
+        string proposto = string.IsNullOrWhiteSpace(nome) ? "" : Pulisci(string.Format(Testi.NomePCPredefinito, nome));
         return proposto.Length > 0 ? proposto : Pulisci(nomeWindows);
     }
 

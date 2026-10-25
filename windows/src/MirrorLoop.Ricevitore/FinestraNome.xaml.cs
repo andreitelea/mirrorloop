@@ -10,10 +10,15 @@ public partial class FinestraNome : Window
     public FinestraNome(string attuale, string predefinito)
     {
         InitializeComponent();
+        Title = Testi.NomeTitolo;
+        TestoNomeSpiegazione.Text = Testi.NomeSpiegazione;
+        PulsantePredefinito.Content = Testi.NomePredefinitoPulsante;
+        PulsanteSalva.Content = Testi.Salva;
+        PulsanteAnnulla.Content = Testi.Annulla;
         _predefinito = predefinito;
         CampoNome.Text = attuale;
         CampoNome.SelectAll();
-        TestoPredefinito.Text = $"Predefinito: {predefinito}";
+        TestoPredefinito.Text = string.Format(Testi.NomePredefinitoInfo, predefinito);
     }
 
     public string NomeScelto => CampoNome.Text;

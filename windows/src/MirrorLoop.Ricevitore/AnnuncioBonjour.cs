@@ -74,14 +74,14 @@ public sealed unsafe partial class AnnuncioBonjour : IDisposable
 
         if (_istanza == 0)
         {
-            Stato = "impossibile preparare l'annuncio";
+            Stato = Testi.BonjourImpossibile;
             return;
         }
         uint esito = DnsServiceRegister(_richiesta, null);
         if (esito != DnsRequestPending)
         {
             // Rifiutato subito: Windows non chiamerà mai il callback.
-            Stato = $"annuncio rifiutato da Windows (errore {esito})";
+            Stato = string.Format(Testi.BonjourRifiutato, esito);
             _completato.TrySetResult(esito);
         }
     }
@@ -92,7 +92,7 @@ public sealed unsafe partial class AnnuncioBonjour : IDisposable
     public IPAddress? Indirizzo { get; }
 
     /// <summary>Descrizione per la finestra.</summary>
-    public string Stato { get; private set; } = "annuncio in corso…";
+    public string Stato { get; private set; } = Testi.BonjourInCorso;
 
     /// <summary>Completato con il codice di Windows (0 = riuscito) quando la registrazione finisce.</summary>
     public Task<uint> Registrazione => _completato.Task;
@@ -139,8 +139,8 @@ public sealed unsafe partial class AnnuncioBonjour : IDisposable
             {
                 _registrato = esito == 0;
                 Stato = esito == 0
-                    ? $"visibile in rete come {Nome}{(Indirizzo is null ? "" : $" ({Indirizzo})")}"
-                    : $"annuncio non riuscito (errore {esito})";
+                    ? string.Format(Testi.BonjourVisibile, Nome) + (Indirizzo is null ? "" : $" ({Indirizzo})")
+                    : string.Format(Testi.BonjourNonRiuscito, esito);
             }
         }
         _completato.TrySetResult(esito);

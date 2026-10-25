@@ -75,8 +75,11 @@ public sealed class RicezioneRete(
     // Solo per le sessioni QUIC: le corsie con questo numero appartengono alla sessione in corso.
     private long? _numeroTrasmissione;
 
-    /// <summary>Descrizione dello stato, per la finestra. Viene chiamato da un thread in sottofondo.</summary>
-    public event Action<string>? StatoCambiato;
+    /// <summary>
+    /// Lo stato, per la finestra. Collegato è un valore a parte e non si ricava dal testo, che cambia
+    /// con la lingua. Viene chiamato da un thread in sottofondo.
+    /// </summary>
+    public event Action<StatoRicezione>? StatoCambiato;
 
     /// <summary>Un iPhone è stato rifiutato durante l'abbinamento. Viene chiamato da un thread in sottofondo.</summary>
     public event Action<RifiutoAbbinamento>? AbbinamentoRifiutato;
@@ -93,9 +96,9 @@ public sealed class RicezioneRete(
     public async Task EseguiAsync(CancellationToken stop)
     {
         if (!QuicListener.IsSupported)
-            MotivoSenzaQuic = "QUIC non supportato da questo Windows (serve Windows 11)";
+            MotivoSenzaQuic = Testi.QuicNonSupportato;
         else if (certificato is null)
-            MotivoSenzaQuic = "certificato non disponibile";
+            MotivoSenzaQuic = Testi.CertificatoNonDisponibile;
 
         AnnunciaAttesa(null);
         if (MotivoSenzaQuic is null)
@@ -168,7 +171,7 @@ public sealed class RicezioneRete(
         }
         catch (Exception ex) when (ex is QuicException or SocketException)
         {
-            MotivoSenzaQuic = $"impossibile ascoltare in QUIC: {ex.Message}";
+            MotivoSenzaQuic = string.Format(Testi.QuicNonInAscolto, ex.Message);
             AnnunciaAttesa(null);
             return;
         }
@@ -501,7 +504,7 @@ public sealed class RicezioneRete(
             sincronia.Ricomincia();
         }
         vecchia?.Cancel();
-        StatoCambiato?.Invoke($"Collegato a {remoto} (QUIC)");
+        StatoCambiato?.Invoke(new StatoRicezione(true, string.Format(Testi.StatoCollegato, remoto)));
         return nuova.Token;
     }
 
@@ -529,11 +532,11 @@ public sealed class RicezioneRete(
         string indirizzi = string.Join("  ·  ", IndirizziLocali().Select(i => $"{i}:{porta}"));
         if (MotivoSenzaQuic is not null)
         {
-            StatoCambiato?.Invoke($"Impossibile ricevere: {MotivoSenzaQuic}");
+            StatoCambiato?.Invoke(new StatoRicezione(false, string.Format(Testi.StatoImpossibile, MotivoSenzaQuic)));
             return;
         }
-        string motivo = errore is null ? "" : $"\nConnessione persa: {errore}";
-        StatoCambiato?.Invoke($"In attesa dell'iPhone su {indirizzi} (QUIC){motivo}");
+        string motivo = errore is null ? "" : "\n" + string.Format(Testi.StatoConnessionePersa, errore);
+        StatoCambiato?.Invoke(new StatoRicezione(false, string.Format(Testi.StatoInAttesa, indirizzi) + motivo));
     }
 
     private void Registra(char tipo, long istanteIphone, int dimensione, bool keyframe) =>
@@ -587,3 +590,6 @@ public sealed class RicezioneRete(
         }
     }
 }
+
+/// <summary>Se un iPhone sta trasmettendo e la frase da mostrare.</summary>
+public sealed record StatoRicezione(bool Collegato, string Descrizione);
