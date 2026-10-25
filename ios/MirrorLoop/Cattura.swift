@@ -251,7 +251,7 @@ final class Cattura {
         // l'altra chiede un keyframe quando ne ha bisogno.
         let orologio = OrologioCattura()
         let scatolaCompressore = Mutex<CompressoreH264?>(nil)
-        let trasmissione = Trasmissione(destinazione: destinazione, trasporto: trasporto, bitrateVideo: qualita.bitrate,
+        let trasmissione = Trasmissione(destinazione: destinazione, trasporto: trasporto,
                                         orologio: orologio) {
             scatolaCompressore.withLock { $0?.forzaKeyframe() }
         }

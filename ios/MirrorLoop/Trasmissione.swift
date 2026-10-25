@@ -23,6 +23,7 @@ struct StatisticheTrasmissione: Sendable {
     var connessioni = 0
     var pingRisposti = 0
     var piccoByteInAttesa = 0
+    var attesaMassimaMs = 0
     var ultimoErrore: String?
 }
 
@@ -33,9 +34,13 @@ final class Trasmissione: @unchecked Sendable {
     static let porta: UInt16 = 7450
     /// Nome del protocollo applicativo per QUIC (ALPN): deve coincidere con quello del ricevitore.
     static let protocolloQuic = "mirrorloop/1"
-    // Oltre mezzo secondo di dati in attesa di partire la rete non tiene il passo: si smette di
-    // accodare (per il video si riparte dal keyframe successivo: lezione dei buffer della Fase 1).
+    // Oltre mezzo secondo di attesa la rete non tiene il passo: si smette di accodare (per il video
+    // si riparte dal keyframe successivo: lezione dei buffer della Fase 1). L'audio arriva a ritmo
+    // costante, quindi mezzo secondo di byte è mezzo secondo di attesa. Il video no: con lo schermo
+    // quasi fermo produce molto meno del bitrate scelto, e un limite in byte (collaudo del 25/10/2026,
+    // Massima a 30 Mbit/s: 1,9 MB) lasciava crescere il ritardo fino a 2 s. Per il video conta il tempo.
     static let sogliaAudioInAttesa = 48_000 * 4 / 2
+    static let attesaMassimaVideo: TimeInterval = 0.5
     /// Se il collegamento non si completa entro questo tempo si considera fallito e si riprova:
     /// un'attesa infinita senza errori (com'è successo con QUIC) non deve passare inosservata.
     static let limiteCollegamento: TimeInterval = 5
@@ -66,17 +71,17 @@ final class Trasmissione: @unchecked Sendable {
     private var attivo = false
     private var collegato = false
     private var attendiKeyframe = true
+    private var keyframeChiesto = false
     private var byteInAttesa: [Corsia: Int] = [:]
+    /// Per ogni corsia, gli istanti in cui sono stati consegnati alla rete i messaggi che aspettano
+    /// ancora di partire, nell'ordine di consegna (i completamenti arrivano nello stesso ordine).
+    private var istantiInAttesa: [Corsia: [TimeInterval]] = [:]
     private var ingresso: [UInt8] = []
 
-    /// Mezzo secondo di video al bitrate scelto.
-    private let sogliaVideoInAttesa: Int
-
-    init(destinazione: DestinazionePC, trasporto: Trasporto, bitrateVideo: Int, orologio: OrologioCattura,
+    init(destinazione: DestinazionePC, trasporto: Trasporto, orologio: OrologioCattura,
          chiediKeyframe: @escaping @Sendable () -> Void) {
         self.destinazione = destinazione
         self.trasporto = trasporto
-        self.sogliaVideoInAttesa = bitrateVideo / 8 / 2
         self.orologio = orologio
         self.chiediKeyframe = chiediKeyframe
     }
@@ -98,13 +103,19 @@ final class Trasmissione: @unchecked Sendable {
     func invia(_ frame: FrameCompresso) {
         coda.async { [self] in
             guard collegato else { return }
-            if inAttesa(per: .video) > sogliaVideoInAttesa {
-                if !attendiKeyframe { chiediKeyframe() }
+            if attesa(per: .video) > Self.attesaMassimaVideo {
                 attendiKeyframe = true
+                keyframeChiesto = false
                 statistiche.withLock { $0.scartati += 1 }
                 return
             }
             if attendiKeyframe && !frame.keyframe {
+                // Il keyframe si chiede solo ora che la coda si è liberata: chiesto prima, arrivava
+                // con la coda ancora piena, veniva scartato e si aspettava quello automatico (fino a 2 s).
+                if !keyframeChiesto {
+                    chiediKeyframe()
+                    keyframeChiesto = true
+                }
                 statistiche.withLock { $0.scartati += 1 }
                 return
             }
@@ -177,9 +188,19 @@ final class Trasmissione: @unchecked Sendable {
         trasporto == .tcp ? byteInAttesa.values.reduce(0, +) : byteInAttesa[corsia, default: 0]
     }
 
+    /// Da quanti secondi aspetta di partire il messaggio più vecchio della fila di questa corsia
+    /// (in TCP, della fila unica); 0 se la fila è vuota.
+    private func attesa(per corsia: Corsia) -> TimeInterval {
+        let corsieContate = trasporto == .tcp ? Array(istantiInAttesa.keys) : [corsia]
+        guard let piuVecchio = corsieContate.compactMap({ istantiInAttesa[$0]?.first }).min() else { return 0 }
+        return ProcessInfo.processInfo.systemUptime - piuVecchio
+    }
+
     private func spedisci(_ messaggio: Data, su corsia: Corsia, conteggio: @escaping @Sendable (inout StatisticheTrasmissione, Int) -> Void) {
         guard let connessione = connessione(per: corsia) else { return }
         byteInAttesa[corsia, default: 0] += messaggio.count
+        let consegna = ProcessInfo.processInfo.systemUptime
+        istantiInAttesa[corsia, default: []].append(consegna)
         let picco = inAttesa(per: corsia)
         statistiche.withLock { $0.piccoByteInAttesa = max($0.piccoByteInAttesa, picco) }
         let mia = generazione
@@ -187,6 +208,9 @@ final class Trasmissione: @unchecked Sendable {
             // Il completamento arriva sulla coda della connessione, cioè `coda`.
             guard mia == generazione else { return }
             byteInAttesa[corsia, default: 0] -= messaggio.count
+            if istantiInAttesa[corsia]?.isEmpty == false { istantiInAttesa[corsia]?.removeFirst() }
+            let attesaMs = Int((ProcessInfo.processInfo.systemUptime - consegna) * 1000)
+            statistiche.withLock { $0.attesaMassimaMs = max($0.attesaMassimaMs, attesaMs) }
             if errore == nil {
                 statistiche.withLock { conteggio(&$0, messaggio.count) }
             }
@@ -331,9 +355,11 @@ final class Trasmissione: @unchecked Sendable {
         collegato = true
         attendiKeyframe = true
         byteInAttesa.removeAll()
+        istantiInAttesa.removeAll()
         ingresso.removeAll()
         // Un keyframe subito, così il ricevitore mostra il video senza aspettare 2 secondi.
         chiediKeyframe()
+        keyframeChiesto = true
         statistiche.withLock { s in
             let indirizzo = host.map { "\($0):\(Self.porta)" } ?? "?"
             s.stato = switch destinazione {
@@ -361,6 +387,7 @@ final class Trasmissione: @unchecked Sendable {
         corsiePronte.removeAll()
         collegato = false
         byteInAttesa.removeAll()
+        istantiInAttesa.removeAll()
         statistiche.withLock { s in
             s.stato = stato
             s.collegato = false
