@@ -86,7 +86,12 @@ public partial class FinestraPrincipale : Window
             if (stato.StartsWith("Collegato"))
                 _bacheca?.NuovaGenerazione();
         };
-        _riproduzioneAudio.EventoRiserva += evento => _registro.ScriviRiserva(evento, Protocollo.Protocollo.AdessoMicrosecondi());
+        _ricezione.AbbinamentoRifiutato += rifiuto => Dispatcher.BeginInvoke(() =>
+        {
+            TestoRifiuto.Text = $"Ultimo iPhone rifiutato alle {rifiuto.Riga}";
+            TestoRifiuto.Visibility = Visibility.Visible;
+        });
+        _riproduzioneAudio.EventoRiserva +=evento => _registro.ScriviRiserva(evento, Protocollo.Protocollo.AdessoMicrosecondi());
         // L'iPhone trova il PC per nome, senza scrivere l'indirizzo.
         _annuncio = new AnnuncioBonjour(_impostazioni.NomePC, Porta);
         MostraNomePC();
@@ -118,6 +123,9 @@ public partial class FinestraPrincipale : Window
     {
         _stato = stato;
         TestoStato.Text = stato;
+        // Un iPhone collegato: il rifiuto di prima non interessa più (resta nelle statistiche).
+        if (stato.StartsWith("Collegato"))
+            TestoRifiuto.Visibility = Visibility.Collapsed;
         // Senza mittente non c'è video da mostrare: si torna alla scritta di stato.
         if (!stato.StartsWith("Collegato"))
         {
@@ -203,6 +211,7 @@ public partial class FinestraPrincipale : Window
             $"bonjour         {_annuncio?.Stato ?? "cambio del nome in corso…"}\n" +
             $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (impossibile ricevere: {m})" : "")}\n" +
             $"iPhone abbinati {_telefoni.Numero,6}\n" +
+            $"ultimo rifiuto  {_ricezione.UltimoRifiuto?.Riga ?? "     —"}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
             $"conversione     {_msConversione,6:F1} ms\n" +
             $"rotazione       {90 * (int)_rotazione,6}°  ({(_sceltaRotazione.Manuale ? $"manuale; dall'iPhone {90 * (int)_sceltaRotazione.Automatica}°" : "automatica")})\n" +

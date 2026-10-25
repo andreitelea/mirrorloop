@@ -18,6 +18,10 @@
             <TextBlock x:Name="TestoNomePC"
                        HorizontalAlignment="Center" Margin="0,14,0,0"
                        Foreground="#808080" FontSize="16" TextAlignment="Center" />
+            <!-- L'ultimo iPhone rifiutato e perché: sparisce quando un iPhone si collega. -->
+            <TextBlock x:Name="TestoRifiuto" Visibility="Collapsed"
+                       HorizontalAlignment="Center" Margin="0,14,0,0"
+                       Foreground="#D09A5A" FontSize="15" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="900" />
         </StackPanel>
 
         <!-- Riquadro delle statistiche: il tasto S lo mostra e lo nasconde,

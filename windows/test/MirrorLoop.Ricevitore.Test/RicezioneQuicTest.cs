@@ -361,6 +361,8 @@ public sealed class RicezioneQuicTest : IAsyncDisposable
         Assert.False(_coda.ProvaPrendi(TimeSpan.FromMilliseconds(200), out _));
         Assert.Null(_ricezione.Trasporto);
         Assert.False(_telefoni.Contiene(Abbinamento.ChiavePubblica(nuovo)));
+        Assert.Equal(MotivoRifiuto.RifiutatoDalPC, _ricezione.UltimoRifiuto?.Motivo);
+        Assert.Equal("iPhone", _ricezione.UltimoRifiuto?.NomeTelefono);
     }
 
     [Fact]
@@ -385,6 +387,8 @@ public sealed class RicezioneQuicTest : IAsyncDisposable
         Assert.Equal(ValoreEsito.Rifiutato, await EsitoSuccessivoAsync(controllo, _stop.Token));
         Assert.InRange(DateTime.UtcNow - inizio, AttesaConsenso - TimeSpan.FromMilliseconds(500), AttesaConsenso * 3);
         Assert.True(annullata.Task.IsCompleted, "la finestra doveva sapere che la richiesta è scaduta");
+        Assert.Equal(MotivoRifiuto.Scaduto, _ricezione.UltimoRifiuto?.Motivo);
+        Assert.Equal("2 s", _ricezione.UltimoRifiuto?.Dettaglio);
     }
 
     [Fact]
@@ -417,6 +421,7 @@ public sealed class RicezioneQuicTest : IAsyncDisposable
 
         Assert.Equal(ValoreEsito.Rifiutato, esito);
         Assert.Equal(0, NumeroRichieste);
+        Assert.Equal(MotivoRifiuto.VerificaFallita, _ricezione.UltimoRifiuto?.Motivo);
         Assert.True(await ChiusaDalRicevitoreAsync(controllo));
         Assert.Null(_ricezione.Trasporto);
     }
@@ -460,8 +465,29 @@ public sealed class RicezioneQuicTest : IAsyncDisposable
         await using var controlloSecondo = await ApriCorsiaAsync(RuoloCorsia.Controllo, 32);
         Assert.Equal(ValoreEsito.Rifiutato, (await PresentatiAsync(controlloSecondo, ModoPresentazione.NuovoAbbinamento, secondo)).Esito);
         Assert.Equal(1, NumeroRichieste);
+        Assert.Equal(MotivoRifiuto.AltraRichiestaInCorso, _ricezione.UltimoRifiuto?.Motivo);
 
         consenso.SetResult(true);
         Assert.Equal(ValoreEsito.Accettato, await EsitoSuccessivoAsync(controlloPrimo, _stop.Token));
+    }
+
+    [Fact]
+    public async Task UnTelefonoCheNonSiPresentaInTempoVieneRifiutatoConIlMotivo()
+    {
+        // Il caso dell'anomalia del 25/10: un rifiuto senza codice, di cui la finestra non diceva il perché.
+        if (!AvviaRicevitore())
+            return;
+        var segnalati = new List<RifiutoAbbinamento>();
+        _ricezione.AbbinamentoRifiutato += rifiuto => { lock (segnalati) segnalati.Add(rifiuto); };
+
+        // Apertura della corsia di controllo e poi silenzio, invece della presentazione.
+        await using var controllo = await ApriCorsiaAsync(RuoloCorsia.Controllo, 41);
+
+        Assert.Equal(ValoreEsito.Rifiutato, await EsitoSuccessivoAsync(controllo, _stop.Token));
+        var rifiuto = Assert.Single(segnalati);
+        Assert.Equal(MotivoRifiuto.NessunaPresentazione, rifiuto.Motivo);
+        Assert.Null(rifiuto.NomeTelefono);
+        Assert.Equal("l'iPhone non si è presentato in tempo (5 s)", rifiuto.Descrizione);
+        Assert.Same(rifiuto, _ricezione.UltimoRifiuto);
     }
 }

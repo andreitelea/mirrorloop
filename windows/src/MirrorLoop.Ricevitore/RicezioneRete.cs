@@ -78,6 +78,12 @@ public sealed class RicezioneRete(
     /// <summary>Descrizione dello stato, per la finestra. Viene chiamato da un thread in sottofondo.</summary>
     public event Action<string>? StatoCambiato;
 
+    /// <summary>Un iPhone è stato rifiutato durante l'abbinamento. Viene chiamato da un thread in sottofondo.</summary>
+    public event Action<RifiutoAbbinamento>? AbbinamentoRifiutato;
+
+    /// <summary>L'ultimo rifiuto dall'avvio, o null.</summary>
+    public RifiutoAbbinamento? UltimoRifiuto { get; private set; }
+
     /// <summary>"QUIC" o null se nessuno è collegato.</summary>
     public string? Trasporto { get; private set; }
 
@@ -317,59 +323,81 @@ public sealed class RicezioneRete(
     /// </summary>
     private async Task<bool> AbbinaAsync(QuicStream corsia, long numeroTrasmissione, CancellationToken ct)
     {
-        bool accettato = false;
+        MotivoRifiuto? motivo = MotivoRifiuto.TelefonoScollegato;
+        string? nome = null;
+        string? dettaglio = null;
         try
         {
-            accettato = await PresentazioneAsync(corsia, ct);
+            (motivo, nome, dettaglio) = await PresentazioneAsync(corsia, ct);
         }
-        catch (Exception ex) when (ex is QuicException or IOException or EndOfStreamException or InvalidDataException or OperationCanceledException)
+        catch (InvalidDataException ex)
         {
-            // Telefono sparito, messaggio malformato o arrivato tardi: rifiutato.
+            (motivo, dettaglio) = (MotivoRifiuto.MessaggioNonValido, ex.Message);
+        }
+        catch (Exception ex) when (ex is QuicException or IOException or EndOfStreamException)
+        {
+            dettaglio = ex.Message;
+        }
+        catch (OperationCanceledException)
+        {
+            // Connessione finita mentre si aspettava (telefono sparito) o chiusura della finestra.
         }
         finally
         {
-            EsitoDi(numeroTrasmissione).TrySetResult(accettato);
+            EsitoDi(numeroTrasmissione).TrySetResult(motivo is null);
         }
-        if (!accettato)
-            await RifiutaAsync(corsia);
-        return accettato;
+        if (motivo is not MotivoRifiuto rifiuto)
+            return true;
+
+        var rifiutoAbbinamento = new RifiutoAbbinamento(rifiuto, nome, dettaglio, DateTime.Now);
+        UltimoRifiuto = rifiutoAbbinamento;
+        AbbinamentoRifiutato?.Invoke(rifiutoAbbinamento);
+        await RifiutaAsync(corsia);
+        return false;
     }
 
-    private async Task<bool> PresentazioneAsync(QuicStream corsia, CancellationToken ct)
+    /// <summary>
+    /// Presentazione, sfida, prova e, per un telefono nuovo, la conferma di chi sta al PC. Motivo null
+    /// se l'iPhone è accettato; il nome c'è da quando il telefono si è presentato.
+    /// </summary>
+    private async Task<(MotivoRifiuto? Motivo, string? Nome, string? Dettaglio)> PresentazioneAsync(QuicStream corsia, CancellationToken ct)
     {
-        using var limite = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        limite.CancelAfter(LimiteApertura);
-        if (await Protocollo.Protocollo.RiceviMessaggioAsync(corsia, limite.Token) is not PresentazioneTelefono presentazione)
-            return false;
+        string limite = $"{LimiteApertura.TotalSeconds:F0} s";
+        var (presentazione, senzaPresentazione) = await RiceviPerAbbinamentoAsync<PresentazioneTelefono>(corsia, MotivoRifiuto.NessunaPresentazione, ct);
+        if (presentazione is null)
+            return (senzaPresentazione, null, senzaPresentazione == MotivoRifiuto.NessunaPresentazione ? limite : null);
+        string nome = NomeDaMostrare(presentazione.Nome);
 
         byte[] numeroPc = Abbinamento.NuovoNumero();
         await Protocollo.Protocollo.InviaSfidaAsync(corsia, new Sfida(numeroPc), ct);
-        limite.CancelAfter(LimiteApertura);
-        if (await Protocollo.Protocollo.RiceviMessaggioAsync(corsia, limite.Token) is not Prova prova)
-            return false;
+        var (prova, senzaProva) = await RiceviPerAbbinamentoAsync<Prova>(corsia, MotivoRifiuto.NessunaProva, ct);
+        if (prova is null)
+            return (senzaProva, nome, senzaProva == MotivoRifiuto.NessunaProva ? limite : null);
 
         // L'impegno dice che il numero dell'iPhone era deciso prima di vedere quello del PC; la firma
         // che l'iPhone ha la chiave e ha visto proprio questo PC (non un impostore in mezzo).
         if (!CryptographicOperations.FixedTimeEquals(Abbinamento.Impegno(presentazione.Chiave, prova.NumeroIphone), presentazione.Impegno)
             || !Abbinamento.FirmaValida(presentazione.Chiave, _impronta, numeroPc, prova.NumeroIphone, prova.Firma))
-            return false;
+            return (MotivoRifiuto.VerificaFallita, nome, null);
 
         if (presentazione.Modo == ModoPresentazione.Ricollegamento && telefoni.Contiene(presentazione.Chiave))
         {
             await Protocollo.Protocollo.InviaEsitoAsync(corsia, new Esito(ValoreEsito.Accettato), ct);
-            return true;
+            return (null, nome, null);
         }
 
-        if (chiediConsenso is null || !_unaRichiesta.Wait(0))
-            return false;
+        if (chiediConsenso is null)
+            return (MotivoRifiuto.NuoviTelefoniNonAmmessi, nome, null);
+        if (!_unaRichiesta.Wait(0))
+            return (MotivoRifiuto.AltraRichiestaInCorso, nome, null);
         try
         {
             await Protocollo.Protocollo.InviaEsitoAsync(corsia, new Esito(ValoreEsito.InAttesa), ct);
-            string nome = NomeDaMostrare(presentazione.Nome);
             var richiesta = new RichiestaAbbinamento(
                 Abbinamento.Codice(_impronta, presentazione.Chiave, numeroPc, prova.NumeroIphone), nome);
 
             bool consentito;
+            bool scaduto;
             using (var attesa = CancellationTokenSource.CreateLinkedTokenSource(ct))
             {
                 attesa.CancelAfter(_attesaConsenso);
@@ -379,19 +407,49 @@ public sealed class RicezioneRete(
                 }
                 catch (OperationCanceledException) when (!ct.IsCancellationRequested)
                 {
-                    consentito = false; // Nessuna risposta in tempo.
+                    consentito = false;
                 }
+                // La finestra risponde "no" anche quando la richiesta si annulla: il perché lo dice il token.
+                scaduto = attesa.IsCancellationRequested;
             }
             if (!consentito)
-                return false;
+            {
+                return ct.IsCancellationRequested ? (MotivoRifiuto.TelefonoScollegato, nome, null)
+                    : scaduto ? (MotivoRifiuto.Scaduto, nome, $"{_attesaConsenso.TotalSeconds:F0} s")
+                    : (MotivoRifiuto.RifiutatoDalPC, nome, null);
+            }
 
             telefoni.Aggiungi(presentazione.Chiave, nome);
             await Protocollo.Protocollo.InviaEsitoAsync(corsia, new Esito(ValoreEsito.Accettato), ct);
-            return true;
+            return (null, nome, null);
         }
         finally
         {
             _unaRichiesta.Release();
+        }
+    }
+
+    /// <summary>
+    /// Il prossimo messaggio dell'abbinamento, se arriva entro <see cref="LimiteApertura"/> ed è del
+    /// tipo atteso; altrimenti il motivo del rifiuto (<paramref name="seTace"/> se non arriva in tempo).
+    /// </summary>
+    private static async Task<(T? Messaggio, MotivoRifiuto Motivo)> RiceviPerAbbinamentoAsync<T>(
+        QuicStream corsia, MotivoRifiuto seTace, CancellationToken ct) where T : class
+    {
+        using var limite = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limite.CancelAfter(LimiteApertura);
+        try
+        {
+            return await Protocollo.Protocollo.RiceviMessaggioAsync(corsia, limite.Token) switch
+            {
+                T messaggio => (messaggio, default),
+                null => (null, MotivoRifiuto.TelefonoScollegato),
+                _ => (null, MotivoRifiuto.MessaggioNonValido),
+            };
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return (null, seTace);
         }
     }
 
