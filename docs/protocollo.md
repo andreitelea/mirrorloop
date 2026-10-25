@@ -6,21 +6,21 @@ Come viaggiano i dati dal mittente (l'app iPhone, oppure `MittenteTest` per le p
 
 ## Trasporto
 
-Il ricevitore ascolta sulla porta **7450** in due modi; il mittente sceglie quale usare. Un solo mittente alla volta: una connessione nuova chiude la precedente.
+Il ricevitore ascolta sulla porta **7450** in **QUIC** (su UDP, sempre cifrato con TLS 1.3), protocollo applicativo (ALPN) `mirrorloop/1`. Un solo mittente alla volta: una trasmissione nuova chiude la precedente. (Fino al 25/10/2026 c'era anche TCP, tolto perché non cifrato e senza vantaggi misurati.)
 
-- **TCP:** una connessione per trasmissione, tutti i messaggi in un'unica fila. Si disattiva l'algoritmo di Nagle (`NoDelay`), per spedire subito ogni frame.
-- **QUIC** (su UDP, sempre cifrato con TLS 1.3): protocollo applicativo (ALPN) `mirrorloop/1`. Il mittente apre tre **corsie** indipendenti, così una perdita in una non blocca le altre:
-  - **controllo**: ping (ricevitore → mittente) e pong (mittente → ricevitore);
-  - **video**: frame video (tipo 1);
-  - **audio**: pacchetti audio (tipo 2).
+Il mittente apre tre **corsie** indipendenti, così una perdita in una non blocca le altre:
 
-  Ogni corsia è un flusso QUIC (*stream*) e comincia sempre con un messaggio di **apertura corsia** (tipo 5) che dice il suo ruolo e a quale trasmissione appartiene. Le corsie possono viaggiare in connessioni QUIC separate (come fa l'app iPhone: una connessione per corsia) oppure nella stessa: il ricevitore le raggruppa solo in base al **numero di trasmissione**. Il ricevitore scrive (i ping) solo sulla corsia di controllo, che quindi deve essere bidirezionale; le altre possono essere bidirezionali o unidirezionali.
+- **controllo**: ping (ricevitore → mittente) e pong (mittente → ricevitore);
+- **video**: frame video (tipo 1);
+- **audio**: pacchetti audio (tipo 2).
 
-  Il certificato del ricevitore è autofirmato. Su ogni corsia i messaggi hanno lo stesso formato descritto qui sotto.
+Ogni corsia è un flusso QUIC (*stream*) e comincia sempre con un messaggio di **apertura corsia** (tipo 5) che dice il suo ruolo e a quale trasmissione appartiene. Le corsie possono viaggiare in connessioni QUIC separate (come fa l'app iPhone: una connessione per corsia) oppure nella stessa: il ricevitore le raggruppa solo in base al **numero di trasmissione**. Il ricevitore scrive (i ping) solo sulla corsia di controllo, che quindi deve essere bidirezionale; le altre possono essere bidirezionali o unidirezionali.
+
+Il certificato del ricevitore è autofirmato. Su ogni corsia i messaggi hanno lo stesso formato descritto qui sotto.
 
 ## Struttura di ogni messaggio
 
-TCP è un flusso continuo, quindi ogni messaggio comincia con la sua lunghezza (vedi `concetti.md`, "TCP è un flusso").
+Una corsia QUIC è un flusso continuo di byte, come TCP, quindi ogni messaggio comincia con la sua lunghezza (vedi `concetti.md`, "TCP è un flusso").
 
 ```
 ┌──────────────┬──────────┬───────────────────────────┐

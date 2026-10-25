@@ -50,8 +50,7 @@ public static class Protocollo
         if (lunghezza > LunghezzaMassima)
             throw new ArgumentException($"Frame troppo grande ({frame.DatiH264.Length} byte).", nameof(frame));
 
-        // Un'unica scrittura per messaggio: con NoDelay attivo, scritture separate
-        // diventerebbero pacchetti TCP separati.
+        // Un'unica scrittura per messaggio: scritture separate possono diventare pacchetti separati.
         byte[] pacchetto = new byte[4 + lunghezza];
         Span<byte> s = pacchetto;
         BinaryPrimitives.WriteInt32BigEndian(s, lunghezza);

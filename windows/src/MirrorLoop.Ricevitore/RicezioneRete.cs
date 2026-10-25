@@ -15,11 +15,11 @@ namespace MirrorLoop.Ricevitore;
 /// Ascolta il mittente e legge i messaggi dalla rete in continuazione. Leggere subito è ciò che
 /// impedisce al ritardo di accumularsi nei buffer di Windows.
 ///
-/// Due ingressi sulla stessa porta: TCP (una sola fila per tutto) e QUIC su UDP, dove l'iPhone
+/// Solo QUIC su UDP (TCP tolto il 25/10/2026: non cifrato, e senza vantaggi misurati): l'iPhone
 /// apre corsie indipendenti (controllo, video, audio) così una perdita nel video non blocca l'audio.
-/// In QUIC le corsie possono arrivare su connessioni diverse: le riunisce il numero di trasmissione
+/// Le corsie possono arrivare su connessioni diverse: le riunisce il numero di trasmissione
 /// scritto nella loro apertura (tipo 5).
-/// Un solo mittente alla volta: una nuova trasmissione, di qualunque tipo, chiude la precedente.
+/// Un solo mittente alla volta: una nuova trasmissione chiude la precedente.
 /// </summary>
 public sealed class RicezioneRete(
     int porta,
@@ -48,24 +48,22 @@ public sealed class RicezioneRete(
     /// <summary>Descrizione dello stato, per la finestra. Viene chiamato da un thread in sottofondo.</summary>
     public event Action<string>? StatoCambiato;
 
-    /// <summary>"TCP", "QUIC" o null se nessuno è collegato.</summary>
+    /// <summary>"QUIC" o null se nessuno è collegato.</summary>
     public string? Trasporto { get; private set; }
 
-    /// <summary>Se QUIC non è disponibile, il motivo.</summary>
+    /// <summary>Se QUIC non è disponibile (e quindi il ricevitore non può ricevere), il motivo.</summary>
     public string? MotivoSenzaQuic { get; private set; }
 
     public async Task EseguiAsync(CancellationToken stop)
     {
-        Task quic = Task.CompletedTask;
         if (!QuicListener.IsSupported)
             MotivoSenzaQuic = "QUIC non supportato da questo Windows (serve Windows 11)";
         else if (certificato is null)
             MotivoSenzaQuic = "certificato non disponibile";
-        else
-            quic = AscoltaQuicAsync(certificato, stop);
 
         AnnunciaAttesa(null);
-        await Task.WhenAll(AscoltaTcpAsync(stop), quic);
+        if (MotivoSenzaQuic is null)
+            await AscoltaQuicAsync(certificato!, stop);
     }
 
     /// <summary>
@@ -93,61 +91,12 @@ public sealed class RicezioneRete(
     public long LatenzaMicrosecondi(long istanteCatturaIphone) =>
         Protocollo.Protocollo.AdessoMicrosecondi() - (sincronia.InOraDelPc(istanteCatturaIphone) ?? istanteCatturaIphone);
 
-    // ---- TCP ----
-
-    private async Task AscoltaTcpAsync(CancellationToken stop)
-    {
-        // In ascolto su tutte le reti del PC, così l'iPhone lo raggiunge dalla rete di casa.
-        // Al primo avvio Windows chiede il permesso del firewall: va consentito solo sulle reti private.
-        var ascolto = new TcpListener(IPAddress.Any, porta);
-        ascolto.Start();
-        try
-        {
-            while (true)
-            {
-                TcpClient client = await ascolto.AcceptTcpClientAsync(stop);
-                client.NoDelay = true;
-                _ = GestisciTcpAsync(client, stop);
-            }
-        }
-        catch (OperationCanceledException) when (stop.IsCancellationRequested)
-        {
-            // Chiusura della finestra.
-        }
-        finally
-        {
-            ascolto.Stop();
-        }
-    }
-
-    private async Task GestisciTcpAsync(TcpClient client, CancellationToken stop)
-    {
-        using (client)
-        {
-            CancellationToken sessione = NuovaSessione(stop, "TCP", client.Client.RemoteEndPoint, null);
-            NetworkStream flusso = client.GetStream();
-            using var fine = CancellationTokenSource.CreateLinkedTokenSource(sessione);
-            Task ping = MandaPingAsync(flusso, fine.Token);
-            string? errore = null;
-            try
-            {
-                await RiceviTuttoAsync(flusso, sessione);
-            }
-            catch (Exception ex) when (ex is IOException or EndOfStreamException or InvalidDataException or OperationCanceledException)
-            {
-                errore = ex is OperationCanceledException ? null : ex.Message;
-            }
-            finally
-            {
-                await fine.CancelAsync();
-                await ping;
-                FineSessione(sessione, errore);
-            }
-        }
-    }
-
     // ---- QUIC ----
 
+    /// <summary>
+    /// In ascolto su tutte le reti del PC, così l'iPhone lo raggiunge dalla rete di casa.
+    /// Al primo avvio Windows chiede il permesso del firewall: va consentito solo sulle reti private.
+    /// </summary>
     private async Task AscoltaQuicAsync(X509Certificate2 certificatoServer, CancellationToken stop)
     {
         var opzioniConnessione = new QuicServerConnectionOptions
@@ -158,7 +107,7 @@ public sealed class RicezioneRete(
             // L'iPhone apre una corsia bidirezionale (controllo) e quelle unidirezionali (video, audio).
             MaxInboundBidirectionalStreams = 4,
             MaxInboundUnidirectionalStreams = 16,
-            // Senza notizie per qualche secondo il mittente si considera sparito, come con TCP.
+            // Senza notizie per qualche secondo il mittente si considera sparito.
             IdleTimeout = TimeSpan.FromSeconds(5),
             // Ogni corsia ha la sua connessione: quella del video resta muta quando lo schermo è
             // fermo. I PING di QUIC (a cui l'iPhone risponde da solo) la tengono viva; un iPhone
@@ -260,7 +209,7 @@ public sealed class RicezioneRete(
                 return;
             }
 
-            CancellationToken sessione = NuovaSessione(stop, "QUIC", remoto, apertura.NumeroTrasmissione);
+            CancellationToken sessione = NuovaSessione(stop, remoto, apertura.NumeroTrasmissione);
             // Finita la trasmissione, si chiude anche la connessione che porta questa corsia.
             using var chiudiConnessione = sessione.Register(fineConnessione.Cancel);
             using var fine = CancellationTokenSource.CreateLinkedTokenSource(sessione);
@@ -297,23 +246,23 @@ public sealed class RicezioneRete(
     // ---- In comune ----
 
     /// <summary>
-    /// Una connessione nuova chiude la precedente e riparte con lo stato pulito. In QUIC, una corsia
-    /// con il numero della trasmissione in corso si aggiunge invece a quella.
+    /// Una trasmissione nuova chiude la precedente e riparte con lo stato pulito. Una corsia con il
+    /// numero della trasmissione in corso si aggiunge invece a quella.
     /// </summary>
-    private CancellationToken NuovaSessione(CancellationToken stop, string trasporto, EndPoint? remoto, long? numeroTrasmissione)
+    private CancellationToken NuovaSessione(CancellationToken stop, EndPoint? remoto, long numeroTrasmissione)
     {
         CancellationTokenSource nuova;
         CancellationTokenSource? vecchia;
         lock (_bloccoSessione)
         {
-            if (numeroTrasmissione is not null && _sessione is not null && _numeroTrasmissione == numeroTrasmissione)
+            if (_sessione is not null && _numeroTrasmissione == numeroTrasmissione)
                 return _sessione.Token;
 
             nuova = CancellationTokenSource.CreateLinkedTokenSource(stop);
             vecchia = _sessione;
             _sessione = nuova;
             _numeroTrasmissione = numeroTrasmissione;
-            Trasporto = trasporto;
+            Trasporto = "QUIC";
             // Dentro il blocco: le altre corsie della stessa trasmissione aspettano qui, così i loro
             // primi dati (il keyframe!) non vengono cancellati da questo azzeramento.
             coda.Ricomincia();
@@ -322,7 +271,7 @@ public sealed class RicezioneRete(
             sincronia.Ricomincia();
         }
         vecchia?.Cancel();
-        StatoCambiato?.Invoke($"Collegato a {remoto} ({trasporto})");
+        StatoCambiato?.Invoke($"Collegato a {remoto} (QUIC)");
         return nuova.Token;
     }
 
@@ -348,9 +297,13 @@ public sealed class RicezioneRete(
     {
         // Riletti a ogni attesa: il PC potrebbe aver cambiato rete nel frattempo.
         string indirizzi = string.Join("  ·  ", IndirizziLocali().Select(i => $"{i}:{porta}"));
-        string trasporti = MotivoSenzaQuic is null ? "TCP e QUIC" : $"solo TCP: {MotivoSenzaQuic}";
+        if (MotivoSenzaQuic is not null)
+        {
+            StatoCambiato?.Invoke($"Impossibile ricevere: {MotivoSenzaQuic}");
+            return;
+        }
         string motivo = errore is null ? "" : $"\nConnessione persa: {errore}";
-        StatoCambiato?.Invoke($"In attesa dell'iPhone su {indirizzi} ({trasporti}){motivo}");
+        StatoCambiato?.Invoke($"In attesa dell'iPhone su {indirizzi} (QUIC){motivo}");
     }
 
     private void Registra(char tipo, long istanteIphone, int dimensione, bool keyframe) =>
@@ -361,7 +314,7 @@ public sealed class RicezioneRete(
 
     /// <summary>
     /// Manda un ping al secondo finché dura la connessione. Lettura (un altro task) e scrittura
-    /// sullo stesso flusso da due task diversi sono consentite, sia per TCP sia per QUIC.
+    /// sulla stessa corsia QUIC da due task diversi sono consentite.
     /// </summary>
     private static async Task MandaPingAsync(Stream flusso, CancellationToken stop)
     {

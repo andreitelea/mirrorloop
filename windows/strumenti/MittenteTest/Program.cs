@@ -1,10 +1,14 @@
 ﻿using System.Diagnostics;
+using System.Net;
+using System.Net.Quic;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using MirrorLoop.Protocollo;
 using MittenteTest;
 
 // La "telecamera finta": genera l'animazione di prova, la comprime in H.264 e la spedisce
-// al ricevitore e/o la salva in un file .h264 grezzo da aprire con VLC.
+// al ricevitore (in QUIC, sulla sola corsia video) e/o la salva in un file .h264 grezzo da aprire con VLC.
 //
 // Uso:  MittenteTest [--ricevitore host:porta] [--file percorso.h264] [--secondi N]
 //   --ricevitore   trasmette finché non si preme Ctrl+C (o per N secondi)
@@ -50,6 +54,11 @@ if (percorso is null && host is null)
 }
 if (host is null)
     secondi ??= 10;
+if (host is not null && !QuicConnection.IsSupported)
+{
+    Console.WriteLine("QUIC non è disponibile su questo Windows (serve Windows 11).");
+    return 1;
+}
 
 using var stop = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -75,21 +84,19 @@ Console.WriteLine(host is null ? $"Durata: {secondi} secondi" : "Ctrl+C per ferm
 
 while (!Finito())
 {
-    TcpClient? connessione = null;
+    Collegamento? collegamento = null;
     if (host is not null)
     {
-        connessione = Collegati(host, porta);
-        if (connessione is null)
+        collegamento = Collegati(host, porta);
+        if (collegamento is null)
             break;
     }
 
-    using (connessione)
-    {
-        // Un compressore nuovo per ogni collegamento: così il primo frame che il ricevitore
-        // vede è sempre un keyframe, e può mostrare l'immagine subito.
-        using var compressore = new CompressoreH264(Larghezza, Altezza, Fps, Bitrate, IntervalloKeyframe);
-        Trasmetti(compressore, connessione?.GetStream());
-    }
+    // Un compressore nuovo per ogni collegamento: così il primo frame che il ricevitore
+    // vede è sempre un keyframe, e può mostrare l'immagine subito.
+    using (var compressore = new CompressoreH264(Larghezza, Altezza, Fps, Bitrate, IntervalloKeyframe))
+        Trasmetti(compressore, collegamento?.Video);
+    collegamento?.Chiudi();
 
     if (host is null)
         break;
@@ -102,22 +109,39 @@ return statistiche.KeyframeSenzaIstruzioni == 0 ? 0 : 2;
 
 bool Finito() => stop.IsCancellationRequested || (scadenza is not null && orologio.Elapsed >= scadenza);
 
-TcpClient? Collegati(string host, int porta)
+// Come l'app iPhone: una connessione QUIC per corsia, presentata dall'apertura (tipo 5) con un
+// numero di trasmissione nuovo a ogni collegamento. Qui c'è solo la corsia video.
+Collegamento? Collegati(string host, int porta)
 {
     bool avvisato = false;
     while (!Finito())
     {
-        var client = new TcpClient { NoDelay = true };
+        QuicConnection? connessione = null;
         try
         {
-            client.ConnectAsync(host, porta, stop.Token).AsTask().GetAwaiter().GetResult();
-            Console.WriteLine($"Collegato al ricevitore {host}:{porta}.");
-            return client;
+            connessione = QuicConnection.ConnectAsync(new QuicClientConnectionOptions
+            {
+                RemoteEndPoint = new DnsEndPoint(host, porta),
+                DefaultStreamErrorCode = 1,
+                DefaultCloseErrorCode = 0,
+                ClientAuthenticationOptions = new SslClientAuthenticationOptions
+                {
+                    ApplicationProtocols = [new SslApplicationProtocol("mirrorloop/1")],
+                    TargetHost = "mirrorloop",
+                    // Il certificato del ricevitore è autofirmato: per le prove sul PC si accetta.
+                    RemoteCertificateValidationCallback = (_, _, _, _) => true,
+                },
+            }, stop.Token).AsTask().GetAwaiter().GetResult();
+            QuicStream video = connessione.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, stop.Token).AsTask().GetAwaiter().GetResult();
+            Protocollo.InviaAperturaCorsiaAsync(video, new AperturaCorsia(RuoloCorsia.Video, Random.Shared.NextInt64()), stop.Token)
+                .GetAwaiter().GetResult();
+            Console.WriteLine($"Collegato al ricevitore {host}:{porta} (QUIC).");
+            return new Collegamento(connessione, video);
         }
-        catch (Exception ex) when (ex is SocketException or OperationCanceledException)
+        catch (Exception ex) when (ex is QuicException or SocketException or AuthenticationException or OperationCanceledException)
         {
-            client.Dispose();
-            if (!avvisato && ex is SocketException)
+            connessione?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            if (!avvisato && ex is not OperationCanceledException)
             {
                 Console.WriteLine($"Ricevitore {host}:{porta} non raggiungibile, riprovo ogni secondo...");
                 avvisato = true;
@@ -129,7 +153,7 @@ TcpClient? Collegati(string host, int porta)
 }
 
 // Trasmette finché non è finito il tempo, non si preme Ctrl+C o non cade la connessione.
-void Trasmetti(CompressoreH264 compressore, NetworkStream? rete)
+void Trasmetti(CompressoreH264 compressore, Stream? rete)
 {
     // L'istante di cattura di ogni frame aspetta qui finché il compressore non restituisce
     // il frame compresso. Senza B-frame l'ordine di uscita è uguale a quello di ingresso.
@@ -179,14 +203,14 @@ void Trasmetti(CompressoreH264 compressore, NetworkStream? rete)
     {
         // Ctrl+C durante un invio: si chiude e basta.
     }
-    catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException)
+    catch (Exception ex) when (ex is IOException or QuicException or OperationCanceledException)
     {
         // OperationCanceledException qui vuol dire: il ricevitore non ha letto entro il limite.
         Console.WriteLine($"Connessione con il ricevitore persa ({ex.Message}). Riprovo...");
     }
 }
 
-void Consegna(FrameCompresso compresso, long istante, NetworkStream? rete, ContatoreSecondo secondo)
+void Consegna(FrameCompresso compresso, long istante, Stream? rete, ContatoreSecondo secondo)
 {
     file?.Write(compresso.DatiH264);
     statistiche.Aggiungi(compresso);
@@ -211,6 +235,16 @@ static bool LeggiIndirizzo(string testo, out string? host, out int porta)
         return false;
     host = testo[..duePunti];
     return true;
+}
+
+/// <summary>La connessione QUIC con il ricevitore e la sua corsia video.</summary>
+sealed record Collegamento(QuicConnection Connessione, QuicStream Video)
+{
+    public void Chiudi()
+    {
+        Video.Dispose();
+        Connessione.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
 }
 
 /// <summary>Una riga di statistiche al secondo, per seguire la trasmissione dal vivo.</summary>

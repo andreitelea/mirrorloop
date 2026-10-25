@@ -183,7 +183,7 @@ public partial class FinestraPrincipale : Window
             $"latenza audio   {DescriviLatenzaAudio()}\n" +
             $"orologi         {DescriviOrologi()}\n" +
             $"bonjour         {_annuncio.Stato}\n" +
-            $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (QUIC spento: {m})" : "")}\n" +
+            $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (impossibile ricevere: {m})" : "")}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
             $"conversione     {_msConversione,6:F1} ms\n" +
             $"rotazione       {90 * (int)_rotazione,6}°  ({(_sceltaRotazione.Manuale ? $"manuale; dall'iPhone {90 * (int)_sceltaRotazione.Automatica}°" : "automatica")})\n" +
@@ -204,7 +204,7 @@ public partial class FinestraPrincipale : Window
         _aggiornamentiFinestra = 0;
     }
 
-    /// <summary>Senza certificato il ricevitore funziona lo stesso, solo in TCP.</summary>
+    /// <summary>Senza certificato non si può ricevere: la finestra lo dice invece di chiudersi.</summary>
     private static System.Security.Cryptography.X509Certificates.X509Certificate2? CaricaCertificato()
     {
         try
