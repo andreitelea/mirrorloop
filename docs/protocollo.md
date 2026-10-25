@@ -43,6 +43,7 @@ Tutti i numeri sono **big-endian** ("network byte order").
 | 3 | Ping (dal ricevitore al mittente) | In uso dalla Fase 5 |
 | 4 | Pong (dal mittente al ricevitore) | In uso dalla Fase 5 |
 | 5 | Apertura corsia (solo QUIC) | In uso dalla Fase 5 |
+| 6–9 | Abbinamento: presentazione, sfida, prova, esito | Fase 7 (protocollo `mirrorloop/2`) |
 | altri | Riservati | Il ricevitore **li salta senza errore**, così le versioni future potranno aggiungerne senza rompere i ricevitori più vecchi |
 
 ## Tipo 1 · Frame video
@@ -173,6 +174,57 @@ Il ricevitore, per ogni corsia nuova:
 - quando una corsia di una trasmissione si chiude, chiude tutta la trasmissione: il mittente si ricollegherà con un numero nuovo.
 
 Esempio verificato da un test automatico (`IlFormatoDellAperturaCorsiaSulFiloEQuelloDocumentato`): la corsia video della trasmissione `0x0102030405060708` comincia con `00 00 00 0A 05 02 01 02 03 04 05 06 07 08`.
+
+## Tipi 6–9 · Abbinamento (protocollo `mirrorloop/2`)
+
+Perché nessuno, sulla stessa rete, possa fingersi il PC (e vedere lo schermo dell'iPhone) o fingersi un iPhone (e mandare immagini in diretta). Il PC si riconosce dall'**impronta** del suo certificato QUIC (SHA-256 del certificato in formato DER); l'iPhone da una sua **chiave** ECDSA P-256, creata al primo avvio e custodita nel portachiavi. Al primo incontro i due schermi mostrano lo stesso **codice di 6 cifre** e una persona conferma su tutti e due; dopo, si riconoscono da soli. I calcoli sono in `windows/src/MirrorLoop.Protocollo/Abbinamento.cs`.
+
+Per distinguere le versioni, il nome del protocollo QUIC (ALPN) diventa `mirrorloop/2`: un'app o un ricevitore della versione precedente si fermano subito alla connessione.
+
+### Sequenza, sulla corsia di controllo, subito dopo l'apertura (tipo 5)
+
+1. **iPhone → PC · presentazione (6):** chiave pubblica e **impegno** = SHA-256(`"MirrorLoop impegno v1"` ‖ chiave ‖ numero dell'iPhone), dove il numero dell'iPhone sono 32 byte casuali nuovi a ogni collegamento.
+2. **PC → iPhone · sfida (7):** il numero del PC, 32 byte casuali nuovi a ogni collegamento.
+3. **iPhone → PC · prova (8):** il numero dell'iPhone (ora rivelato) e la **firma** ECDSA P-256 con SHA-256 di `"MirrorLoop prova v1"` ‖ impronta del PC ‖ chiave ‖ numero del PC ‖ numero dell'iPhone. L'impronta è quella del certificato che l'iPhone ha visto nella connessione.
+4. **PC → iPhone · esito (9):** il PC controlla impegno e firma, poi:
+   - iPhone già abbinato → **accettato** (0);
+   - iPhone nuovo → **in attesa** (1): il PC mostra il codice e chiede di consentire o rifiutare; poi manda un secondo esito, accettato o rifiutato;
+   - impegno o firma sbagliati, richiesta rifiutata o scaduta → **rifiutato** (2), e il PC chiude la trasmissione.
+
+Il **codice** si calcola da SHA-256(`"MirrorLoop codice v1"` ‖ impronta ‖ chiave ‖ numero del PC ‖ numero dell'iPhone): i primi 4 byte come intero big-endian senza segno, modulo 1 000 000, scritti con 6 cifre (zeri iniziali compresi). Se in mezzo ci fosse un impostore, i due schermi mostrerebbero codici diversi; l'impegno gli impedisce di provare chiavi finché coincidono per caso (gli resta una possibilità su un milione).
+
+Le etichette tra virgolette sono in ASCII, senza terminatore; ‖ vuol dire "seguito da".
+
+L'iPhone memorizza l'impronta del PC solo dopo la conferma della persona **e** l'esito accettato; le volte successive, un'impronta diversa per lo stesso PC è un allarme, non un nuovo abbinamento automatico. Video e audio partono solo dopo l'esito accettato.
+
+### Formato
+
+```
+presentazione:  tipo = 6 (1) │ chiave (65) │ impegno (32) │ nome (0–64, UTF-8)
+sfida:          tipo = 7 (1) │ numero del PC (32)
+prova:          tipo = 8 (1) │ numero dell'iPhone (32) │ firma (64)
+esito:          tipo = 9 (1) │ esito (1): 0 accettato, 1 in attesa, 2 rifiutato
+```
+
+- **chiave:** punto P-256 non compresso, `04` ‖ X (32 byte) ‖ Y (32 byte), come `x963Representation` di CryptoKit.
+- **firma:** r ‖ s, 32 byte ciascuno, come `rawRepresentation` di CryptoKit.
+- **nome:** da mostrare sul PC (iOS dà alle app solo "iPhone"); oltre 64 byte è un errore.
+- Lunghezze fisse per sfida (33), prova (97) ed esito (2); un esito diverso da 0, 1, 2 è un errore.
+
+### Esempio con valori fissi
+
+Verificato da un test automatico (`LEsempioDelDocumentoTorna`) e ricalcolato a parte in Python. L'app deve ottenere gli stessi impegno e codice; la firma ECDSA cambia a ogni calcolo, ma questa deve risultare valida.
+
+| | Valore (esadecimale) |
+| --- | --- |
+| chiave privata (solo per l'esempio) | `bbb66c5be08c2a5c1fe3ec756f68517e31499ffb115bb8fbf526415d10ea26e9` = SHA-256(`"MirrorLoop chiave di prova"`) |
+| chiave | `0402e1ecbb59b6a867788ad406194e9d186d62a8ea3ae31b441e5df2cdbeb5074647f2ee5bcdd4948f2748373ace3a10fa44233730c2d4353437edbf6ae98504f5` |
+| impronta | `45bd8dfef7caf4232b2c31bfc249e6a5dd1743c727291408d2f0a05ebe0db347` = SHA-256(`"certificato di prova"`) |
+| numero del PC | 32 byte `11` |
+| numero dell'iPhone | 32 byte `22` |
+| impegno | `ba04f4ce2586799326edcb32db1e6e33dfc33e22534f243e167387de0f8e6c5e` |
+| codice | **713021** |
+| una firma valida | `e754f9bd671aaa7774779c04e57639fea1c9080b5d966ebc5a39641d7e607eb4be622936d4a8e52527dddbe66b7da6fd7d4817d30f047b6a62521dfc8f5191f9` |
 
 ## Comportamento del ricevitore
 

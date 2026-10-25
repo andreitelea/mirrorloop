@@ -21,6 +21,10 @@ public static class Protocollo
     private const byte TipoPing = 3;
     private const byte TipoPong = 4;
     private const byte TipoAperturaCorsia = 5;
+    private const byte TipoPresentazione = 6;
+    private const byte TipoSfida = 7;
+    private const byte TipoProva = 8;
+    private const byte TipoEsito = 9;
 
     private const byte FlagKeyframe = 0b0000_0001;
     private const byte FlagRotazione = 0b0000_0110;
@@ -40,6 +44,19 @@ public static class Protocollo
 
     // tipo (1) + ruolo (1) + numero di trasmissione (8)
     private const int LunghezzaAperturaCorsia = 1 + 1 + 8;
+
+    // tipo (1) + chiave (65) + impegno (32), poi il nome
+    private const int IntestazionePresentazione = 1 + Abbinamento.LunghezzaChiave + Abbinamento.LunghezzaHash;
+    private const int LunghezzaMassimaNome = 64;
+
+    // tipo (1) + numero del PC (32)
+    private const int LunghezzaSfida = 1 + Abbinamento.LunghezzaNumero;
+
+    // tipo (1) + numero dell'iPhone (32) + firma (64)
+    private const int LunghezzaProva = 1 + Abbinamento.LunghezzaNumero + Abbinamento.LunghezzaFirma;
+
+    // tipo (1) + esito (1)
+    private const int LunghezzaEsito = 1 + 1;
 
     public static async Task InviaFrameAsync(Stream flusso, FrameVideo frame, CancellationToken ct = default)
     {
@@ -121,6 +138,65 @@ public static class Protocollo
         await flusso.WriteAsync(pacchetto, ct);
     }
 
+    public static async Task InviaPresentazioneAsync(Stream flusso, Presentazione presentazione, CancellationToken ct = default)
+    {
+        ControllaLunghezza(presentazione.Chiave, Abbinamento.LunghezzaChiave, "chiave");
+        ControllaLunghezza(presentazione.Impegno, Abbinamento.LunghezzaHash, "impegno");
+        byte[] nome = System.Text.Encoding.UTF8.GetBytes(presentazione.Nome);
+        if (nome.Length > LunghezzaMassimaNome)
+            throw new ArgumentException($"Nome troppo lungo ({nome.Length} byte, massimo {LunghezzaMassimaNome}).", nameof(presentazione));
+
+        int lunghezza = IntestazionePresentazione + nome.Length;
+        byte[] pacchetto = new byte[4 + lunghezza];
+        Span<byte> s = pacchetto;
+        BinaryPrimitives.WriteInt32BigEndian(s, lunghezza);
+        s[4] = TipoPresentazione;
+        presentazione.Chiave.CopyTo(s[5..]);
+        presentazione.Impegno.CopyTo(s[(5 + Abbinamento.LunghezzaChiave)..]);
+        nome.CopyTo(s[(4 + IntestazionePresentazione)..]);
+        await flusso.WriteAsync(pacchetto, ct);
+    }
+
+    public static async Task InviaSfidaAsync(Stream flusso, Sfida sfida, CancellationToken ct = default)
+    {
+        ControllaLunghezza(sfida.NumeroPc, Abbinamento.LunghezzaNumero, "numero del PC");
+        byte[] pacchetto = new byte[4 + LunghezzaSfida];
+        Span<byte> s = pacchetto;
+        BinaryPrimitives.WriteInt32BigEndian(s, LunghezzaSfida);
+        s[4] = TipoSfida;
+        sfida.NumeroPc.CopyTo(s[5..]);
+        await flusso.WriteAsync(pacchetto, ct);
+    }
+
+    public static async Task InviaProvaAsync(Stream flusso, Prova prova, CancellationToken ct = default)
+    {
+        ControllaLunghezza(prova.NumeroIphone, Abbinamento.LunghezzaNumero, "numero dell'iPhone");
+        ControllaLunghezza(prova.Firma, Abbinamento.LunghezzaFirma, "firma");
+        byte[] pacchetto = new byte[4 + LunghezzaProva];
+        Span<byte> s = pacchetto;
+        BinaryPrimitives.WriteInt32BigEndian(s, LunghezzaProva);
+        s[4] = TipoProva;
+        prova.NumeroIphone.CopyTo(s[5..]);
+        prova.Firma.CopyTo(s[(5 + Abbinamento.LunghezzaNumero)..]);
+        await flusso.WriteAsync(pacchetto, ct);
+    }
+
+    public static async Task InviaEsitoAsync(Stream flusso, Esito esito, CancellationToken ct = default)
+    {
+        byte[] pacchetto = new byte[4 + LunghezzaEsito];
+        Span<byte> s = pacchetto;
+        BinaryPrimitives.WriteInt32BigEndian(s, LunghezzaEsito);
+        s[4] = TipoEsito;
+        s[5] = (byte)esito.Valore;
+        await flusso.WriteAsync(pacchetto, ct);
+    }
+
+    private static void ControllaLunghezza(byte[] dati, int attesa, string cosa)
+    {
+        if (dati.Length != attesa)
+            throw new ArgumentException($"{cosa}: {dati.Length} byte invece di {attesa}.");
+    }
+
     /// <summary>
     /// Legge il prossimo frame video, saltando tutti gli altri messaggi. Restituisce null se
     /// l'altro ha chiuso la connessione in modo pulito, tra un messaggio e l'altro.
@@ -142,7 +218,7 @@ public static class Protocollo
     }
 
     /// <summary>
-    /// Legge il prossimo messaggio conosciuto (video, audio, ping, pong o apertura corsia). Restituisce null se l'altro ha
+    /// Legge il prossimo messaggio conosciuto (tipi da 1 a 9). Restituisce null se l'altro ha
     /// chiuso la connessione in modo pulito, tra un messaggio e l'altro.
     /// </summary>
     /// <exception cref="EndOfStreamException">La connessione si è interrotta a metà di un messaggio.</exception>
@@ -178,6 +254,14 @@ public static class Protocollo
                     return LeggiPong(messaggio);
                 case TipoAperturaCorsia:
                     return LeggiAperturaCorsia(messaggio);
+                case TipoPresentazione:
+                    return LeggiPresentazione(messaggio);
+                case TipoSfida:
+                    return LeggiSfida(messaggio);
+                case TipoProva:
+                    return LeggiProva(messaggio);
+                case TipoEsito:
+                    return LeggiEsito(messaggio);
                 default:
                     // Tipi sconosciuti si saltano invece di dare errore: così un mittente più nuovo
                     // può aggiungere messaggi senza rompere un ricevitore più vecchio.
@@ -244,6 +328,40 @@ public static class Protocollo
         if (messaggio.Length != LunghezzaAperturaCorsia)
             throw new InvalidDataException($"Apertura corsia di {messaggio.Length} byte invece di {LunghezzaAperturaCorsia}.");
         return new AperturaCorsia((RuoloCorsia)messaggio[1], BinaryPrimitives.ReadInt64BigEndian(messaggio.AsSpan(2)));
+    }
+
+    private static Presentazione LeggiPresentazione(byte[] messaggio)
+    {
+        if (messaggio.Length < IntestazionePresentazione || messaggio.Length > IntestazionePresentazione + LunghezzaMassimaNome)
+            throw new InvalidDataException($"Presentazione di {messaggio.Length} byte.");
+        byte[] chiave = messaggio[1..(1 + Abbinamento.LunghezzaChiave)];
+        byte[] impegno = messaggio[(1 + Abbinamento.LunghezzaChiave)..IntestazionePresentazione];
+        // UTF-8 non valido diventa "�": il nome serve solo da mostrare.
+        string nome = System.Text.Encoding.UTF8.GetString(messaggio, IntestazionePresentazione, messaggio.Length - IntestazionePresentazione);
+        return new Presentazione(chiave, impegno, nome);
+    }
+
+    private static Sfida LeggiSfida(byte[] messaggio)
+    {
+        if (messaggio.Length != LunghezzaSfida)
+            throw new InvalidDataException($"Sfida di {messaggio.Length} byte invece di {LunghezzaSfida}.");
+        return new Sfida(messaggio[1..]);
+    }
+
+    private static Prova LeggiProva(byte[] messaggio)
+    {
+        if (messaggio.Length != LunghezzaProva)
+            throw new InvalidDataException($"Prova di {messaggio.Length} byte invece di {LunghezzaProva}.");
+        return new Prova(messaggio[1..(1 + Abbinamento.LunghezzaNumero)], messaggio[(1 + Abbinamento.LunghezzaNumero)..]);
+    }
+
+    private static Esito LeggiEsito(byte[] messaggio)
+    {
+        if (messaggio.Length != LunghezzaEsito)
+            throw new InvalidDataException($"Esito di {messaggio.Length} byte invece di {LunghezzaEsito}.");
+        if (!Enum.IsDefined((ValoreEsito)messaggio[1]))
+            throw new InvalidDataException($"Esito sconosciuto: {messaggio[1]}.");
+        return new Esito((ValoreEsito)messaggio[1]);
     }
 
     /// <summary>L'istante attuale nel formato usato da <see cref="FrameVideo.IstanteCatturaMicrosecondi"/>.</summary>
