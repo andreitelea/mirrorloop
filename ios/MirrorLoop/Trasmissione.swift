@@ -3,14 +3,6 @@ import Network
 import Security
 import Synchronization
 
-/// Come viaggiano i dati verso il ricevitore.
-enum Trasporto: String, CaseIterable, Sendable {
-    /// Una sola connessione TCP per tutto: semplice, ma una perdita blocca tutta la fila.
-    case tcp = "TCP"
-    /// QUIC (su UDP) con corsie indipendenti per controllo, video e audio.
-    case quic = "QUIC"
-}
-
 struct StatisticheTrasmissione: Sendable {
     var stato = "Ferma"
     var collegato = false
@@ -29,6 +21,8 @@ struct StatisticheTrasmissione: Sendable {
 
 /// Manda i frame compressi e l'audio al ricevitore Windows, nel formato di docs/protocollo.md,
 /// e risponde ai ping del PC (che li usa per misurare lo scarto tra i due orologi).
+/// Solo QUIC, con corsie indipendenti per controllo, video e audio (TCP tolto il 25/10/2026:
+/// non cifrato, e senza vantaggi misurati).
 /// Tutto lo stato vive sulla coda `coda`; `invia` e `inviaAudio` possono essere chiamati da qualsiasi thread.
 final class Trasmissione: @unchecked Sendable {
     static let porta: UInt16 = 7450
@@ -58,12 +52,11 @@ final class Trasmissione: @unchecked Sendable {
     // così un cambio di indirizzo del PC (per esempio deciso dal router) non ferma la trasmissione.
     private var host: NWEndpoint.Host?
     private var risolutore: NWConnection?
-    private let trasporto: Trasporto
     private let orologio: OrologioCattura
     private let chiediKeyframe: @Sendable () -> Void
     private let coda = DispatchQueue(label: "io.github.andreitelea.mirrorloop.rete")
 
-    // TCP: una connessione. QUIC: una connessione per corsia, riunite dal PC grazie al numero di trasmissione.
+    // Una connessione QUIC per corsia, riunite dal PC grazie al numero di trasmissione.
     private var corsie: [Corsia: NWConnection] = [:]
     private var numeroTrasmissione: UInt64 = 0
     private var corsiePronte = Set<Corsia>()
@@ -78,10 +71,9 @@ final class Trasmissione: @unchecked Sendable {
     private var istantiInAttesa: [Corsia: [TimeInterval]] = [:]
     private var ingresso: [UInt8] = []
 
-    init(destinazione: DestinazionePC, trasporto: Trasporto, orologio: OrologioCattura,
+    init(destinazione: DestinazionePC, orologio: OrologioCattura,
          chiediKeyframe: @escaping @Sendable () -> Void) {
         self.destinazione = destinazione
-        self.trasporto = trasporto
         self.orologio = orologio
         self.chiediKeyframe = chiediKeyframe
     }
@@ -182,22 +174,21 @@ final class Trasmissione: @unchecked Sendable {
 
     // MARK: - Spedizione
 
-    /// Quanti byte aspettano di partire sulla fila di questa corsia. In TCP c'è una sola fila per
-    /// tutto; in QUIC ogni corsia ha la sua, ed è proprio il motivo per usarlo.
+    /// Quanti byte aspettano di partire sulla fila di questa corsia: ogni corsia ha la sua, ed è
+    /// proprio il motivo per usare QUIC.
     private func inAttesa(per corsia: Corsia) -> Int {
-        trasporto == .tcp ? byteInAttesa.values.reduce(0, +) : byteInAttesa[corsia, default: 0]
+        byteInAttesa[corsia, default: 0]
     }
 
-    /// Da quanti secondi aspetta di partire il messaggio più vecchio della fila di questa corsia
-    /// (in TCP, della fila unica); 0 se la fila è vuota.
+    /// Da quanti secondi aspetta di partire il messaggio più vecchio della fila di questa corsia;
+    /// 0 se la fila è vuota.
     private func attesa(per corsia: Corsia) -> TimeInterval {
-        let corsieContate = trasporto == .tcp ? Array(istantiInAttesa.keys) : [corsia]
-        guard let piuVecchio = corsieContate.compactMap({ istantiInAttesa[$0]?.first }).min() else { return 0 }
+        guard let piuVecchio = istantiInAttesa[corsia]?.first else { return 0 }
         return ProcessInfo.processInfo.systemUptime - piuVecchio
     }
 
     private func spedisci(_ messaggio: Data, su corsia: Corsia, conteggio: @escaping @Sendable (inout StatisticheTrasmissione, Int) -> Void) {
-        guard let connessione = connessione(per: corsia) else { return }
+        guard let connessione = corsie[corsia] else { return }
         byteInAttesa[corsia, default: 0] += messaggio.count
         let consegna = ProcessInfo.processInfo.systemUptime
         istantiInAttesa[corsia, default: []].append(consegna)
@@ -217,40 +208,29 @@ final class Trasmissione: @unchecked Sendable {
         })
     }
 
-    private func connessione(per corsia: Corsia) -> NWConnection? {
-        trasporto == .tcp ? corsie[.controllo] : corsie[corsia]
-    }
-
     // MARK: - Collegamento
 
     private func collega() {
         guard attivo else { return }
         generazione += 1
         let mia = generazione
-        statistiche.withLock { $0.stato = "Collegamento a \(destinazione.descrizione) (\(trasporto.rawValue))…" }
+        statistiche.withLock { $0.stato = "Collegamento a \(destinazione.descrizione)…" }
         switch destinazione {
         case .indirizzo(let indirizzo):
             host = NWEndpoint.Host(indirizzo)
-            collegaTrasporto(generazione: mia)
+            collegaQuic(generazione: mia)
         case .servizio(let nome):
             risolvi(nome, generazione: mia)
         }
         coda.asyncAfter(deadline: .now() + Self.limiteCollegamento) { [self] in
             guard mia == generazione, !collegato else { return }
-            riprova("collegamento \(trasporto.rawValue) non riuscito entro \(Int(Self.limiteCollegamento)) s")
-        }
-    }
-
-    private func collegaTrasporto(generazione mia: Int) {
-        switch trasporto {
-        case .tcp: collegaTcp(generazione: mia)
-        case .quic: collegaQuic(generazione: mia)
+            riprova("collegamento non riuscito entro \(Int(Self.limiteCollegamento)) s")
         }
     }
 
     /// Ricava l'indirizzo IPv4 del PC trovato con Bonjour. Una "connessione" UDP diventa pronta appena
     /// il nome è risolto, senza spedire niente: il PC non vede nulla. Solo IPv4 perché il ricevitore
-    /// ascolta su IPv4. Poi ci si collega come con un indirizzo scritto a mano, sia in TCP sia in QUIC.
+    /// ascolta su IPv4. Poi ci si collega come con un indirizzo scritto a mano.
     private func risolvi(_ nome: String, generazione mia: Int) {
         let parametri = NWParameters.udp
         if let ip = parametri.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options {
@@ -270,8 +250,8 @@ final class Trasmissione: @unchecked Sendable {
                     return
                 }
                 host = trovato
-                statistiche.withLock { $0.stato = "Collegamento a \(nome) (\(trovato)) (\(trasporto.rawValue))…" }
-                collegaTrasporto(generazione: mia)
+                statistiche.withLock { $0.stato = "Collegamento a \(nome) (\(trovato))…" }
+                collegaQuic(generazione: mia)
             case .waiting(let errore), .failed(let errore):
                 riprova("\(nome) non trovato in rete: \(errore.localizedDescription)")
             default:
@@ -280,29 +260,6 @@ final class Trasmissione: @unchecked Sendable {
         }
         risolutore = nuovo
         nuovo.start(queue: coda)
-    }
-
-    private func collegaTcp(generazione mia: Int) {
-        guard let host else { return }
-        let tcp = NWProtocolTCP.Options()
-        tcp.noDelay = true
-        let parametri = NWParameters(tls: nil, tcp: tcp)
-        parametri.serviceClass = .interactiveVideo
-        let nuova = NWConnection(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!, using: parametri)
-        nuova.stateUpdateHandler = { [self] stato in
-            guard mia == generazione else { return }
-            switch stato {
-            case .ready:
-                ricevi(nuova, generazione: mia)
-                collegamentoRiuscito()
-            case .waiting(let errore), .failed(let errore):
-                riprova(errore.localizedDescription)
-            default:
-                break
-            }
-        }
-        corsie[.controllo] = nuova
-        nuova.start(queue: coda)
     }
 
     /// Una connessione QUIC semplice per ogni corsia, come negli esempi QUIC collaudati su iPhone.
@@ -363,8 +320,8 @@ final class Trasmissione: @unchecked Sendable {
         statistiche.withLock { s in
             let indirizzo = host.map { "\($0):\(Self.porta)" } ?? "?"
             s.stato = switch destinazione {
-            case .servizio(let nome): "Collegata a \(nome) (\(indirizzo), \(trasporto.rawValue))"
-            case .indirizzo: "Collegata a \(indirizzo) (\(trasporto.rawValue))"
+            case .servizio(let nome): "Collegata a \(nome) (\(indirizzo))"
+            case .indirizzo: "Collegata a \(indirizzo)"
             }
             s.collegato = true
             s.connessioni += 1

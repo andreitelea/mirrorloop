@@ -45,7 +45,6 @@ struct PannelloCattura: View {
     @AppStorage("pcScelto") private var pcScelto = ""
     @AppStorage("indirizzoPC") private var indirizzoPC = ""
     private static let manuale = "manuale"
-    @AppStorage("trasporto") private var trasporto = Trasporto.quic
     @AppStorage("qualita") private var qualita = Qualita.alta
 
     var body: some View {
@@ -75,10 +74,6 @@ struct PannelloCattura: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
-            Picker("Trasporto", selection: $trasporto) {
-                ForEach(Trasporto.allCases, id: \.self) { Text($0.rawValue) }
-            }
-            .pickerStyle(.segmented)
             Picker("Qualità", selection: $qualita) {
                 ForEach(Qualita.allCases, id: \.self) { Text($0.rawValue) }
             }
@@ -94,7 +89,7 @@ struct PannelloCattura: View {
             HStack {
                 Button("Avvia") {
                     if let destinazione {
-                        cattura.avvia(destinazione: destinazione, trasporto: trasporto, qualita: qualita)
+                        cattura.avvia(destinazione: destinazione, qualita: qualita)
                     }
                 }
                     .buttonStyle(.borderedProminent)
