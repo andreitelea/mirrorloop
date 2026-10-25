@@ -30,7 +30,10 @@ public partial class FinestraPrincipale : Window
     // Ogni pochi secondi si rilegge il tipo della rete di casa: chi la imposta come Privata vede
     // sparire l'avviso senza riavviare.
     private readonly DispatcherTimer _controlloRete = new() { Interval = TimeSpan.FromSeconds(5) };
-    private readonly AnnuncioBonjour _annuncio;
+    private readonly Impostazioni _impostazioni = new();
+    // Null solo mentre si cambia nome (il vecchio annuncio si toglie, il nuovo non c'è ancora).
+    private AnnuncioBonjour? _annuncio;
+    private bool _cambioNomeInCorso;
     private readonly Riproduzione _riproduzione;
     private readonly BachecaObs? _bacheca;
     private readonly string? _motivoSenzaBacheca;
@@ -85,7 +88,8 @@ public partial class FinestraPrincipale : Window
         };
         _riproduzioneAudio.EventoRiserva += evento => _registro.ScriviRiserva(evento, Protocollo.Protocollo.AdessoMicrosecondi());
         // L'iPhone trova il PC per nome, senza scrivere l'indirizzo.
-        _annuncio = new AnnuncioBonjour(Environment.MachineName, Porta);
+        _annuncio = new AnnuncioBonjour(_impostazioni.NomePC, Porta);
+        MostraNomePC();
 
         _riproduzione = new Riproduzione(_coda);
 
@@ -119,7 +123,7 @@ public partial class FinestraPrincipale : Window
         {
             Video.Source = null;
             _immagine = null;
-            TestoStato.Visibility = Visibility.Visible;
+            PannelloAttesa.Visibility = Visibility.Visible;
         }
     }
 
@@ -138,7 +142,7 @@ public partial class FinestraPrincipale : Window
         {
             _immagine = new WriteableBitmap(immagine.Larghezza, immagine.Altezza, 96, 96, PixelFormats.Bgr32, null);
             Video.Source = _immagine;
-            TestoStato.Visibility = Visibility.Collapsed;
+            PannelloAttesa.Visibility = Visibility.Collapsed;
         }
 
         _immagine.WritePixels(new Int32Rect(0, 0, immagine.Larghezza, immagine.Altezza), immagine.Bgra, immagine.Larghezza * 4, 0);
@@ -196,7 +200,7 @@ public partial class FinestraPrincipale : Window
             $"latenza schermo {Latenza(schermo)}\n" +
             $"latenza audio   {DescriviLatenzaAudio()}\n" +
             $"orologi         {DescriviOrologi()}\n" +
-            $"bonjour         {_annuncio.Stato}\n" +
+            $"bonjour         {_annuncio?.Stato ?? "cambio del nome in corso…"}\n" +
             $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (impossibile ricevere: {m})" : "")}\n" +
             $"iPhone abbinati {_telefoni.Numero,6}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
@@ -215,7 +219,7 @@ public partial class FinestraPrincipale : Window
             $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             $"registro        {DescriviRegistro()}\n" +
-            "S: mostra/nascondi · R: registro su file · O: ruota di 90° · A: rotazione automatica · D: dimentica gli iPhone abbinati";
+            "S: mostra/nascondi · R: registro su file · O: ruota di 90° · A: rotazione automatica · D: dimentica gli iPhone abbinati · N: nome del PC";
         _aggiornamentiFinestra = 0;
     }
 
@@ -314,6 +318,10 @@ public partial class FinestraPrincipale : Window
         {
             DimenticaTelefoni();
         }
+        else if (e.Key == Key.N)
+        {
+            _ = CambiaNomePCAsync();
+        }
         else if (e.Key == Key.Escape)
         {
             _consenso?.TrySetResult(false);
@@ -326,6 +334,52 @@ public partial class FinestraPrincipale : Window
         string? avviso = CategoriaRete.Avviso(await Task.Run(CategoriaRete.DellaReteDiCasa));
         TestoAvvisoRete.Text = avviso ?? "";
         RiquadroAvvisoRete.Visibility = avviso is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    // ---- Nome del PC ----
+
+    private void MostraNomePC() =>
+        TestoNomePC.Text = $"Sull'iPhone scegli «{_impostazioni.NomePC}» · N per cambiare il nome";
+
+    /// <summary>
+    /// Tasto N: chiede il nome nuovo e rifà l'annuncio Bonjour. Gli abbinamenti restano validi;
+    /// un iPhone collegato continua a trasmettere, al prossimo collegamento va scelto il nome nuovo.
+    /// </summary>
+    private async Task CambiaNomePCAsync()
+    {
+        if (_cambioNomeInCorso)
+            return;
+        var finestra = new FinestraNome(_impostazioni.NomePC, _impostazioni.NomePCPredefinito) { Owner = this };
+        if (finestra.ShowDialog() != true)
+            return;
+        try
+        {
+            _impostazioni.CambiaNomePC(finestra.NomeScelto);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, $"Impossibile salvare il nome: {ex.Message}", "MirrorLoop", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        MostraNomePC();
+        if (_annuncio?.Nome == _impostazioni.NomePC)
+            return;
+
+        _cambioNomeInCorso = true;
+        try
+        {
+            AnnuncioBonjour? vecchio = _annuncio;
+            _annuncio = null;
+            // Togliere l'annuncio aspetta la conferma di Windows (fino a 2 s): non sul thread della finestra.
+            if (vecchio is not null)
+                await Task.Run(vecchio.Dispose);
+            if (!_stop.IsCancellationRequested)
+                _annuncio = new AnnuncioBonjour(_impostazioni.NomePC, Porta);
+        }
+        finally
+        {
+            _cambioNomeInCorso = false;
+        }
     }
 
     // ---- Abbinamento ----
@@ -424,7 +478,7 @@ public partial class FinestraPrincipale : Window
     {
         _stop.Cancel();
         _battito.Dispose();
-        _annuncio.Dispose();
+        _annuncio?.Dispose();
         _riproduzioneAudio.Dispose();
         _bacheca?.Dispose();
         _registro.Dispose();

@@ -9,10 +9,16 @@
         <!-- Il video: riempie la finestra mantenendo le proporzioni (bande nere se servono). -->
         <Image x:Name="Video" Stretch="Uniform" RenderOptions.BitmapScalingMode="Linear" />
 
-        <TextBlock x:Name="TestoStato"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                   Foreground="#B0B0B0" FontSize="22" TextAlignment="Center"
-                   Text="Avvio..." />
+        <!-- Senza video: lo stato e il nome da scegliere sull'iPhone. -->
+        <StackPanel x:Name="PannelloAttesa" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock x:Name="TestoStato"
+                       HorizontalAlignment="Center"
+                       Foreground="#B0B0B0" FontSize="22" TextAlignment="Center"
+                       Text="Avvio..." />
+            <TextBlock x:Name="TestoNomePC"
+                       HorizontalAlignment="Center" Margin="0,14,0,0"
+                       Foreground="#808080" FontSize="16" TextAlignment="Center" />
+        </StackPanel>
 
         <!-- Riquadro delle statistiche: il tasto S lo mostra e lo nasconde,
              così non finisce in diretta quando OBS riprende la finestra. -->

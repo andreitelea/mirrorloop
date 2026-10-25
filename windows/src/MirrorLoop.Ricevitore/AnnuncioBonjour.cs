@@ -36,7 +36,7 @@ public sealed unsafe partial class AnnuncioBonjour : IDisposable
     private bool _registrato;
     private bool _chiuso;
 
-    /// <param name="nome">Il nome che vedrà l'iPhone (di solito il nome del PC). Senza punti.</param>
+    /// <param name="nome">Il nome che vedrà l'iPhone, già ripulito con <see cref="Impostazioni.Pulisci"/>.</param>
     public AnnuncioBonjour(string nome, ushort porta)
     {
         Nome = nome;

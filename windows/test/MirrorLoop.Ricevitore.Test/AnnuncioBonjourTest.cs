@@ -10,10 +10,13 @@ namespace MirrorLoop.Ricevitore.Test;
 /// </summary>
 public sealed class AnnuncioBonjourTest
 {
-    [Fact]
-    public async Task LAnnuncioSiTrovaCercandoIlTipoDiServizio()
+    // Il secondo come i nomi scelti dalle persone: spazi e lettere accentate.
+    [Theory]
+    [InlineData("MirrorLoopTest")]
+    [InlineData("PC di Andrè prova ")]
+    public async Task LAnnuncioSiTrovaCercandoIlTipoDiServizio(string prefisso)
     {
-        string nome = "MirrorLoopTest" + Guid.NewGuid().ToString("N")[..8];
+        string nome = prefisso + Guid.NewGuid().ToString("N")[..8];
         using var annuncio = new AnnuncioBonjour(nome, 7451);
 
         uint esito = await annuncio.Registrazione.WaitAsync(TimeSpan.FromSeconds(10));
