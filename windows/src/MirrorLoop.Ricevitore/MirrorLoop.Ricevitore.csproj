@@ -45,6 +45,16 @@
     <NeutralLanguage>en</NeutralLanguage>
     <!-- L'icona del programma (Esplora file, barra delle applicazioni), generata da grafica/icona.py. -->
     <ApplicationIcon>MirrorLoop.ico</ApplicationIcon>
+    <!-- Nome e versione scritti nel file (Proprietà → Dettagli, Gestione attività, firma del codice).
+         Un solo numero per tutto MirrorLoop: lo stesso di MARKETING_VERSION in ios/project.yml e di
+         "version" in obs/buildspec.json. -->
+    <Version>0.14.0</Version>
+    <Product>MirrorLoop</Product>
+    <AssemblyTitle>MirrorLoop</AssemblyTitle>
+    <Authors>Andrei Telea</Authors>
+    <Copyright>Copyright (c) 2026 Andrei Telea</Copyright>
+    <!-- Della libreria di .NET inclusa nel pacchetto bastano le traduzioni delle nostre due lingue. -->
+    <SatelliteResourceLanguages>en;it</SatelliteResourceLanguages>
   </PropertyGroup>
 
 </Project>
