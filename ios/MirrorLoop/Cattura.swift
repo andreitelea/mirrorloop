@@ -219,6 +219,12 @@ final class Cattura {
     private(set) var sensore = SensoreOrientamento.Stato()
     private(set) var dimensioneRichiesta = "–"
     private(set) var errore: String?
+    /// Da Avvia a Ferma, compresa la scelta di cosa condividere: decide il pulsante grande.
+    private(set) var inCorso = false
+    /// ScreenCaptureKit sta consegnando le immagini.
+    private(set) var catturaAttiva = false
+    /// Da quando il PC riceve, per le informazioni sulla trasmissione.
+    private(set) var collegatoDa: Date?
 
     var disponibile: Bool { SCContentSharingPicker.shared.isAvailable }
 
@@ -284,6 +290,7 @@ final class Cattura {
         picker.add(ricevitore)
         picker.isActive = true
         picker.present()
+        inCorso = true
         stato = String(localized: "Choose what to share…")
     }
 
@@ -302,6 +309,9 @@ final class Cattura {
         ricevitore = nil
         trasmissione?.ferma()
         trasmissione = nil
+        inCorso = false
+        catturaAttiva = false
+        collegatoDa = nil
         stato = String(localized: "Stopped")
     }
 
@@ -322,6 +332,7 @@ final class Cattura {
     func aggiorna() {
         if let trasmissione {
             rete = trasmissione.statistiche.withLock { $0 }
+            collegatoDa = rete.collegato ? (collegatoDa ?? Date()) : nil
         }
         guard let ricevitore else { return }
         contatori = ricevitore.contatori.withLock { $0 }
@@ -369,12 +380,13 @@ final class Cattura {
                 stato = String(localized: "Cancelled")
             }
         case .erroreAvvio(let messaggio):
+            ferma()
             errore = messaggio
             stato = String(localized: "Couldn't start")
         case .interrotto(let messaggio):
-            aggiorna()
+            // Si chiude tutto (anche la connessione al PC): il pulsante torna "Avvia".
+            ferma()
             errore = messaggio
-            stream = nil
             stato = String(localized: "Interrupted")
         }
     }
@@ -395,6 +407,7 @@ final class Cattura {
             try stream.addStreamOutput(ricevitore, type: .screen, sampleHandlerQueue: coda)
             try stream.addStreamOutput(ricevitore, type: .audio, sampleHandlerQueue: codaAudio)
         } catch {
+            ferma()
             errore = error.localizedDescription
             stato = String(localized: "Error")
             return
@@ -409,10 +422,12 @@ final class Cattura {
 
     private func avviato(errore messaggio: String?) {
         if let messaggio {
-            errore = messaggio
             stream = nil
+            ferma()
+            errore = messaggio
             stato = String(localized: "Couldn't start")
         } else {
+            catturaAttiva = true
             stato = String(localized: "Capturing")
         }
     }

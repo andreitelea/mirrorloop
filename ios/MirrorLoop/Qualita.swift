@@ -16,11 +16,22 @@ enum Qualita: String, CaseIterable, Sendable {
     /// Nil per Massima: si usano le misure dello schermo così come sono.
     /// Il nome mostrato nell'app. Il valore grezzo ("Alta"…) resta quello di sempre perché è salvato
     /// nelle impostazioni di chi ha già l'app.
+    /// HD e Full HD sono nomi onesti (720 e 1088 pixel sul lato corto); Massima no "2K" o "1440p",
+    /// perché lo schermo di un iPhone sta sotto i 1440 (1320 sul 17 Pro Max).
     var nome: String {
         switch self {
-        case .standard: String(localized: "Standard")
-        case .alta: String(localized: "High")
+        case .standard: String(localized: "HD")
+        case .alta: String(localized: "Full HD")
         case .massima: String(localized: "Maximum")
+        }
+    }
+
+    /// Una frase al posto di risoluzione, fps e bitrate, che non tutti conoscono.
+    var descrizione: String {
+        switch self {
+        case .standard: String(localized: "Light: for weak Wi-Fi or far from the router.")
+        case .alta: String(localized: "Smooth and sharp: the right choice almost always.")
+        case .massima: String(localized: "Every pixel of the screen. Needs strong Wi-Fi.")
         }
     }
 

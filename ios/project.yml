@@ -15,7 +15,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.13.1"
+    MARKETING_VERSION: "0.14.0"
     CURRENT_PROJECT_VERSION: "1"
     # Identificativo del team Apple Developer (non è un segreto: compare in ogni app firmata).
     DEVELOPMENT_TEAM: FVYL9M67QJ
@@ -36,6 +36,8 @@ targets:
         # Solo iPhone: l'iPad si valuterà più avanti.
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Il viola dell'icona per pulsanti e selezioni (più chiaro in modalità scura).
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
       # La Release si firma a mano con il certificato e il profilo che il workflow
       # importa dai segreti di GitHub: niente account Apple sulla macchina di compilazione.
       configs:

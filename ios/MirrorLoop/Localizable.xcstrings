@@ -151,6 +151,16 @@
         }
       }
     },
+    "Choose the PC, then start.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli il PC, poi avvia."
+          }
+        }
+      }
+    },
     "Choose what to share…": {
       "localizations": {
         "it": {
@@ -197,6 +207,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Conferma solo se sul PC compare lo stesso codice."
+          }
+        }
+      }
+    },
+    "Connected to": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegato a"
           }
         }
       }
@@ -261,6 +281,16 @@
         }
       }
     },
+    "Diagnostic mode: tap the version 5 times to hide it.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modalità diagnostica: tocca 5 volte la versione per nasconderla."
+          }
+        }
+      }
+    },
     "Dropped for frame rate: %lld": {
       "localizations": {
         "it": {
@@ -311,6 +341,16 @@
         }
       }
     },
+    "Every pixel of the screen. Needs strong Wi-Fi.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ogni pixel dello schermo. Vuole un Wi-Fi forte."
+          }
+        }
+      }
+    },
     "Forget": {
       "localizations": {
         "it": {
@@ -341,12 +381,22 @@
         }
       }
     },
-    "High": {
+    "Full HD": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alta"
+            "value": "Full HD"
+          }
+        }
+      }
+    },
+    "HD": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HD"
           }
         }
       }
@@ -381,6 +431,16 @@
         }
       }
     },
+    "Light: for weak Wi-Fi or far from the router.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leggera: per Wi-Fi deboli o lontano dal router."
+          }
+        }
+      }
+    },
     "Maximum": {
       "localizations": {
         "it": {
@@ -391,22 +451,12 @@
         }
       }
     },
-    "Maximum quality needs a strong signal: far from the router, choose High.": {
+    "Maximum quality needs a strong signal: far from the router, choose Full HD.": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La qualità Massima vuole un segnale forte: lontano dal router scegli Alta."
-          }
-        }
-      }
-    },
-    "Needs strong Wi-Fi: far from the router, choose High.": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vuole un Wi-Fi forte: lontano dal router scegli Alta."
+            "value": "La qualità Massima vuole un segnale forte: lontano dal router scegli Full HD."
           }
         }
       }
@@ -541,6 +591,26 @@
         }
       }
     },
+    "Ready": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pronta"
+          }
+        }
+      }
+    },
+    "Reconnections": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricollegamenti"
+          }
+        }
+      }
+    },
     "Screen recording isn't available on this iPhone.": {
       "localizations": {
         "it": {
@@ -611,22 +681,22 @@
         }
       }
     },
-    "Standard": {
+    "Smooth and sharp: the right choice almost always.": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Standard"
+            "value": "Fluida e nitida: la scelta giusta quasi sempre."
           }
         }
       }
     },
-    "Start": {
+    "Start streaming": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvia"
+            "value": "Avvia la trasmissione"
           }
         }
       }
@@ -641,12 +711,12 @@
         }
       }
     },
-    "Stop": {
+    "Stop streaming": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ferma"
+            "value": "Ferma la trasmissione"
           }
         }
       }
@@ -661,12 +731,12 @@
         }
       }
     },
-    "Stream to PC": {
+    "Streaming time": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trasmissione al PC"
+            "value": "Durata della trasmissione"
           }
         }
       }
@@ -737,6 +807,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Consigli per una trasmissione fluida"
+          }
+        }
+      }
+    },
+    "Transmission info": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni sulla trasmissione"
           }
         }
       }
@@ -857,6 +937,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "appoggiato piatto"
+          }
+        }
+      }
+    },
+    "no PC": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nessun PC"
           }
         }
       }
