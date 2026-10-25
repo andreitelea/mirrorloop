@@ -1,0 +1,79 @@
+# Costruisce l'installatore di MirrorLoop per Windows: ricevitore con .NET incluso, plugin per OBS e
+# installatore Inno Setup (windows/installatore/MirrorLoop.iss). Per ora si lancia a mano e il
+# risultato si scarica come artefatto dalla pagina dell'esecuzione.
+name: Rilascio Windows
+
+on:
+  workflow_dispatch:
+  # Solo per la prova sul ramo di lavoro: da togliere prima di unire a main.
+  push:
+    branches: [installatore]
+
+permissions:
+  contents: read
+
+jobs:
+  installatore:
+    # Windows Server 2022, come il workflow del plugin: Visual Studio 2022 per il plugin e Inno Setup 6
+    # già installato sull'immagine.
+    runs-on: windows-2022
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v7
+
+      # Un solo numero di versione per tutto MirrorLoop: se ricevitore, plugin e app non coincidono ci
+      # si ferma qui, prima di costruire qualcosa con il numero sbagliato.
+      - name: Controlla la versione
+        id: versione
+        run: |
+          [xml]$progetto = Get-Content windows/src/MirrorLoop.Ricevitore/MirrorLoop.Ricevitore.csproj
+          $ricevitore = ($progetto.Project.PropertyGroup | Where-Object { $_.Version }).Version
+          $plugin = (Get-Content obs/buildspec.json -Raw | ConvertFrom-Json).version
+          $app = [regex]::Match((Get-Content ios/project.yml -Raw), 'MARKETING_VERSION: "([^"]+)"').Groups[1].Value
+          "ricevitore $ricevitore · plugin $plugin · app $app"
+          if ($ricevitore -ne $plugin -or $ricevitore -ne $app) {
+            Write-Output "::error::Le versioni non coincidono"
+            exit 1
+          }
+          "numero=$ricevitore" >> $env:GITHUB_OUTPUT
+
+      - name: Installa .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Pubblica il ricevitore (con .NET incluso)
+        run: dotnet publish windows/src/MirrorLoop.Ricevitore -c Release -r win-x64 --self-contained true -o ${{ runner.temp }}/ricevitore
+
+      # Il plugin come nel workflow "Plugin OBS" (stessa cache delle dipendenze di OBS).
+      - name: Dipendenze di OBS (dalla cache se ci sono)
+        uses: actions/cache@v6
+        with:
+          path: obs/.deps
+          key: obs-deps-windows-x64-${{ hashFiles('obs/buildspec.json', 'obs/cmake/**') }}
+
+      - name: Compila il plugin
+        working-directory: obs
+        run: |
+          cmake --preset windows-ci-x64
+          cmake --build --preset windows-ci-x64
+          cmake --install build_x64 --config RelWithDebInfo --prefix ${{ runner.temp }}/plugin
+
+      - name: Costruisci l'installatore
+        working-directory: windows/installatore
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc /DVersione=${{ steps.versione.outputs.numero }} "/DCartellaRicevitore=${{ runner.temp }}\ricevitore" "/DCartellaPlugin=${{ runner.temp }}\plugin" "/O${{ runner.temp }}\installatore" MirrorLoop.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem ${{ runner.temp }}/installatore | Select-Object Name, Length
+
+      - name: Pubblica l'installatore come artefatto
+        uses: actions/upload-artifact@v7
+        with:
+          name: MirrorLoop-${{ steps.versione.outputs.numero }}-Windows
+          path: ${{ runner.temp }}/installatore/*.exe
+          if-no-files-found: error
