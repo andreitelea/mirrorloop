@@ -18,12 +18,12 @@ enum DestinazionePC: Sendable, Equatable {
 }
 
 /// Cerca i ricevitori MirrorLoop nella rete di casa: il PC si annuncia con mDNS/DNS-SD (Bonjour)
-/// come servizio `_mirrorloop._tcp`, dichiarato anche in NSBonjourServices (project.yml).
+/// come servizio `_mirrorloop._udp` (QUIC viaggia su UDP), dichiarato anche in NSBonjourServices (project.yml).
 @MainActor
 @Observable
 final class CercaPC {
     // Una costante: la legge anche la trasmissione, dal suo thread.
-    nonisolated static let tipoServizio = "_mirrorloop._tcp"
+    nonisolated static let tipoServizio = "_mirrorloop._udp"
 
     /// I nomi dei PC trovati (di solito il nome del computer), in ordine alfabetico.
     private(set) var trovati: [String] = []

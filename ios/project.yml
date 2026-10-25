@@ -11,7 +11,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.11.3"
+    MARKETING_VERSION: "0.12.0"
     CURRENT_PROJECT_VERSION: "1"
     # Identificativo del team Apple Developer (non è un segreto: compare in ogni app firmata).
     DEVELOPMENT_TEAM: FVYL9M67QJ
@@ -22,6 +22,10 @@ targets:
     platform: iOS
     sources:
       - MirrorLoop
+    # Schema "MirrorLoop" con i test, per `xcodebuild test` nel lavoro "compila".
+    scheme:
+      testTargets:
+        - MirrorLoopTests
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.andreitelea.mirrorloop
@@ -56,4 +60,18 @@ targets:
         NSLocalNetworkUsageDescription: MirrorLoop si collega al ricevitore sul tuo PC nella rete di casa per trasmettere lo schermo.
         # Il tipo di servizio con cui il ricevitore si annuncia (Bonjour): senza, iOS blocca la ricerca dei PC.
         NSBonjourServices:
-          - _mirrorloop._tcp
+          - _mirrorloop._udp
+
+  # Test dei calcoli dell'abbinamento su un iPhone simulato: Swift deve ottenere esattamente
+  # l'esempio di docs/protocollo.md, come il ricevitore in C#. Compila Abbinamento.swift
+  # direttamente, senza avviare l'app.
+  MirrorLoopTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - MirrorLoopTests
+      - path: MirrorLoop/Abbinamento.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.andreitelea.mirrorloop.test
+        GENERATE_INFOPLIST_FILE: YES

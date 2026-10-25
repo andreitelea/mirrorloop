@@ -245,13 +245,22 @@ final class Cattura {
         kbitPicco = 0
         misuraBitrate = nil
 
+        // La chiave dell'iPhone per l'abbinamento con il PC (creata al primo avvio).
+        let chiave: any ChiaveFirma
+        do {
+            chiave = try ChiaveIphone.carica()
+        } catch {
+            errore = "Chiave dell'iPhone non disponibile: \(error.localizedDescription)"
+            return
+        }
+
         let (larghezza, altezza) = Self.dimensioniVideo(qualita: qualita)
         dimensioneRichiesta = "\(larghezza)×\(altezza)"
         // Il compressore e la trasmissione si conoscono a vicenda: uno consegna i frame,
         // l'altra chiede un keyframe quando ne ha bisogno.
         let orologio = OrologioCattura()
         let scatolaCompressore = Mutex<CompressoreH264?>(nil)
-        let trasmissione = Trasmissione(destinazione: destinazione, orologio: orologio) {
+        let trasmissione = Trasmissione(destinazione: destinazione, chiave: chiave, orologio: orologio) {
             scatolaCompressore.withLock { $0?.forzaKeyframe() }
         }
         let compressore = CompressoreH264(larghezza: larghezza, altezza: altezza, fps: qualita.fps,
@@ -294,6 +303,14 @@ final class Cattura {
         trasmissione?.ferma()
         trasmissione = nil
         stato = "Ferma"
+    }
+
+    func confermaCodice() {
+        trasmissione?.confermaCodice()
+    }
+
+    func annullaAbbinamento() {
+        trasmissione?.annullaAbbinamento()
     }
 
     func cambiaFase(inBackground: Bool) {

@@ -17,17 +17,34 @@ struct StatisticheTrasmissione: Sendable {
     var piccoByteInAttesa = 0
     var attesaMassimaMs = 0
     var ultimoErrore: String?
+    /// L'abbinamento in corso, se c'è un codice da mostrare.
+    var abbinamento: AbbinamentoInCorso?
+}
+
+/// Ciò che la schermata mostra durante un abbinamento.
+struct AbbinamentoInCorso: Sendable, Equatable {
+    var pc: String
+    var codice: String
+    /// Un PC abbinato prima con lo stesso nome aveva un altro certificato.
+    var improntaCambiata: Bool
+    /// Falso nel ricollegamento a un PC che l'iPhone conosce già: decide solo chi sta al PC.
+    var serveConferma: Bool
+    var confermato = false
 }
 
 /// Manda i frame compressi e l'audio al ricevitore Windows, nel formato di docs/protocollo.md,
 /// e risponde ai ping del PC (che li usa per misurare lo scarto tra i due orologi).
 /// Solo QUIC, con corsie indipendenti per controllo, video e audio (TCP tolto il 25/10/2026:
 /// non cifrato, e senza vantaggi misurati).
+/// Prima di video e audio, l'abbinamento sulla corsia di controllo (docs/protocollo.md, "Abbinamento"):
+/// il PC si riconosce dall'impronta del suo certificato, l'iPhone dalla sua chiave.
 /// Tutto lo stato vive sulla coda `coda`; `invia` e `inviaAudio` possono essere chiamati da qualsiasi thread.
 final class Trasmissione: @unchecked Sendable {
     static let porta: UInt16 = 7450
     /// Nome del protocollo applicativo per QUIC (ALPN): deve coincidere con quello del ricevitore.
-    static let protocolloQuic = "mirrorloop/1"
+    static let protocolloQuic = "mirrorloop/2"
+    /// Quanto aspettare, durante un abbinamento, la conferma delle persone (sul PC al massimo 60 s).
+    static let limiteAbbinamento: TimeInterval = 90
     // Oltre mezzo secondo di attesa la rete non tiene il passo: si smette di accodare (per il video
     // si riparte dal keyframe successivo: lezione dei buffer della Fase 1). L'audio arriva a ritmo
     // costante, quindi mezzo secondo di byte è mezzo secondo di attesa. Il video no: con lo schermo
@@ -41,7 +58,7 @@ final class Trasmissione: @unchecked Sendable {
 
     let statistiche = Mutex(StatisticheTrasmissione())
 
-    // Dal PC arrivano solo ping da 13 byte: un messaggio enorme vorrebbe dire dati corrotti.
+    // Dal PC arrivano solo messaggi brevi (ping, sfida, esito): uno enorme vorrebbe dire dati corrotti.
     private static let lunghezzaMassimaInIngresso = 64 * 1024
 
     /// Il valore è il "ruolo" scritto nell'apertura della corsia (tipo 5).
@@ -71,11 +88,42 @@ final class Trasmissione: @unchecked Sendable {
     private var istantiInAttesa: [Corsia: [TimeInterval]] = [:]
     private var ingresso: [UInt8] = []
 
-    init(destinazione: DestinazionePC, orologio: OrologioCattura,
+    // Abbinamento del tentativo in corso.
+    private let chiave: any ChiaveFirma
+    private var impronte: [Corsia: Data] = [:]
+    private var modo = Abbinamento.Modo.ricollegamento
+    private var numeroIphone = Data()
+    private var numeroPc = Data()
+    private var abbinato = false
+    private var accettatoDalPC = false
+    private var confermatoDaIphone = false
+    // Il PC ha risposto "in attesa": si aspettano le persone, non vale il limite di 5 s.
+    private var inAbbinamento = false
+
+    init(destinazione: DestinazionePC, chiave: any ChiaveFirma, orologio: OrologioCattura,
          chiediKeyframe: @escaping @Sendable () -> Void) {
         self.destinazione = destinazione
+        self.chiave = chiave
         self.orologio = orologio
         self.chiediKeyframe = chiediKeyframe
+    }
+
+    /// Il codice sull'iPhone coincide con quello sul PC.
+    func confermaCodice() {
+        coda.async { [self] in
+            guard var inCorso = statistiche.withLock({ $0.abbinamento }) else { return }
+            confermatoDaIphone = true
+            inCorso.confermato = true
+            statistiche.withLock { $0.abbinamento = inCorso }
+            if accettatoDalPC { completaAbbinamento() }
+        }
+    }
+
+    /// Annulla l'abbinamento: niente nuovi tentativi finché non si preme di nuovo Avvia.
+    func annullaAbbinamento() {
+        coda.async { [self] in
+            fermaDefinitivamente("Abbinamento annullato")
+        }
     }
 
     func avvia() {
@@ -223,7 +271,8 @@ final class Trasmissione: @unchecked Sendable {
             risolvi(nome, generazione: mia)
         }
         coda.asyncAfter(deadline: .now() + Self.limiteCollegamento) { [self] in
-            guard mia == generazione, !collegato else { return }
+            // Durante un abbinamento si aspettano le persone: vale il limite dell'abbinamento.
+            guard mia == generazione, !collegato, !inAbbinamento else { return }
             riprova("collegamento non riuscito entro \(Int(Self.limiteCollegamento)) s")
         }
     }
@@ -271,16 +320,21 @@ final class Trasmissione: @unchecked Sendable {
         numeroTrasmissione = UInt64.random(in: .min ... .max)
         let numero = numeroTrasmissione
         for corsia in [Corsia.controllo, .video, .audio] {
-            let connessione = NWConnection(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!, using: Self.parametriQuic(coda: coda))
+            let connessione = NWConnection(host: host, port: NWEndpoint.Port(rawValue: Self.porta)!,
+                                           using: parametriQuic(corsia: corsia, generazione: mia))
             connessione.stateUpdateHandler = { [self] stato in
                 guard mia == generazione else { return }
                 switch stato {
                 case .ready:
-                    // Prima di ogni altro dato: l'ordine su una corsia QUIC è garantito.
+                    // Prima di ogni altro dato: l'ordine su una corsia QUIC è garantito. Le corsie
+                    // video e audio il PC le tiene in sospeso finché l'abbinamento non è concluso.
                     connessione.send(content: Self.aperturaCorsia(corsia, numero: numero), completion: .contentProcessed { _ in })
-                    if corsia == .controllo { ricevi(connessione, generazione: mia) }
+                    if corsia == .controllo {
+                        ricevi(connessione, generazione: mia)
+                        presentati(connessione)
+                    }
                     corsiePronte.insert(corsia)
-                    if corsiePronte.count == 3 { collegamentoRiuscito() }
+                    forseCollegato()
                 case .waiting(let errore), .failed(let errore):
                     riprova("corsia \(corsia): \(errore.localizedDescription)")
                 default:
@@ -292,15 +346,24 @@ final class Trasmissione: @unchecked Sendable {
         }
     }
 
-    private static func parametriQuic(coda: DispatchQueue) -> NWParameters {
-        let quic = NWProtocolQUIC.Options(alpn: [protocolloQuic])
+    private func parametriQuic(corsia: Corsia, generazione mia: Int) -> NWParameters {
+        let quic = NWProtocolQUIC.Options(alpn: [Self.protocolloQuic])
         quic.idleTimeout = 5_000
         // Bidirezionale anche per video e audio: è la forma usata negli esempi che funzionano, e il
-        // PC la accetta. Solo sulla corsia di controllo il PC scrive (i ping).
+        // PC la accetta. Solo sulla corsia di controllo il PC scrive (ping, sfida, esito).
         quic.direction = .bidirectional
-        // Il certificato del ricevitore è autofirmato: sulla rete di casa per ora si accetta.
-        // Prima della pubblicazione si memorizzerà la sua impronta al primo collegamento (abbinamento).
-        sec_protocol_options_set_verify_block(quic.securityProtocolOptions, { _, _, completamento in
+        // Il certificato del ricevitore è autofirmato, quindi il sistema non può garantirlo: si accetta,
+        // ma se ne annota l'impronta. È da quella che l'iPhone riconosce il PC, ed è quella che firma
+        // nella prova: un impostore in mezzo avrebbe un'impronta diversa (docs/protocollo.md).
+        sec_protocol_options_set_verify_block(quic.securityProtocolOptions, { [self] _, fiducia, completamento in
+            let catena = SecTrustCopyCertificateChain(sec_trust_copy_ref(fiducia).takeRetainedValue()) as? [SecCertificate]
+            guard let certificato = catena?.first else {
+                completamento(false)
+                return
+            }
+            if mia == generazione {
+                impronte[corsia] = Abbinamento.impronta(certificatoDer: SecCertificateCopyData(certificato) as Data)
+            }
             completamento(true)
         }, coda)
         let parametri = NWParameters(quic: quic)
@@ -308,12 +371,108 @@ final class Trasmissione: @unchecked Sendable {
         return parametri
     }
 
+    // MARK: - Abbinamento
+
+    /// Presentazione (tipo 6): modo, chiave e impegno sul numero dell'iPhone.
+    private func presentati(_ connessione: NWConnection) {
+        guard let impronta = impronte[.controllo] else {
+            riprova("certificato del PC non letto")
+            return
+        }
+        modo = PCAbbinati.conosciuto(impronta) ? .ricollegamento : .nuovoAbbinamento
+        numeroIphone = Abbinamento.nuovoNumero()
+        let pubblica = chiave.pubblica
+        let presentazione = Abbinamento.messaggioPresentazione(
+            modo: modo, chiave: pubblica, impegno: Abbinamento.impegno(chiave: pubblica, numeroIphone: numeroIphone),
+            // Da iOS 16 un'app riceve solo il nome generico del dispositivo.
+            nome: "iPhone")
+        connessione.send(content: presentazione, completion: .contentProcessed { _ in })
+        statistiche.withLock { $0.stato = "Abbinamento con \(destinazione.descrizione)…" }
+    }
+
+    /// Sfida (tipo 7) dal PC: si risponde con la prova (tipo 8).
+    private func rispondiSfida(_ numeroPc: Data, _ connessione: NWConnection) {
+        guard let impronta = impronte[.controllo], !numeroIphone.isEmpty else { return }
+        self.numeroPc = numeroPc
+        do {
+            let firma = try chiave.firma(Abbinamento.datiDaFirmare(
+                impronta: impronta, chiave: chiave.pubblica, numeroPc: numeroPc, numeroIphone: numeroIphone))
+            connessione.send(content: Abbinamento.messaggioProva(numeroIphone: numeroIphone, firma: firma),
+                             completion: .contentProcessed { _ in })
+        } catch {
+            fermaDefinitivamente("Firma non riuscita: \(error.localizedDescription)")
+        }
+    }
+
+    /// Esito (tipo 9) dal PC.
+    private func gestisciEsito(_ valore: UInt8) {
+        switch Abbinamento.Esito(rawValue: valore) {
+        case .accettato:
+            accettatoDalPC = true
+            if modo == .ricollegamento || confermatoDaIphone {
+                completaAbbinamento()
+            } else {
+                statistiche.withLock { $0.stato = "Il PC ha accettato: conferma il codice sull'iPhone" }
+            }
+        case .inAttesa:
+            guard let impronta = impronte[.controllo] else { return }
+            let nuovo = modo == .nuovoAbbinamento
+            let inCorso = AbbinamentoInCorso(
+                pc: destinazione.descrizione,
+                codice: Abbinamento.codice(impronta: impronta, chiave: chiave.pubblica, numeroPc: numeroPc, numeroIphone: numeroIphone),
+                improntaCambiata: nuovo && PCAbbinati.improntaCambiata(nome: destinazione.descrizione, impronta: impronta),
+                // Se l'iPhone conosce già il PC (impronta verificata) decide solo chi sta al PC.
+                serveConferma: nuovo)
+            statistiche.withLock {
+                $0.abbinamento = inCorso
+                $0.stato = nuovo ? "Confronta il codice con quello sul PC" : "Consenti il collegamento sul PC"
+            }
+            inAbbinamento = true
+            let mia = generazione
+            coda.asyncAfter(deadline: .now() + Self.limiteAbbinamento) { [self] in
+                guard mia == generazione, !collegato else { return }
+                fermaDefinitivamente("Abbinamento non concluso in tempo")
+            }
+        case .rifiutato, nil:
+            fermaDefinitivamente("Il PC ha rifiutato il collegamento")
+        }
+    }
+
+    /// Accettato dal PC e, se serviva, confermato sull'iPhone: il PC si memorizza e si parte.
+    private func completaAbbinamento() {
+        guard !abbinato, let impronta = impronte[.controllo] else { return }
+        abbinato = true
+        inAbbinamento = false
+        if modo == .nuovoAbbinamento {
+            PCAbbinati.aggiungi(impronta, nome: destinazione.descrizione)
+        }
+        statistiche.withLock { $0.abbinamento = nil }
+        forseCollegato()
+    }
+
+    /// Video e audio partono solo con le tre corsie pronte, l'abbinamento concluso e lo stesso
+    /// certificato su tutte e tre le connessioni.
+    private func forseCollegato() {
+        guard abbinato, corsiePronte.count == 3, !collegato else { return }
+        guard impronte.count == 3, Set(impronte.values).count == 1 else {
+            riprova("le corsie portano a PC diversi")
+            return
+        }
+        collegamentoRiuscito()
+    }
+
+    /// Rifiuto del PC, annullamento o errore dell'abbinamento: niente nuovi tentativi automatici,
+    /// che riempirebbero il PC di richieste. Si riparte premendo Avvia.
+    private func fermaDefinitivamente(_ motivo: String) {
+        attivo = false
+        chiudi(stato: motivo)
+    }
+
     private func collegamentoRiuscito() {
         collegato = true
         attendiKeyframe = true
         byteInAttesa.removeAll()
         istantiInAttesa.removeAll()
-        ingresso.removeAll()
         // Un keyframe subito, così il ricevitore mostra il video senza aspettare 2 secondi.
         chiediKeyframe()
         keyframeChiesto = true
@@ -345,14 +504,23 @@ final class Trasmissione: @unchecked Sendable {
         collegato = false
         byteInAttesa.removeAll()
         istantiInAttesa.removeAll()
+        ingresso.removeAll()
+        impronte.removeAll()
+        numeroIphone = Data()
+        numeroPc = Data()
+        abbinato = false
+        accettatoDalPC = false
+        confermatoDaIphone = false
+        inAbbinamento = false
         statistiche.withLock { s in
             s.stato = stato
             s.collegato = false
+            s.abbinamento = nil
             if let errore { s.ultimoErrore = errore }
         }
     }
 
-    // MARK: - Ping dal PC
+    // MARK: - Messaggi dal PC
 
     /// Legge quello che manda il PC, un pezzo alla volta, finché dura la connessione.
     private func ricevi(_ connessione: NWConnection, generazione mia: Int) {
@@ -369,7 +537,7 @@ final class Trasmissione: @unchecked Sendable {
         }
     }
 
-    /// Estrae i messaggi completi (lunghezza su 4 byte + contenuto) e risponde ai ping.
+    /// Estrae i messaggi completi (lunghezza su 4 byte + contenuto): ping, sfida ed esito.
     private func elaboraIngresso(_ connessione: NWConnection) {
         while ingresso.count >= 4 {
             let lunghezza = ingresso[0..<4].reduce(0) { $0 << 8 | Int($1) }
@@ -380,9 +548,13 @@ final class Trasmissione: @unchecked Sendable {
             guard ingresso.count >= 4 + lunghezza else { return }
             let messaggio = Array(ingresso[4..<(4 + lunghezza)])
             ingresso.removeFirst(4 + lunghezza)
-            // Tipo 3 = ping: numero (4 byte) + T1 (8 byte). Gli altri tipi si ignorano.
-            if messaggio[0] == 3 && messaggio.count == 13 {
-                rispondiPing(messaggio, connessione)
+            // Tipo 3 = ping: numero (4 byte) + T1 (8 byte); 7 = sfida: numero del PC (32 byte);
+            // 9 = esito (1 byte). Gli altri tipi si ignorano.
+            switch (messaggio[0], messaggio.count) {
+            case (3, 13): rispondiPing(messaggio, connessione)
+            case (7, 33): rispondiSfida(Data(messaggio[1...]), connessione)
+            case (9, 2): gestisciEsito(messaggio[1])
+            default: break
             }
         }
     }

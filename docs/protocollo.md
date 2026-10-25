@@ -196,7 +196,7 @@ Il **codice** si calcola da SHA-256(`"MirrorLoop codice v1"` ‖ impronta ‖ ch
 
 Le etichette tra virgolette sono in ASCII, senza terminatore; ‖ vuol dire "seguito da".
 
-L'iPhone memorizza l'impronta del PC solo dopo la conferma della persona **e** l'esito accettato; le volte successive, un'impronta diversa per lo stesso PC è un allarme, non un nuovo abbinamento automatico. Se l'iPhone riceve "in attesa" in un ricollegamento (il PC lo ha dimenticato), mostra anche lui il codice e chiede conferma. Video e audio partono solo dopo l'esito accettato.
+L'iPhone memorizza l'impronta del PC solo dopo la conferma della persona **e** l'esito accettato; le volte successive, un'impronta diversa per lo stesso PC è un allarme, non un nuovo abbinamento automatico. Se l'iPhone riceve "in attesa" in un ricollegamento (il PC lo ha dimenticato), non serve la sua conferma: l'impronta del PC l'ha già verificata, quindi decide solo chi sta al PC (l'iPhone mostra il codice solo come informazione, e funziona anche con l'app in background). Dopo un rifiuto, un annullamento o un abbinamento non concluso entro 90 secondi, l'iPhone non riprova da solo: si riparte dall'app, così il PC non si riempie di richieste. Video e audio partono solo dopo l'esito accettato.
 
 Il ricevitore:
 

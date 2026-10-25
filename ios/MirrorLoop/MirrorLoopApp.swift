@@ -46,6 +46,7 @@ struct PannelloCattura: View {
     @AppStorage("indirizzoPC") private var indirizzoPC = ""
     private static let manuale = "manuale"
     @AppStorage("qualita") private var qualita = Qualita.alta
+    @State private var chiediDimentica = false
 
     var body: some View {
         let c = cattura.contatori
@@ -97,6 +98,11 @@ struct PannelloCattura: View {
                 Button("Ferma") { cattura.ferma() }
                     .buttonStyle(.bordered)
             }
+            if let abbinamento = r.abbinamento {
+                RiquadroAbbinamento(abbinamento: abbinamento,
+                                    conferma: { cattura.confermaCodice() },
+                                    annulla: { cattura.annullaAbbinamento() })
+            }
             Text("Cattura: \(cattura.stato)")
             Text("Rete: \(r.stato)")
             Text("Inviati: \(r.inviati) · scartati \(r.scartati) · connessioni \(r.connessioni) · ping \(r.pingRisposti)")
@@ -122,6 +128,15 @@ struct PannelloCattura: View {
                 Text("Errore: \(errore)")
                     .foregroundStyle(.red)
             }
+            let abbinati = PCAbbinati.numero
+            Button("Dimentica i PC abbinati (\(abbinati))", role: .destructive) { chiediDimentica = true }
+                .disabled(abbinati == 0)
+                .padding(.top, 12)
+                .confirmationDialog("Dimenticare i PC abbinati?", isPresented: $chiediDimentica, titleVisibility: .visible) {
+                    Button("Dimentica", role: .destructive) { PCAbbinati.dimenticaTutti() }
+                } message: {
+                    Text("Al prossimo collegamento servirà di nuovo il codice, sul PC e sull'iPhone.")
+                }
         }
         .font(.footnote.monospacedDigit())
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -168,5 +183,45 @@ struct PannelloCattura: View {
         case .piatto: "appoggiato piatto"
         case nil: "sensore —"
         }
+    }
+}
+
+/// Il codice dell'abbinamento, da confrontare con quello mostrato dal ricevitore sul PC.
+struct RiquadroAbbinamento: View {
+    let abbinamento: AbbinamentoInCorso
+    let conferma: () -> Void
+    let annulla: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text("Abbinamento con \(abbinamento.pc)")
+                .font(.headline)
+            if abbinamento.improntaCambiata {
+                Text("Questo PC non è quello abbinato prima: abbina solo se hai reinstallato MirrorLoop sul PC.")
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            }
+            Text(Abbinamento.leggibile(abbinamento.codice))
+                .font(.system(size: 44, weight: .semibold, design: .monospaced))
+            if abbinamento.serveConferma && !abbinamento.confermato {
+                Text("Conferma solo se sul PC compare lo stesso codice.")
+                    .multilineTextAlignment(.center)
+                HStack {
+                    Button("Il codice coincide", action: conferma)
+                        .buttonStyle(.borderedProminent)
+                    Button("Annulla", role: .cancel, action: annulla)
+                        .buttonStyle(.bordered)
+                }
+            } else {
+                Text(abbinamento.serveConferma ? "Ora consenti il collegamento sul PC." : "Consenti il collegamento sul PC.")
+                    .multilineTextAlignment(.center)
+                Button("Annulla", role: .cancel, action: annulla)
+                    .buttonStyle(.bordered)
+            }
+        }
+        .font(.body)
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 }

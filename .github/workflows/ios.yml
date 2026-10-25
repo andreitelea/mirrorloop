@@ -51,6 +51,29 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
 
+      # I calcoli dell'abbinamento confrontati con l'esempio di docs/protocollo.md, su un iPhone
+      # simulato: il primo iPhone disponibile con il sistema più recente installato sulla macchina.
+      - name: Test dell'abbinamento (simulatore)
+        run: |
+          DISPOSITIVO=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          dispositivi = json.load(sys.stdin)["devices"]
+          sistemi = sorted((k for k in dispositivi if ".iOS-" in k),
+                           key=lambda k: [int(x) for x in k.rsplit(".iOS-", 1)[1].split("-")], reverse=True)
+          for sistema in sistemi:
+              iphone = [d for d in dispositivi[sistema] if d["name"].startswith("iPhone")]
+              if iphone:
+                  print(iphone[0]["udid"], end="")
+                  break
+          ')
+          xcrun simctl list devices available | grep "$DISPOSITIVO"
+          xcodebuild test \
+            -project MirrorLoop.xcodeproj \
+            -scheme MirrorLoop \
+            -destination "id=$DISPOSITIVO" \
+            -derivedDataPath build-test \
+            CODE_SIGNING_ALLOWED=NO
+
   testflight:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     # ScreenCaptureKit su iOS richiede il kit di iOS 27, cioè Xcode 27
