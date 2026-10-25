@@ -95,6 +95,7 @@ public partial class FinestraPrincipale : Window
         // L'iPhone trova il PC per nome, senza scrivere l'indirizzo.
         _annuncio = new AnnuncioBonjour(_impostazioni.NomePC, Porta);
         MostraNomePC();
+        MostraStatistiche(_impostazioni.StatisticheVisibili);
 
         _riproduzione = new Riproduzione(_coda);
 
@@ -227,8 +228,8 @@ public partial class FinestraPrincipale : Window
             $"riserva audio   {_riproduzioneAudio.Riserva.TotalMilliseconds,6:F0} ms  (obiettivo {_riproduzioneAudio.Obiettivo.TotalMilliseconds:F0}, buchi {_riproduzioneAudio.Buchi}, tagli {_riproduzioneAudio.Tagli})\n" +
             $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
-            $"registro        {DescriviRegistro()}\n" +
-            "S: mostra/nascondi · R: registro su file · O: ruota di 90° · A: rotazione automatica · D: dimentica gli iPhone abbinati · N: nome del PC";
+            $"registro        {DescriviRegistro()}  (Ctrl+R)\n" +
+            "F1: tasti";
         _aggiornamentiFinestra = 0;
     }
 
@@ -300,14 +301,26 @@ public partial class FinestraPrincipale : Window
 
     private void SuTastoPremuto(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.S)
+        if (e.Key == Key.F1)
         {
-            RiquadroStatistiche.Visibility = RiquadroStatistiche.Visibility == Visibility.Visible
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            RiquadroAiuto.Visibility = RiquadroAiuto.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
         }
-        else if (e.Key == Key.R)
+        else if (e.Key == Key.S)
         {
+            bool visibili = RiquadroStatistiche.Visibility != Visibility.Visible;
+            MostraStatistiche(visibili);
+            try
+            {
+                _impostazioni.CambiaStatisticheVisibili(visibili);
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+            {
+                // Solo una preferenza: al prossimo avvio le statistiche saranno com'erano, niente di grave.
+            }
+        }
+        else if (e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            // Con Ctrl: un registro avviato per sbaglio, a statistiche chiuse, crescerebbe senza che nessuno lo sappia.
             if (_registro.Attivo)
                 _registro.Ferma();
             else
@@ -333,9 +346,15 @@ public partial class FinestraPrincipale : Window
         }
         else if (e.Key == Key.Escape)
         {
-            _consenso?.TrySetResult(false);
+            if (_consenso is not null)
+                _consenso.TrySetResult(false);
+            else
+                RiquadroAiuto.Visibility = Visibility.Collapsed;
         }
     }
+
+    private void MostraStatistiche(bool visibili) =>
+        RiquadroStatistiche.Visibility = visibili ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>Mostra o nasconde l'avviso di rete pubblica (la lettura, via COM, fuori dal thread della finestra).</summary>
     private async Task ControllaReteAsync()
@@ -425,6 +444,8 @@ public partial class FinestraPrincipale : Window
         CodiceAbbinamento.Text = richiesta.CodiceLeggibile;
         _scadenzaConsenso = DateTime.UtcNow + _ricezione.AttesaConsenso;
         AggiornaScadenza();
+        // Stesso posto al centro della finestra: l'aiuto lascia il posto alla richiesta.
+        RiquadroAiuto.Visibility = Visibility.Collapsed;
         RiquadroAbbinamento.Visibility = Visibility.Visible;
         _contoAllaRovescia.Start();
         // Chi sta al PC deve vederla: se la finestra è ridotta a icona la si riapre. Se Windows non

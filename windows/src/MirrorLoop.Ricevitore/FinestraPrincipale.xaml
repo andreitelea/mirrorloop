@@ -26,7 +26,7 @@
 
         <!-- Riquadro delle statistiche: il tasto S lo mostra e lo nasconde,
              così non finisce in diretta quando OBS riprende la finestra. -->
-        <Border x:Name="RiquadroStatistiche"
+        <Border x:Name="RiquadroStatistiche" Visibility="Collapsed"
                 HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
                 Padding="10,8" CornerRadius="4" Background="#B0000000">
             <TextBlock x:Name="TestoStatistiche"
@@ -36,10 +36,55 @@
 
         <!-- Avviso se la rete di casa è impostata come Pubblica (il firewall lascia passare l'iPhone
              solo sulle reti private). -->
-        <Border x:Name="RiquadroAvvisoRete" Visibility="Collapsed"
-                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12,12,12,24"
-                Padding="16,10" CornerRadius="6" Background="#E0402A00" BorderBrush="#FFB000" BorderThickness="1">
-            <TextBlock x:Name="TestoAvvisoRete" Foreground="#FFD27F" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" />
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12,12,12,16">
+            <Border x:Name="RiquadroAvvisoRete" Visibility="Collapsed" Margin="0,0,0,8"
+                    Padding="16,10" CornerRadius="6" Background="#E0402A00" BorderBrush="#FFB000" BorderThickness="1">
+                <TextBlock x:Name="TestoAvvisoRete" Foreground="#FFD27F" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" />
+            </Border>
+            <!-- I tasti principali, solo finché non c'è video (sparisce con la schermata di attesa). -->
+            <TextBlock Visibility="{Binding Visibility, ElementName=PannelloAttesa}"
+                       HorizontalAlignment="Center" Foreground="#707070" FontSize="14"
+                       Text="F1 aiuto  ·  S statistiche  ·  O ruota  ·  A rotazione automatica  ·  N nome del PC" />
+        </StackPanel>
+
+        <!-- Aiuto (F1): tutti i tasti, anche durante la trasmissione. -->
+        <Border x:Name="RiquadroAiuto" Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Padding="32,24" CornerRadius="8" Background="#F0202020"
+                BorderBrush="#606060" BorderThickness="1">
+            <StackPanel>
+                <TextBlock Text="Tasti" Foreground="White" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12" />
+                <Grid TextElement.FontSize="16">
+                    <Grid.Resources>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#D0D0D0" />
+                            <Setter Property="Margin" Value="0,3" />
+                        </Style>
+                    </Grid.Resources>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="64" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                        <RowDefinition /><RowDefinition /><RowDefinition />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="F1" Foreground="White" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="mostra o nasconde questo aiuto" />
+                    <TextBlock Grid.Row="1" Text="S" Foreground="White" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="statistiche della trasmissione" />
+                    <TextBlock Grid.Row="2" Text="O" Foreground="White" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="ruota l'immagine di 90° (se la rotazione automatica sbaglia)" />
+                    <TextBlock Grid.Row="3" Text="A" Foreground="White" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="torna alla rotazione automatica" />
+                    <TextBlock Grid.Row="4" Text="N" Foreground="White" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="4" Grid.Column="1" Text="nome di questo PC sull'iPhone" />
+                    <TextBlock Grid.Row="5" Text="D" Foreground="White" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="5" Grid.Column="1" Text="dimentica gli iPhone abbinati" />
+                    <TextBlock Grid.Row="6" Text="Esc" Foreground="White" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="6" Grid.Column="1" Text="rifiuta una richiesta di abbinamento; chiude questo aiuto" />
+                </Grid>
+            </StackPanel>
         </Border>
 
         <!-- Richiesta di abbinamento di un iPhone nuovo: compare solo quando serve. Consenti si

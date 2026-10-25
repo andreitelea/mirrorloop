@@ -47,6 +47,20 @@ public sealed class ImpostazioniTest : IDisposable
     }
 
     [Fact]
+    public void LeStatisticheSonoChiuseAlPrimoAvvioEPoiSiRicordanoInsiemeAlNome()
+    {
+        var impostazioni = new Impostazioni(_cartella, "PC di Andrei");
+        Assert.False(impostazioni.StatisticheVisibili);
+
+        impostazioni.CambiaStatisticheVisibili(true);
+        impostazioni.CambiaNomePC("Studio");
+
+        var riaperte = new Impostazioni(_cartella, "PC di Andrei");
+        Assert.True(riaperte.StatisticheVisibili);
+        Assert.Equal("Studio", riaperte.NomePC);
+    }
+
+    [Fact]
     public void UnFileRovinatoValeComeNessunaScelta()
     {
         Directory.CreateDirectory(_cartella);

@@ -11,7 +11,8 @@ namespace MirrorLoop.Ricevitore;
 /// Le scelte di chi usa il ricevitore, in impostazioni.json in %LOCALAPPDATA%\MirrorLoop. Un file
 /// illeggibile vale come "nessuna scelta": si torna ai predefiniti.
 ///
-/// Per ora c'è solo il nome con cui il PC compare nell'elenco dell'iPhone (annuncio Bonjour). Il nome
+/// Si ricorda se le statistiche erano aperte (chiuse al primo avvio: a chi usa il programma non
+/// servono) e il nome con cui il PC compare nell'elenco dell'iPhone (annuncio Bonjour). Il nome
 /// di Windows ("DESKTOP-T982V1C") non dice niente a nessuno: si propone "PC di &lt;nome&gt;", come fa
 /// l'iPhone con "iPhone di &lt;nome&gt;", e chi vuole lo cambia. Il predefinito non si salva ma si
 /// ricalcola a ogni avvio, così segue un eventuale cambio del nome dell'account.
@@ -28,12 +29,14 @@ public sealed unsafe partial class Impostazioni
     /// </summary>
     public const int ByteMassimiNome = 63;
 
-    private sealed record Dati([property: JsonPropertyName("nomePC")] string? NomePC);
+    private sealed record Dati(
+        [property: JsonPropertyName("nomePC")] string? NomePC,
+        [property: JsonPropertyName("statisticheVisibili")] bool StatisticheVisibili = false);
 
     private static readonly JsonSerializerOptions Formato = new() { WriteIndented = true };
 
     private readonly string _percorso;
-    private string? _nomeScelto;
+    private Dati _dati;
 
     /// <param name="predefinito">Solo per i test: il nome proposto al posto di quello calcolato dall'account.</param>
     internal Impostazioni(string? cartella = null, string? predefinito = null)
@@ -41,7 +44,8 @@ public sealed unsafe partial class Impostazioni
         cartella ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MirrorLoop");
         _percorso = Path.Combine(cartella, NomeFile);
         NomePCPredefinito = predefinito ?? NomePredefinito(NomeCompletoUtente(), Environment.UserName, Environment.MachineName);
-        _nomeScelto = Leggi(_percorso)?.NomePC is string letto && Pulisci(letto) is { Length: > 0 } pulito ? pulito : null;
+        Dati letti = Leggi(_percorso) ?? new Dati(null);
+        _dati = letti with { NomePC = letti.NomePC is string nome && Pulisci(nome) is { Length: > 0 } pulito ? pulito : null };
     }
 
     public Impostazioni() : this(null, null)
@@ -49,7 +53,7 @@ public sealed unsafe partial class Impostazioni
     }
 
     /// <summary>Il nome annunciato: quello scelto, o il predefinito.</summary>
-    public string NomePC => _nomeScelto ?? NomePCPredefinito;
+    public string NomePC => _dati.NomePC ?? NomePCPredefinito;
 
     public string NomePCPredefinito { get; }
 
@@ -61,9 +65,13 @@ public sealed unsafe partial class Impostazioni
     {
         string pulito = Pulisci(nome);
         string? scelto = pulito.Length == 0 || pulito == NomePCPredefinito ? null : pulito;
-        Salva(new Dati(scelto));
-        _nomeScelto = scelto;
+        Salva(_dati with { NomePC = scelto });
     }
+
+    public bool StatisticheVisibili => _dati.StatisticheVisibili;
+
+    /// <summary>Lancia IOException o UnauthorizedAccessException se non si può scrivere.</summary>
+    public void CambiaStatisticheVisibili(bool visibili) => Salva(_dati with { StatisticheVisibili = visibili });
 
     /// <summary>
     /// Rende il nome adatto all'annuncio: il punto separerebbe le etichette nel nome completo che si
@@ -148,6 +156,7 @@ public sealed unsafe partial class Impostazioni
         string temporaneo = _percorso + ".nuovo";
         File.WriteAllText(temporaneo, JsonSerializer.Serialize(dati, Formato));
         File.Move(temporaneo, _percorso, overwrite: true);
+        _dati = dati;
     }
 
     // ---- Windows (lmaccess.h, lmapibuf.h) ----
