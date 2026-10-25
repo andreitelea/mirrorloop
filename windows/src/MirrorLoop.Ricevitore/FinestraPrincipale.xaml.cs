@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -61,6 +62,8 @@ public partial class FinestraPrincipale : Window
     public FinestraPrincipale()
     {
         InitializeComponent();
+        // Sempre scura: dietro al video serve il nero (anche per "Cattura finestra" di OBS).
+        Tema.Applica(this, chiaro: false);
         ApplicaTesti();
 
         // La bacheca da cui legge la sorgente MirrorLoop in OBS (immagini e audio). Senza, la
@@ -235,8 +238,10 @@ public partial class FinestraPrincipale : Window
             Riga(Testi.StatLatenzaAudio, DescriviLatenzaAudio()) +
             Riga(Testi.StatOrologi, DescriviOrologi()) +
             Riga(Testi.StatBonjour, _annuncio?.Stato ?? Testi.CambioNomeInCorso) +
-            Riga(Testi.StatTrasporto, (_ricezione.Trasporto ?? "—")
+            Riga(Testi.StatIndirizzi, string.Join("  ·  ", RicezioneRete.IndirizziLocali().Select(i => $"{i}:{Porta}"))) +
+            Riga(Testi.StatTrasporto, (_ricezione.Trasporto is string trasporto ? $"{trasporto} · {_ricezione.Remoto}" : "—")
                 + (_ricezione.MotivoSenzaQuic is string m ? string.Format(Testi.ValTrasportoImpossibile, m) : "")) +
+            Riga(Testi.StatUltimoErrore, _ricezione.UltimoErrore ?? "     —") +
             Riga(Testi.StatAbbinati, $"{_telefoni.Numero,6}") +
             Riga(Testi.StatUltimoRifiuto, _ricezione.UltimoRifiuto?.Riga ?? "     —") +
             Riga(Testi.StatDecompressione, $"{_msDecompressione,6:F1} ms") +
@@ -330,7 +335,16 @@ public partial class FinestraPrincipale : Window
     {
         if (e.Key == Key.F1)
         {
-            RiquadroAiuto.Visibility = RiquadroAiuto.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            if (RiquadroAiuto.Visibility == Visibility.Visible)
+            {
+                RiquadroAiuto.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                // Riletto a ogni apertura: il PC potrebbe aver cambiato rete.
+                TestoAiutoIndirizzo.Text = string.Format(Testi.AiutoIndirizzo, IndirizzoDaScrivere());
+                RiquadroAiuto.Visibility = Visibility.Visible;
+            }
         }
         else if (e.Key == Key.S)
         {
@@ -393,8 +407,23 @@ public partial class FinestraPrincipale : Window
 
     // ---- Nome del PC ----
 
-    private void MostraNomePC() =>
-        TestoNomePC.Text = string.Format(Testi.SceltaSullIphone, _impostazioni.NomePC);
+    /// <summary>"Sull'iPhone scegli «nome»", con il nome nel colore dell'icona.</summary>
+    private void MostraNomePC()
+    {
+        string[] parti = Testi.SceltaSullIphone.Split("{0}");
+        TestoInvito.Inlines.Clear();
+        TestoInvito.Inlines.Add(new Run(parti[0]));
+        TestoInvito.Inlines.Add(new Run(_impostazioni.NomePC) { Foreground = new SolidColorBrush(Color.FromRgb(0xB9, 0xA6, 0xFF)) });
+        if (parti.Length > 1)
+            TestoInvito.Inlines.Add(new Run(parti[1]));
+    }
+
+    /// <summary>
+    /// L'indirizzo da scrivere a mano nell'app: quello annunciato con Bonjour (la scheda di casa),
+    /// altrimenti il primo del PC. Senza porta: l'app usa sempre la 7450.
+    /// </summary>
+    private string IndirizzoDaScrivere() =>
+        (_annuncio?.Indirizzo ?? RicezioneRete.IndirizziLocali()[0]).ToString();
 
     /// <summary>
     /// Tasto N: chiede il nome nuovo e rifà l'annuncio Bonjour. Gli abbinamenti restano validi;

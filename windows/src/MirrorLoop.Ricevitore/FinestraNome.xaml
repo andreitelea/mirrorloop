@@ -3,15 +3,18 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         SizeToContent="WidthAndHeight" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource Fondo}"
         FocusManager.FocusedElement="{Binding ElementName=CampoNome}">
-    <StackPanel Margin="20" MinWidth="380">
-        <TextBlock x:Name="TestoNomeSpiegazione" FontSize="14" />
-        <TextBox x:Name="CampoNome" FontSize="16" Padding="4,3" Margin="0,10,0,0" />
-        <TextBlock x:Name="TestoPredefinito" Foreground="#606060" FontSize="12" Margin="0,6,0,0" />
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button x:Name="PulsantePredefinito" Click="SuPredefinito" MinWidth="100" Padding="10,4" Margin="0,0,24,0" />
-            <Button x:Name="PulsanteSalva" Click="SuSalva" IsDefault="True" MinWidth="90" Padding="10,4" Margin="0,0,8,0" />
-            <Button x:Name="PulsanteAnnulla" IsCancel="True" MinWidth="90" Padding="10,4" />
+    <!-- I colori seguono la modalità chiara o scura di Windows (Tema.Applica nel costruttore). -->
+    <StackPanel Margin="24,20" MinWidth="400">
+        <TextBlock x:Name="TestoNomeSpiegazione" FontSize="14" Foreground="{DynamicResource Testo}" />
+        <TextBox x:Name="CampoNome" Margin="0,12,0,0" />
+        <TextBlock x:Name="TestoPredefinito" Foreground="{DynamicResource TestoTenue}" FontSize="12" Margin="0,8,0,0" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <Button x:Name="PulsantePredefinito" Click="SuPredefinito" MinWidth="100" Margin="0,0,24,0" />
+            <Button x:Name="PulsanteSalva" Click="SuSalva" IsDefault="True" MinWidth="90" Margin="0,0,8,0"
+                    Style="{StaticResource PulsantePrincipale}" />
+            <Button x:Name="PulsanteAnnulla" IsCancel="True" MinWidth="90" />
         </StackPanel>
     </StackPanel>
 </Window>

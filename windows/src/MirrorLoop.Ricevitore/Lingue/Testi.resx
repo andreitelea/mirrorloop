@@ -19,7 +19,10 @@
     <value>F1 help  ·  S statistics  ·  O rotate  ·  A automatic rotation  ·  N PC name</value>
   </data>
   <data name="SceltaSullIphone" xml:space="preserve">
-    <value>On the iPhone, choose “{0}”  ·  N to change the name</value>
+    <value>On the iPhone, choose “{0}”</value>
+  </data>
+  <data name="AiutoIndirizzo" xml:space="preserve">
+    <value>The PC doesn't appear on the iPhone? Choose “Enter address…” and type {0}</value>
   </data>
   <data name="UltimoRifiutato" xml:space="preserve">
     <value>Last iPhone rejected at {0}</value>
@@ -188,6 +191,12 @@ The code will be needed again at the next connection; the current transmission c
   <data name="StatRegistro" xml:space="preserve">
     <value>log</value>
   </data>
+  <data name="StatIndirizzi" xml:space="preserve">
+    <value>addresses</value>
+  </data>
+  <data name="StatUltimoErrore" xml:space="preserve">
+    <value>last error</value>
+  </data>
   <data name="StatTasti" xml:space="preserve">
     <value>F1: keys</value>
   </data>
@@ -283,16 +292,16 @@ The code will be needed again at the next connection; the current transmission c
 Set it as Private: Settings → Network &amp; internet → (your network) → Network profile type.</value>
   </data>
   <data name="StatoCollegato" xml:space="preserve">
-    <value>Connected to {0} (QUIC)</value>
+    <value>Connected to the iPhone</value>
   </data>
   <data name="StatoImpossibile" xml:space="preserve">
     <value>Unable to receive: {0}</value>
   </data>
   <data name="StatoInAttesa" xml:space="preserve">
-    <value>Waiting for the iPhone on {0} (QUIC)</value>
+    <value>Waiting for the iPhone…</value>
   </data>
   <data name="StatoConnessionePersa" xml:space="preserve">
-    <value>Connection lost: {0}</value>
+    <value>Connection lost: the iPhone will reconnect by itself.</value>
   </data>
   <data name="QuicNonSupportato" xml:space="preserve">
     <value>QUIC not supported by this Windows (Windows 11 required)</value>

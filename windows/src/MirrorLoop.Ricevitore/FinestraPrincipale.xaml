@@ -6,22 +6,71 @@
         Width="1280" Height="760"
         Background="Black"
         KeyDown="SuTastoPremuto">
+    <Window.Resources>
+        <!-- L'anello dell'icona, schiarito come nella variante scura: il segno di MirrorLoop. -->
+        <LinearGradientBrush x:Key="Viola" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Offset="0" Color="#6D8CFF" />
+            <GradientStop Offset="1" Color="#B48CFF" />
+        </LinearGradientBrush>
+        <Style x:Key="TestoRiquadro" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#CFCBE0" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+    </Window.Resources>
     <Grid>
+        <!-- Senza video, dietro alla schermata di attesa: quasi nero con una leggera luce viola. -->
+        <Border Visibility="{Binding Visibility, ElementName=PannelloAttesa}">
+            <Border.Background>
+                <RadialGradientBrush Center="0.5,0.42" GradientOrigin="0.5,0.42" RadiusX="0.75" RadiusY="0.8">
+                    <GradientStop Offset="0" Color="#1B1830" />
+                    <GradientStop Offset="0.55" Color="#0A0910" />
+                    <GradientStop Offset="1" Color="#000000" />
+                </RadialGradientBrush>
+            </Border.Background>
+        </Border>
+
         <!-- Il video: riempie la finestra mantenendo le proporzioni (bande nere se servono). -->
         <Image x:Name="Video" Stretch="Uniform" RenderOptions.BitmapScalingMode="Linear" />
 
-        <!-- Senza video: lo stato e il nome da scegliere sull'iPhone. -->
+        <!-- Senza video: l'anello, il nome da scegliere sull'iPhone e lo stato. -->
         <StackPanel x:Name="PannelloAttesa" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <TextBlock x:Name="TestoStato"
-                       HorizontalAlignment="Center"
-                       Foreground="#B0B0B0" FontSize="22" TextAlignment="Center"
-                       />
-            <TextBlock x:Name="TestoNomePC"
-                       HorizontalAlignment="Center" Margin="0,14,0,0"
-                       Foreground="#808080" FontSize="16" TextAlignment="Center" />
+            <!-- Geometria di grafica/icona.py (icona da 1024): anello di raggio 300 e spessore 72,
+                 punto di raggio 92 a -45°, staccato dall'anello da un bordo di 26. -->
+            <Viewbox Width="110" Height="110" HorizontalAlignment="Center">
+                <Canvas Width="1024" Height="1024">
+                    <Path Fill="{StaticResource Viola}">
+                        <Path.Data>
+                            <GeometryGroup FillRule="Nonzero">
+                                <CombinedGeometry GeometryCombineMode="Exclude">
+                                    <CombinedGeometry.Geometry1>
+                                        <CombinedGeometry GeometryCombineMode="Exclude">
+                                            <CombinedGeometry.Geometry1>
+                                                <EllipseGeometry Center="512,512" RadiusX="336" RadiusY="336" />
+                                            </CombinedGeometry.Geometry1>
+                                            <CombinedGeometry.Geometry2>
+                                                <EllipseGeometry Center="512,512" RadiusX="264" RadiusY="264" />
+                                            </CombinedGeometry.Geometry2>
+                                        </CombinedGeometry>
+                                    </CombinedGeometry.Geometry1>
+                                    <CombinedGeometry.Geometry2>
+                                        <EllipseGeometry Center="724.1,299.9" RadiusX="118" RadiusY="118" />
+                                    </CombinedGeometry.Geometry2>
+                                </CombinedGeometry>
+                                <EllipseGeometry Center="724.1,299.9" RadiusX="92" RadiusY="92" />
+                            </GeometryGroup>
+                        </Path.Data>
+                    </Path>
+                </Canvas>
+            </Viewbox>
+            <TextBlock x:Name="TestoInvito" Margin="0,22,0,0"
+                       HorizontalAlignment="Center" TextAlignment="Center"
+                       Foreground="#F4F2FF" FontSize="26" FontWeight="SemiBold" />
+            <TextBlock x:Name="TestoStato" Margin="0,10,0,0"
+                       HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="900"
+                       Foreground="#8C88A3" FontSize="16" />
             <!-- L'ultimo iPhone rifiutato e perché: sparisce quando un iPhone si collega. -->
             <TextBlock x:Name="TestoRifiuto" Visibility="Collapsed"
-                       HorizontalAlignment="Center" Margin="0,14,0,0"
+                       HorizontalAlignment="Center" Margin="0,18,0,0"
                        Foreground="#D09A5A" FontSize="15" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="900" />
         </StackPanel>
 
@@ -29,36 +78,37 @@
              così non finisce in diretta quando OBS riprende la finestra. -->
         <Border x:Name="RiquadroStatistiche" Visibility="Collapsed"
                 HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
-                Padding="10,8" CornerRadius="4" Background="#B0000000">
+                Padding="14,10" CornerRadius="10" Background="#E0141220"
+                BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="1">
             <TextBlock x:Name="TestoStatistiche"
-                       Foreground="White" FontFamily="Consolas" FontSize="14"
+                       Foreground="#ECEAF5" FontFamily="Consolas" FontSize="14"
                        Text="—" />
         </Border>
 
         <!-- Avviso se la rete di casa è impostata come Pubblica (il firewall lascia passare l'iPhone
              solo sulle reti private). -->
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12,12,12,16">
-            <Border x:Name="RiquadroAvvisoRete" Visibility="Collapsed" Margin="0,0,0,8"
-                    Padding="16,10" CornerRadius="6" Background="#E0402A00" BorderBrush="#FFB000" BorderThickness="1">
+            <Border x:Name="RiquadroAvvisoRete" Visibility="Collapsed" Margin="0,0,0,10"
+                    Padding="18,12" CornerRadius="10" Background="#E0402A00" BorderBrush="#FFB000" BorderThickness="1">
                 <TextBlock x:Name="TestoAvvisoRete" Foreground="#FFD27F" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" />
             </Border>
             <!-- I tasti principali, solo finché non c'è video (sparisce con la schermata di attesa). -->
             <TextBlock x:Name="TestoTastiInBasso" Visibility="{Binding Visibility, ElementName=PannelloAttesa}"
-                       HorizontalAlignment="Center" Foreground="#707070" FontSize="14"
-                       />
+                       HorizontalAlignment="Center" Foreground="#6E6A82" FontSize="14" />
         </StackPanel>
 
-        <!-- Aiuto (F1): tutti i tasti, anche durante la trasmissione. -->
+        <!-- Aiuto (F1): tutti i tasti, anche durante la trasmissione, e l'indirizzo del PC per chi non
+             lo vede nell'elenco dell'iPhone. -->
         <Border x:Name="RiquadroAiuto" Visibility="Collapsed"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                Padding="32,24" CornerRadius="8" Background="#F0202020"
-                BorderBrush="#606060" BorderThickness="1">
-            <StackPanel>
+                Padding="32,24" CornerRadius="12" Background="{StaticResource Riquadro}"
+                BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="1">
+            <StackPanel MaxWidth="560">
                 <TextBlock x:Name="TestoAiutoTitolo" Foreground="White" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12" />
                 <Grid TextElement.FontSize="16">
                     <Grid.Resources>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="#D0D0D0" />
+                            <Setter Property="Foreground" Value="#CFCBE0" />
                             <Setter Property="Margin" Value="0,3" />
                         </Style>
                     </Grid.Resources>
@@ -85,6 +135,9 @@
                     <TextBlock Grid.Row="6" Text="Esc" Foreground="White" FontFamily="Consolas" />
                     <TextBlock x:Name="TestoAiutoEsc" Grid.Row="6" Grid.Column="1" />
                 </Grid>
+                <Border BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,12,0,0">
+                    <TextBlock x:Name="TestoAiutoIndirizzo" Foreground="#B9B4CC" FontSize="15" TextWrapping="Wrap" />
+                </Border>
             </StackPanel>
         </Border>
 
@@ -92,24 +145,23 @@
              preme solo con il mouse (un tasto per sbaglio non deve abbinare nessuno); Esc rifiuta. -->
         <Border x:Name="RiquadroAbbinamento" Visibility="Collapsed"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                Padding="32,24" CornerRadius="8" Background="#F0202020"
-                BorderBrush="#606060" BorderThickness="1">
+                Padding="36,28" CornerRadius="12" Background="{StaticResource Riquadro}"
+                BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="1">
             <StackPanel MinWidth="380">
                 <TextBlock x:Name="TestoAbbinamentoTitolo" Foreground="White" FontSize="22" FontWeight="SemiBold"
                            HorizontalAlignment="Center" />
-                <TextBlock x:Name="NomeAbbinamento" Foreground="#B0B0B0" FontSize="16" Margin="0,4,0,0"
+                <TextBlock x:Name="NomeAbbinamento" Foreground="#A7A3B8" FontSize="16" Margin="0,4,0,0"
                            HorizontalAlignment="Center" />
                 <TextBlock x:Name="CodiceAbbinamento" Foreground="White" FontFamily="Consolas" FontSize="56"
                            Margin="0,16,0,8" HorizontalAlignment="Center" />
-                <TextBlock x:Name="TestoAbbinamentoIstruzioni" Foreground="#D0D0D0" FontSize="16"
+                <TextBlock x:Name="TestoAbbinamentoIstruzioni" Style="{StaticResource TestoRiquadro}" FontSize="16" />
+                <TextBlock x:Name="ScadenzaAbbinamento" Foreground="#8C88A3" FontSize="14" Margin="0,6,0,0"
                            HorizontalAlignment="Center" />
-                <TextBlock x:Name="ScadenzaAbbinamento" Foreground="#909090" FontSize="14" Margin="0,6,0,0"
-                           HorizontalAlignment="Center" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                    <Button x:Name="PulsanteConsenti" Click="SuConsenti" Focusable="False"
-                            MinWidth="120" Padding="12,6" Margin="0,0,12,0" FontSize="16" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,22,0,0">
+                    <Button x:Name="PulsanteConsenti" Click="SuConsenti" Focusable="False" Style="{StaticResource PulsantePrincipale}"
+                            MinWidth="130" Margin="0,0,12,0" FontSize="16" />
                     <Button x:Name="PulsanteRifiuta" Click="SuRifiuta" Focusable="False"
-                            MinWidth="120" Padding="12,6" FontSize="16" />
+                            MinWidth="130" FontSize="16" />
                 </StackPanel>
             </StackPanel>
         </Border>

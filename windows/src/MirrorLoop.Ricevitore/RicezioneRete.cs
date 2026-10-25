@@ -90,6 +90,12 @@ public sealed class RicezioneRete(
     /// <summary>"QUIC" o null se nessuno è collegato.</summary>
     public string? Trasporto { get; private set; }
 
+    /// <summary>Indirizzo e porta dell'ultimo iPhone collegato, per le statistiche.</summary>
+    public EndPoint? Remoto { get; private set; }
+
+    /// <summary>Il messaggio tecnico dell'ultima connessione persa, per le statistiche.</summary>
+    public string? UltimoErrore { get; private set; }
+
     /// <summary>Se QUIC non è disponibile (e quindi il ricevitore non può ricevere), il motivo.</summary>
     public string? MotivoSenzaQuic { get; private set; }
 
@@ -504,7 +510,8 @@ public sealed class RicezioneRete(
             sincronia.Ricomincia();
         }
         vecchia?.Cancel();
-        StatoCambiato?.Invoke(new StatoRicezione(true, string.Format(Testi.StatoCollegato, remoto)));
+        Remoto = remoto;
+        StatoCambiato?.Invoke(new StatoRicezione(true, Testi.StatoCollegato));
         return nuova.Token;
     }
 
@@ -526,17 +533,21 @@ public sealed class RicezioneRete(
         AnnunciaAttesa(errore);
     }
 
+    /// <summary>
+    /// Frasi semplici per chi usa il programma: l'indirizzo e la porta stanno nell'aiuto (F1) e nelle
+    /// statistiche, il messaggio tecnico di una connessione persa in <see cref="UltimoErrore"/>.
+    /// </summary>
     private void AnnunciaAttesa(string? errore)
     {
-        // Riletti a ogni attesa: il PC potrebbe aver cambiato rete nel frattempo.
-        string indirizzi = string.Join("  ·  ", IndirizziLocali().Select(i => $"{i}:{porta}"));
         if (MotivoSenzaQuic is not null)
         {
             StatoCambiato?.Invoke(new StatoRicezione(false, string.Format(Testi.StatoImpossibile, MotivoSenzaQuic)));
             return;
         }
-        string motivo = errore is null ? "" : "\n" + string.Format(Testi.StatoConnessionePersa, errore);
-        StatoCambiato?.Invoke(new StatoRicezione(false, string.Format(Testi.StatoInAttesa, indirizzi) + motivo));
+        if (errore is not null)
+            UltimoErrore = errore;
+        string motivo = errore is null ? "" : "\n" + Testi.StatoConnessionePersa;
+        StatoCambiato?.Invoke(new StatoRicezione(false, Testi.StatoInAttesa + motivo));
     }
 
     private void Registra(char tipo, long istanteIphone, int dimensione, bool keyframe) =>

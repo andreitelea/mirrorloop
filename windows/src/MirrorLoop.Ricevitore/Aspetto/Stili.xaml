@@ -1,0 +1,92 @@
+<!-- Pulsanti e campi di testo con l'aspetto di Windows 11 (angoli arrotondati, il viola per l'azione
+     principale). I colori arrivano dal tema (TemaScuro.xaml o TemaChiaro.xaml) con DynamicResource,
+     così una finestra può scegliere il suo. Uno stile nostro e non il tema Fluent di WPF, che in
+     .NET 10 Microsoft dichiara ancora in lavorazione. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource Testo}" />
+        <Setter Property="Background" Value="{DynamicResource Pulsante}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BordoPulsante}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="16,6" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Fondo" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="5">
+                        <ContentPresenter Margin="{TemplateBinding Padding}" RecognizesAccessKey="True"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- Il bordo viola mostra il pulsante scelto con la tastiera (Tab). -->
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Fondo" Property="BorderBrush" Value="{DynamicResource Accento}" />
+                            <Setter TargetName="Fondo" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource PulsanteSopra}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource PulsantePremuto}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- L'azione principale di un riquadro (Consenti, Salva). -->
+    <Style x:Key="PulsantePrincipale" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Foreground" Value="{DynamicResource TestoSuAccento}" />
+        <Setter Property="Background" Value="{DynamicResource Accento}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Accento}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AccentoSopra}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentoSopra}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AccentoPremuto}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentoPremuto}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource Testo}" />
+        <Setter Property="Background" Value="{DynamicResource Campo}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BordoCampo}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Testo}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Selezione}" />
+        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Bordo" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,1,1,2" CornerRadius="4">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- Come in Windows 11: il campo in uso ha la linea in basso nel colore principale. -->
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bordo" Property="BorderBrush" Value="{DynamicResource Accento}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

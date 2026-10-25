@@ -19,7 +19,10 @@
     <value>F1 aiuto  ·  S statistiche  ·  O ruota  ·  A rotazione automatica  ·  N nome del PC</value>
   </data>
   <data name="SceltaSullIphone" xml:space="preserve">
-    <value>Sull'iPhone scegli «{0}»  ·  N per cambiare il nome</value>
+    <value>Sull'iPhone scegli «{0}»</value>
+  </data>
+  <data name="AiutoIndirizzo" xml:space="preserve">
+    <value>Il PC non compare sull'iPhone? Scegli «Indirizzo a mano» e scrivi {0}</value>
   </data>
   <data name="UltimoRifiutato" xml:space="preserve">
     <value>Ultimo iPhone rifiutato alle {0}</value>
@@ -188,6 +191,12 @@ Al prossimo collegamento servirà di nuovo il codice; la trasmissione in corso c
   <data name="StatRegistro" xml:space="preserve">
     <value>registro</value>
   </data>
+  <data name="StatIndirizzi" xml:space="preserve">
+    <value>indirizzi</value>
+  </data>
+  <data name="StatUltimoErrore" xml:space="preserve">
+    <value>ultimo errore</value>
+  </data>
   <data name="StatTasti" xml:space="preserve">
     <value>F1: tasti</value>
   </data>
@@ -283,16 +292,16 @@ Al prossimo collegamento servirà di nuovo il codice; la trasmissione in corso c
 Impostala come Privata: Impostazioni → Rete e Internet → (la tua rete) → Tipo di profilo di rete.</value>
   </data>
   <data name="StatoCollegato" xml:space="preserve">
-    <value>Collegato a {0} (QUIC)</value>
+    <value>Collegato all'iPhone</value>
   </data>
   <data name="StatoImpossibile" xml:space="preserve">
     <value>Impossibile ricevere: {0}</value>
   </data>
   <data name="StatoInAttesa" xml:space="preserve">
-    <value>In attesa dell'iPhone su {0} (QUIC)</value>
+    <value>In attesa dell'iPhone…</value>
   </data>
   <data name="StatoConnessionePersa" xml:space="preserve">
-    <value>Connessione persa: {0}</value>
+    <value>Connessione persa: l'iPhone si ricollegherà da solo.</value>
   </data>
   <data name="QuicNonSupportato" xml:space="preserve">
     <value>QUIC non supportato da questo Windows (serve Windows 11)</value>

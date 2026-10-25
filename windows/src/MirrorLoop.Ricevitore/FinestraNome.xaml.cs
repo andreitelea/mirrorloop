@@ -10,6 +10,7 @@ public partial class FinestraNome : Window
     public FinestraNome(string attuale, string predefinito)
     {
         InitializeComponent();
+        Tema.Applica(this, Tema.WindowsInChiaro());
         Title = Testi.NomeTitolo;
         TestoNomeSpiegazione.Text = Testi.NomeSpiegazione;
         PulsantePredefinito.Content = Testi.NomePredefinitoPulsante;

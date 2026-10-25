@@ -1,0 +1,22 @@
+<!-- Colori del tema scuro: la finestra principale (sempre scura, dietro al video c'è il nero) e le
+     finestrelle quando Windows è in modalità scura. Il viola viene dall'icona. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="Fondo" Color="#2B2B2B" />
+    <SolidColorBrush x:Key="Testo" Color="#F2F2F2" />
+    <SolidColorBrush x:Key="TestoTenue" Color="#A6A3B3" />
+    <SolidColorBrush x:Key="Pulsante" Color="#37343F" />
+    <SolidColorBrush x:Key="PulsanteSopra" Color="#413E4A" />
+    <SolidColorBrush x:Key="PulsantePremuto" Color="#312E38" />
+    <SolidColorBrush x:Key="BordoPulsante" Color="#4A4656" />
+    <SolidColorBrush x:Key="Campo" Color="#1F1F1F" />
+    <SolidColorBrush x:Key="BordoCampo" Color="#3D3D3D" />
+    <SolidColorBrush x:Key="Accento" Color="#A58BFF" />
+    <SolidColorBrush x:Key="AccentoSopra" Color="#B39DFF" />
+    <SolidColorBrush x:Key="AccentoPremuto" Color="#9479F0" />
+    <SolidColorBrush x:Key="TestoSuAccento" Color="#170D36" />
+    <SolidColorBrush x:Key="Selezione" Color="#7C5CE6" />
+    <!-- Riquadri sopra la finestra principale (abbinamento, aiuto, statistiche). -->
+    <SolidColorBrush x:Key="Riquadro" Color="#FA232129" />
+    <SolidColorBrush x:Key="BordoRiquadro" Color="#3B3846" />
+</ResourceDictionary>
