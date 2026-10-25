@@ -851,6 +851,16 @@
         }
       }
     },
+    "Version: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versione: %@"
+          }
+        }
+      }
+    },
     "Waiting for the receiver…": {
       "localizations": {
         "it": {

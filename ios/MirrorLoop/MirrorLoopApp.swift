@@ -30,38 +30,31 @@ struct SchermataPrincipale: View {
     @AppStorage("diagnostica") private var diagnostica = false
     @State private var chiediDimentica = false
 
-    // Letta dall'Info.plist, così il numero mostrato coincide sempre con quello del pacchetto installato.
-    private let versione: String = {
-        let info = Bundle.main.infoDictionary
-        let marketing = info?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = info?["CFBundleVersion"] as? String ?? "?"
-        return "\(marketing) (\(build))"
-    }()
-
     var body: some View {
         Form {
             Section {
+                RiquadroStato(cattura: cattura, pc: destinazione?.descrizione,
+                              avvia: avvia, ferma: { cattura.ferma() })
+            } header: {
+                // Nell'intestazione della sezione e non in una riga dell'elenco: le righe hanno gli
+                // angoli arrotondati e ritagliavano l'icona.
                 HStack(spacing: 14) {
                     IconaMirrorLoop()
                         .frame(width: 52, height: 52)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(verbatim: "MirrorLoop")
                             .font(.title2.bold())
-                        Text("Version \(versione)")
+                            .foregroundStyle(.primary)
+                        Text("Version \(VersioneApp.semplice)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
+                .textCase(nil)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture(count: 5) { diagnostica.toggle() }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 4, leading: 4, bottom: 0, trailing: 4))
-            }
-
-            Section {
-                RiquadroStato(cattura: cattura, pc: destinazione?.descrizione,
-                              avvia: avvia, ferma: { cattura.ferma() })
+                .padding(.bottom, 12)
             }
 
             Section {
@@ -192,6 +185,24 @@ struct SchermataPrincipale: View {
         }
         return pcScelto.isEmpty ? nil : .servizio(pcScelto)
     }
+}
+
+/// Il numero di versione, letto dall'Info.plist (coincide sempre con il pacchetto installato).
+enum VersioneApp {
+    private static let marketing = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+    private static let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+
+    /// Per tutti: senza gli zeri finali (0.14.0 → 0.14, 1.0.0 → 1) e senza il numero di build.
+    static let semplice: String = {
+        var parti = marketing.split(separator: ".").map(String.init)
+        while parti.count > 1, parti.last == "0" {
+            parti.removeLast()
+        }
+        return parti.joined(separator: ".")
+    }()
+
+    /// Per la diagnostica: tutto, con il numero di build di TestFlight.
+    static let completa = "\(marketing) (\(build))"
 }
 
 /// Lo stato in cima: l'anello dell'icona (viola mentre trasmette), una riga con il pallino colorato e
@@ -340,6 +351,7 @@ struct DettagliTecnici: View {
         let s = cattura.compressione
         let r = cattura.rete
         VStack(alignment: .leading, spacing: 6) {
+            Text("Version: \(VersioneApp.completa)")
             Text("Capture: \(cattura.stato)")
             Text("Network: \(r.stato)")
             Text("Sent: \(r.inviati) · dropped \(r.scartati) · connections \(r.connessioni) · pings \(r.pingRisposti)")
