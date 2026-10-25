@@ -22,6 +22,11 @@ public partial class FinestraPrincipale : Window
     private readonly SincroniaOrologi _sincronia = new();
     private readonly RegistroPacchetti _registro = new();
     private readonly RicezioneRete _ricezione;
+    private readonly TelefoniAbbinati _telefoni = new();
+    // La richiesta di abbinamento mostrata nel riquadro, se c'è, e quando scade.
+    private TaskCompletionSource<bool>? _consenso;
+    private DateTime _scadenzaConsenso;
+    private readonly DispatcherTimer _contoAllaRovescia;
     private readonly AnnuncioBonjour _annuncio;
     private readonly Riproduzione _riproduzione;
     private readonly BachecaObs? _bacheca;
@@ -63,9 +68,10 @@ public partial class FinestraPrincipale : Window
         }
         _riproduzioneAudio = new RiproduzioneAudio(_bacheca);
 
-        // Per ora senza domanda di conferma: i telefoni nuovi sono rifiutati (la finestra la mostrerà).
         _ricezione = new RicezioneRete(Porta, _coda, _statistiche, _statisticheAudio, _riproduzioneAudio, _sincronia, _registro, CaricaCertificato(),
-            new TelefoniAbbinati(), chiediConsenso: null);
+            _telefoni, ChiediConsensoAsync);
+        _contoAllaRovescia = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _contoAllaRovescia.Tick += (_, _) => AggiornaScadenza();
         // L'evento arriva da un thread in sottofondo: la finestra si può toccare solo dal suo thread.
         _ricezione.StatoCambiato += stato => Dispatcher.BeginInvoke(() => CambiaStato(stato));
         // Una trasmissione nuova: OBS deve ripartire pulito (istanti non confrontabili con prima).
@@ -186,6 +192,7 @@ public partial class FinestraPrincipale : Window
             $"orologi         {DescriviOrologi()}\n" +
             $"bonjour         {_annuncio.Stato}\n" +
             $"trasporto       {_ricezione.Trasporto ?? "—"}{(_ricezione.MotivoSenzaQuic is string m ? $"  (impossibile ricevere: {m})" : "")}\n" +
+            $"iPhone abbinati {_telefoni.Numero,6}\n" +
             $"decompressione  {_msDecompressione,6:F1} ms\n" +
             $"conversione     {_msConversione,6:F1} ms\n" +
             $"rotazione       {90 * (int)_rotazione,6}°  ({(_sceltaRotazione.Manuale ? $"manuale; dall'iPhone {90 * (int)_sceltaRotazione.Automatica}°" : "automatica")})\n" +
@@ -202,7 +209,7 @@ public partial class FinestraPrincipale : Window
             $"velocità audio  {_riproduzioneAudio.Velocita,6:F3}×\n" +
             $"pausa audio     {audio.PausaMassimaMs,6:F0} ms  (massima {audio.PausaMassimaTotaleMs:F0} ms)\n" +
             $"registro        {DescriviRegistro()}\n" +
-            "S: mostra/nascondi · R: registro su file · O: ruota di 90° · A: rotazione automatica";
+            "S: mostra/nascondi · R: registro su file · O: ruota di 90° · A: rotazione automatica · D: dimentica gli iPhone abbinati";
         _aggiornamentiFinestra = 0;
     }
 
@@ -296,6 +303,101 @@ public partial class FinestraPrincipale : Window
         {
             _sceltaRotazione.TornaAutomatica();
             ApplicaRotazione(_sceltaRotazione.Effettiva);
+        }
+        else if (e.Key == Key.D)
+        {
+            DimenticaTelefoni();
+        }
+        else if (e.Key == Key.Escape)
+        {
+            _consenso?.TrySetResult(false);
+        }
+    }
+
+    // ---- Abbinamento ----
+
+    /// <summary>
+    /// Chiamata dalla rete (thread in sottofondo) per un iPhone nuovo: mostra il riquadro e aspetta
+    /// Consenti, Rifiuta o la scadenza (il token si annulla anche se il telefono sparisce).
+    /// </summary>
+    private async Task<bool> ChiediConsensoAsync(RichiestaAbbinamento richiesta, CancellationToken ct)
+    {
+        var risposta = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        // BeginInvoke e non Invoke: alla chiusura della finestra non deve lanciare eccezioni alla rete.
+        _ = Dispatcher.BeginInvoke(() => MostraRichiesta(richiesta, risposta));
+        using (ct.Register(() => risposta.TrySetResult(false)))
+        {
+            try
+            {
+                return await risposta.Task;
+            }
+            finally
+            {
+                _ = Dispatcher.BeginInvoke(() => NascondiRichiesta(risposta));
+            }
+        }
+    }
+
+    private void MostraRichiesta(RichiestaAbbinamento richiesta, TaskCompletionSource<bool> risposta)
+    {
+        // Già risolta (scaduta o telefono sparito) prima ancora di essere mostrata.
+        if (risposta.Task.IsCompleted)
+            return;
+        _consenso = risposta;
+        NomeAbbinamento.Text = richiesta.Nome;
+        CodiceAbbinamento.Text = richiesta.CodiceLeggibile;
+        _scadenzaConsenso = DateTime.UtcNow + _ricezione.AttesaConsenso;
+        AggiornaScadenza();
+        RiquadroAbbinamento.Visibility = Visibility.Visible;
+        _contoAllaRovescia.Start();
+        // Chi sta al PC deve vederla: se la finestra è ridotta a icona la si riapre. Se Windows non
+        // permette di portarla davanti, fa lampeggiare l'icona sulla barra.
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private void NascondiRichiesta(TaskCompletionSource<bool> risposta)
+    {
+        if (_consenso != risposta)
+            return;
+        _consenso = null;
+        RiquadroAbbinamento.Visibility = Visibility.Collapsed;
+        _contoAllaRovescia.Stop();
+    }
+
+    private void AggiornaScadenza()
+    {
+        int secondi = Math.Max(0, (int)Math.Ceiling((_scadenzaConsenso - DateTime.UtcNow).TotalSeconds));
+        ScadenzaAbbinamento.Text = $"Scade tra {secondi} s";
+    }
+
+    private void SuConsenti(object sender, RoutedEventArgs e) => _consenso?.TrySetResult(true);
+
+    private void SuRifiuta(object sender, RoutedEventArgs e) => _consenso?.TrySetResult(false);
+
+    /// <summary>Tasto D: dopo una conferma, ogni iPhone dovrà di nuovo abbinarsi con il codice.</summary>
+    private void DimenticaTelefoni()
+    {
+        int numero = _telefoni.Numero;
+        if (numero == 0)
+        {
+            MessageBox.Show(this, "Nessun iPhone abbinato.", "MirrorLoop");
+            return;
+        }
+        string quali = numero == 1 ? "l'iPhone abbinato" : $"i {numero} iPhone abbinati";
+        var scelta = MessageBox.Show(this,
+            $"Dimenticare {quali}?\nAl prossimo collegamento servirà di nuovo il codice; la trasmissione in corso continua.",
+            "MirrorLoop", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+        if (scelta != MessageBoxResult.Yes)
+            return;
+        try
+        {
+            _telefoni.DimenticaTutti();
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, $"Impossibile aggiornare l'elenco: {ex.Message}", "MirrorLoop", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

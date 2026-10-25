@@ -56,6 +56,9 @@ public sealed class RicezioneRete(
 
     private readonly TimeSpan _attesaConsenso = attesaConsenso ?? TimeSpan.FromSeconds(60);
 
+    /// <summary>Quanto aspetta una risposta alla richiesta di abbinamento: per il conto alla rovescia della finestra.</summary>
+    public TimeSpan AttesaConsenso => _attesaConsenso;
+
     // L'impronta del certificato, come la vede l'iPhone: è ciò che firma nella prova.
     private readonly byte[] _impronta = certificato is null ? [] : Abbinamento.Impronta(certificato.RawData);
 
