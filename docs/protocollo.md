@@ -6,7 +6,7 @@ Come viaggiano i dati dal mittente (l'app iPhone, oppure `MittenteTest` per le p
 
 ## Trasporto
 
-Il ricevitore ascolta sulla porta **7450** in **QUIC** (su UDP, sempre cifrato con TLS 1.3), protocollo applicativo (ALPN) `mirrorloop/1`. Un solo mittente alla volta: una trasmissione nuova chiude la precedente. (Fino al 25/10/2026 c'era anche TCP, tolto perché non cifrato e senza vantaggi misurati.)
+Il ricevitore ascolta sulla porta **7450** in **QUIC** (su UDP, sempre cifrato con TLS 1.3), protocollo applicativo (ALPN) `mirrorloop/2` (era `mirrorloop/1` prima dell'abbinamento, vedi "Tipi 6–9"). Un solo mittente alla volta: una trasmissione nuova chiude la precedente. (Fino al 25/10/2026 c'era anche TCP, tolto perché non cifrato e senza vantaggi misurati.)
 
 Il mittente apre tre **corsie** indipendenti, così una perdita in una non blocca le altre:
 
