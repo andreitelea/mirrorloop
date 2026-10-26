@@ -1,9 +1,12 @@
 # Costruisce l'installatore di MirrorLoop per Windows: ricevitore con .NET incluso, plugin per OBS e
-# installatore Inno Setup (windows/installatore/MirrorLoop.iss). Per ora si lancia a mano e il
-# risultato si scarica come artefatto dalla pagina dell'esecuzione.
+# installatore Inno Setup (windows/installatore/MirrorLoop.iss), più lo zip del solo plugin.
+# A mano: i file restano come artefatto dell'esecuzione. Con un tag "v<versione>" (es. v0.14.0):
+# anche una GitHub Release in bozza, visibile a tutti solo dopo averla pubblicata a mano dal sito.
 name: Rilascio Windows
 
 on:
+  push:
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -15,6 +18,8 @@ jobs:
     # già installato sull'immagine.
     runs-on: windows-2022
     timeout-minutes: 40
+    outputs:
+      numero: ${{ steps.versione.outputs.numero }}
     defaults:
       run:
         shell: pwsh
@@ -34,6 +39,10 @@ jobs:
           "ricevitore $ricevitore · plugin $plugin · app $app"
           if ($ricevitore -ne $plugin -or $ricevitore -ne $app) {
             Write-Output "::error::Le versioni non coincidono"
+            exit 1
+          }
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$ricevitore") {
+            Write-Output "::error::Il tag $env:GITHUB_REF_NAME non corrisponde alla versione $ricevitore"
             exit 1
           }
           "numero=$ricevitore" >> $env:GITHUB_OUTPUT
@@ -66,11 +75,48 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           & $iscc /DVersione=${{ steps.versione.outputs.numero }} "/DCartellaRicevitore=${{ runner.temp }}\ricevitore" "/DCartellaPlugin=${{ runner.temp }}\plugin" "/O${{ runner.temp }}\installatore" MirrorLoop.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Per chi installa i plugin a mano (o usa OBS portatile): la cartella "mirrorloop" va estratta
+      # nella cartella dei plugin di OBS, con la licenza GPL accanto come nell'installatore.
+      - name: Prepara lo zip del plugin
+        run: |
+          Copy-Item obs/LICENSE ${{ runner.temp }}/plugin/mirrorloop/LICENSE-GPL-2.0.txt
+          Compress-Archive -Path ${{ runner.temp }}/plugin/mirrorloop -DestinationPath ${{ runner.temp }}/installatore/MirrorLoop-${{ steps.versione.outputs.numero }}-plugin-OBS.zip
           Get-ChildItem ${{ runner.temp }}/installatore | Select-Object Name, Length
 
-      - name: Pubblica l'installatore come artefatto
+      - name: Pubblica i file come artefatto
         uses: actions/upload-artifact@v7
         with:
           name: MirrorLoop-${{ steps.versione.outputs.numero }}-Windows
-          path: ${{ runner.temp }}/installatore/*.exe
+          path: ${{ runner.temp }}/installatore/*
           if-no-files-found: error
+
+  # Lavoro a parte perché è l'unico che può scrivere nel repository: la compilazione qui sopra, che
+  # esegue anche codice scaricato (CMake, dipendenze di OBS), resta in sola lettura.
+  release:
+    needs: installatore
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Scarica i file costruiti
+        uses: actions/download-artifact@v8
+        with:
+          name: MirrorLoop-${{ needs.installatore.outputs.numero }}-Windows
+          path: file
+
+      - name: Crea la Release in bozza
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSIONE: ${{ needs.installatore.outputs.numero }}
+        run: |
+          cat > note.md <<'FINE'
+          - **Installatore (.exe)**: per Windows 11, con il ricevitore (.NET incluso) e, se scelto, il plugin per OBS Studio.
+          - **Plugin OBS (.zip)**: solo il plugin, per chi lo installa a mano: estrarre la cartella `mirrorloop` in `C:\ProgramData\obs-studio\plugins\`.
+
+          L'installatore non è ancora firmato: Windows può mostrare "Windows ha protetto il PC" → *Ulteriori informazioni* → *Esegui comunque*.
+          FINE
+          gh release create "$GITHUB_REF_NAME" file/* --draft --verify-tag --title "MirrorLoop $VERSIONE" --notes-file note.md
