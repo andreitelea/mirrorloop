@@ -76,7 +76,7 @@
 
       <h2>How to delete everything</h2>
       <ul>
-        <li><strong>iPhone:</strong> <em>Forget paired PCs</em> in the app deletes the list of PCs; deleting the app removes the settings. The pairing key currently stays in the iPhone's keychain even after deleting the app (iOS keeps keychain items); it contains nothing personal and only works on that iPhone. A future version will delete it together with the paired PCs; until then it is removed by erasing the iPhone (<em>Settings → General → Transfer or Reset iPhone</em>).</li>
+        <li><strong>iPhone:</strong> <em>Forget paired PCs</em> in the app deletes the list of PCs and the pairing key (from version 0.15); deleting the app removes the settings. Delete the app only after forgetting the PCs: iOS keeps the pairing key in the keychain even after the app is deleted. It contains nothing personal and only works on that iPhone; in that case it is removed by reinstalling the app and choosing <em>Forget paired PCs</em>, or by erasing the iPhone.</li>
         <li><strong>PC:</strong> key <kbd>D</kbd> in the receiver deletes the list of paired iPhones. Uninstalling MirrorLoop (<em>Settings → Apps</em>) removes the program but leaves the folder <code>%LOCALAPPDATA%\MirrorLoop</code>, so that after a reinstall your iPhones don't have to pair again: to delete it too, type <code>%LOCALAPPDATA%</code> in the File Explorer address bar and delete the <code>MirrorLoop</code> folder.</li>
       </ul>
       <p>Since no data reaches the developer, there is no data to request, correct or delete on our side.</p>
