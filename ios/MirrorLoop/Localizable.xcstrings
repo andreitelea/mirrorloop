@@ -31,6 +31,16 @@
         }
       }
     },
+    "About": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni"
+          }
+        }
+      }
+    },
     "Allow the connection on the PC": {
       "localizations": {
         "it": {
@@ -391,6 +401,16 @@
         }
       }
     },
+    "Guide": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida"
+          }
+        }
+      }
+    },
     "HD": {
       "localizations": {
         "it": {
@@ -571,6 +591,16 @@
         }
       }
     },
+    "Privacy policy": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informativa sulla privacy"
+          }
+        }
+      }
+    },
     "Quality": {
       "localizations": {
         "it": {
@@ -741,6 +771,16 @@
         }
       }
     },
+    "Support": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supporto"
+          }
+        }
+      }
+    },
     "Technical details": {
       "localizations": {
         "it": {
@@ -781,12 +821,12 @@
         }
       }
     },
-    "The code will be needed again at the next connection, on the PC and on the iPhone.": {
+    "The iPhone's pairing key is deleted too. The code will be needed again at the next connection, on the PC and on the iPhone.": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Al prossimo collegamento servirà di nuovo il codice, sul PC e sull'iPhone."
+            "value": "Viene cancellata anche la chiave di abbinamento dell'iPhone. Al prossimo collegamento servirà di nuovo il codice, sul PC e sull'iPhone."
           }
         }
       }

@@ -127,6 +127,20 @@ enum ChiaveIphone {
         return ChiaveSecureEnclave(privata: nuova)
     }
 
+    /// Vero se la chiave c'è già (anche dopo una reinstallazione: il portachiavi sopravvive).
+    static var esiste: Bool { leggi() != nil }
+
+    /// Cancella il riferimento: senza, la chiave nel Secure Enclave non è più utilizzabile da
+    /// nessuno. Al prossimo collegamento ne nasce una nuova.
+    static func cancella() {
+        let domanda: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: servizio,
+            kSecAttrAccount as String: account,
+        ]
+        SecItemDelete(domanda as CFDictionary)
+    }
+
     private static func leggi() -> Data? {
         let domanda: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

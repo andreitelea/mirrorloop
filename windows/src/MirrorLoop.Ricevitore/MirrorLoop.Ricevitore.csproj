@@ -48,7 +48,7 @@
     <!-- Nome e versione scritti nel file (Proprietà → Dettagli, Gestione attività, firma del codice).
          Un solo numero per tutto MirrorLoop: lo stesso di MARKETING_VERSION in ios/project.yml e di
          "version" in obs/buildspec.json. -->
-    <Version>0.14.0</Version>
+    <Version>0.15.0</Version>
     <Product>MirrorLoop</Product>
     <AssemblyTitle>MirrorLoop</AssemblyTitle>
     <Authors>Andrei Telea</Authors>

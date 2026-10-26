@@ -121,13 +121,25 @@ struct SchermataPrincipale: View {
             }
 
             Section {
+                Link(destination: Sito.guida) { Label("Guide", systemImage: "book") }
+                Link(destination: Sito.supporto) { Label("Support", systemImage: "questionmark.circle") }
+                Link(destination: Sito.privacy) { Label("Privacy policy", systemImage: "hand.raised") }
+            } header: {
+                Text("About")
+            }
+
+            Section {
                 let abbinati = PCAbbinati.numero
                 Button("Forget paired PCs (\(abbinati))", role: .destructive) { chiediDimentica = true }
-                    .disabled(abbinati == 0)
+                    // Anche senza PC nell'elenco può restare la chiave (dopo una reinstallazione).
+                    .disabled(abbinati == 0 && !ChiaveIphone.esiste)
                     .confirmationDialog("Forget paired PCs?", isPresented: $chiediDimentica, titleVisibility: .visible) {
-                        Button("Forget", role: .destructive) { PCAbbinati.dimenticaTutti() }
+                        Button("Forget", role: .destructive) {
+                            PCAbbinati.dimenticaTutti()
+                            ChiaveIphone.cancella()
+                        }
                     } message: {
-                        Text("The code will be needed again at the next connection, on the PC and on the iPhone.")
+                        Text("The iPhone's pairing key is deleted too. The code will be needed again at the next connection, on the PC and on the iPhone.")
                     }
             }
         }
@@ -185,6 +197,15 @@ struct SchermataPrincipale: View {
         }
         return pcScelto.isEmpty ? nil : .servizio(pcScelto)
     }
+}
+
+/// Le pagine del sito, nella lingua in cui è mostrata l'app.
+enum Sito {
+    private static let base = "https://andreitelea.github.io/mirrorloop/"
+    private static let italiano = Bundle.main.preferredLocalizations.first == "it"
+    static let guida = URL(string: base + (italiano ? "it/guida.html" : "guide.html"))!
+    static let supporto = URL(string: base + (italiano ? "it/supporto.html" : "support.html"))!
+    static let privacy = URL(string: base + (italiano ? "it/privacy.html" : "privacy.html"))!
 }
 
 /// Il numero di versione, letto dall'Info.plist (coincide sempre con il pacchetto installato).
