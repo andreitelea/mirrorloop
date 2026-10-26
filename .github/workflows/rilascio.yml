@@ -114,9 +114,20 @@ jobs:
           VERSIONE: ${{ needs.installatore.outputs.numero }}
         run: |
           cat > note.md <<'FINE'
+          - **Installer (.exe)**: for Windows 11, with the receiver (.NET included) and, if selected, the OBS Studio plugin.
+          - **OBS plugin (.zip)**: the plugin only, for manual installation: extract the `mirrorloop` folder into `C:\ProgramData\obs-studio\plugins\`.
+
+          The installer is not signed yet: Windows may show "Windows protected your PC" → *More info* → *Run anyway*.
+
+          Step-by-step guide: https://andreitelea.github.io/mirrorloop/guide.html
+
+          ---
+
           - **Installatore (.exe)**: per Windows 11, con il ricevitore (.NET incluso) e, se scelto, il plugin per OBS Studio.
           - **Plugin OBS (.zip)**: solo il plugin, per chi lo installa a mano: estrarre la cartella `mirrorloop` in `C:\ProgramData\obs-studio\plugins\`.
 
           L'installatore non è ancora firmato: Windows può mostrare "Windows ha protetto il PC" → *Ulteriori informazioni* → *Esegui comunque*.
+
+          Guida passo passo: https://andreitelea.github.io/mirrorloop/it/guida.html
           FINE
           gh release create "$GITHUB_REF_NAME" file/* --draft --verify-tag --title "MirrorLoop $VERSIONE" --notes-file note.md
