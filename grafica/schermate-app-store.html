@@ -1,0 +1,105 @@
+<!doctype html>
+<!--
+  Schermate per l'App Store (iPhone "Dynamic Island, large display": 1320×2868), composte dalle
+  schermate vere dell'app in grafica/schermate/ con una frase in alto. Una pagina per immagine:
+  l'indirizzo finisce con #<lingua>-<numero>, per esempio #it-1.
+  Si "fotografano" con Edge senza interfaccia, dalla cartella principale del repository:
+    msedge --headless --disable-gpu --hide-scrollbars --allow-file-access-from-files
+           --user-data-dir=<cartella temporanea> --window-size=1320,2868
+           --screenshot=<uscita.png> "file:///<repo>/grafica/schermate-app-store.html#it-1"
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    html, body { margin: 0; width: 1320px; height: 2868px; overflow: hidden; }
+    body {
+      position: relative;
+      background: linear-gradient(160deg, #1e3a8a 0%, #4c2fc4 55%, #7c3aed 100%);
+      font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+      color: #fff;
+    }
+    h1 {
+      position: absolute;
+      top: 210px;
+      left: 90px;
+      right: 90px;
+      margin: 0;
+      font-size: 112px;
+      font-weight: 700;
+      line-height: 1.12;
+      letter-spacing: -1px;
+      text-align: center;
+      /* Righe di lunghezza simile: niente parola sola sull'ultima riga. */
+      text-wrap: balance;
+    }
+    /* Schermata intera: parte sotto la frase ed esce dal fondo, come un telefono che sale. */
+    .intera {
+      position: absolute;
+      top: 720px;
+      left: 80px;
+      width: 1160px;
+      border-radius: 72px 72px 0 0;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+    }
+    /* Parti di schermata: frase e riquadri centrati insieme nell'altezza della pagina. */
+    body.composta {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 140px;
+      padding: 0 70px 80px;
+      box-sizing: border-box;
+    }
+    body.composta h1 { position: static; padding: 0 20px; }
+    .riquadro {
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+    /* Nei consigli la schermata ha a destra la barra di scorrimento di iOS: si taglia. */
+    .riquadro img.senza-barra { clip-path: inset(0 26px 0 0 round 56px); }
+    .riquadro img {
+      display: block;
+      width: 100%;
+      border-radius: 56px;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+    }
+  </style>
+</head>
+<body>
+  <h1 id="frase"></h1>
+  <script>
+    const schermate = {
+      it: [
+        ["Lo schermo dell'iPhone sul PC, pronto per OBS", "intera", ["ita1"]],
+        ["Continua a trasmettere mentre usi altre app", "riquadro", ["ita6"]],
+        ["Tre qualità, fino a ogni pixel dello schermo", "riquadro", ["ita2", "ita3", "ita4"]],
+        ["Abbinamento sicuro con un codice di 6 cifre", "intera", ["ita5"]],
+        ["Consigli per dirette senza intoppi", "riquadro", ["ita7"]],
+      ],
+      en: [
+        ["Your iPhone screen on your PC, ready for OBS", "intera", ["eng1"]],
+        ["Keeps streaming while you use other apps", "riquadro", ["eng6"]],
+        ["Three qualities, up to every pixel of the screen", "riquadro", ["eng2", "eng3", "eng4"]],
+        ["Secure pairing with a 6‑digit code", "intera", ["eng5"]],
+        ["Tips for smooth live streams", "riquadro", ["eng7"]],
+      ],
+    };
+    const [lingua, numero] = location.hash.slice(1).split("-");
+    const [frase, forma, immagini] = schermate[lingua][numero - 1];
+    document.getElementById("frase").textContent = frase;
+    const contenitore = forma === "intera" ? document.body : document.body.appendChild(document.createElement("div"));
+    if (forma === "riquadro") {
+      contenitore.className = "riquadro";
+      document.body.className = "composta";
+    }
+    for (const nome of immagini) {
+      const img = contenitore.appendChild(document.createElement("img"));
+      img.src = `schermate/${nome}.jpg`;
+      if (forma === "intera") img.className = "intera";
+      if (nome.endsWith("7")) img.className = "senza-barra";
+    }
+  </script>
+</body>
+</html>
