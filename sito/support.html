@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support · MirrorLoop</title>
+  <meta name="description" content="MirrorLoop support: contacts and solutions to common problems.">
+  <link rel="icon" href="icona.svg" type="image/svg+xml">
+  <link rel="alternate" hreflang="en" href="https://andreitelea.github.io/mirrorloop/support.html">
+  <link rel="alternate" hreflang="it" href="https://andreitelea.github.io/mirrorloop/it/supporto.html">
+  <link rel="stylesheet" href="stile.css">
+</head>
+<body>
+  <div class="pagina">
+    <header class="testata">
+      <a class="marchio" href="./"><img src="icona.svg" alt="">MirrorLoop</a>
+      <nav class="menu">
+        <a href="guide.html">Guide</a>
+        <a href="support.html" aria-current="page">Support</a>
+        <a href="it/supporto.html" hreflang="it" lang="it">Italiano</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1>Support</h1>
+      <p class="sottotitolo">Something doesn't work? Check the common problems below, or write to us.</p>
+
+      <h2 id="contact">Contact</h2>
+      <ul>
+        <li>Email: <a href="mailto:andreibusinessworld@gmail.com">andreibusinessworld@gmail.com</a></li>
+        <li>GitHub (if you have an account): <a href="https://github.com/andreitelea/mirrorloop/issues">open an issue</a></li>
+      </ul>
+      <p>Please include: your iPhone model and iOS version, your Windows version, the MirrorLoop version (in the app, at the top; on the PC, in <em>Settings → Apps</em>) and what happens, step by step. MirrorLoop is a personal project: replies come as soon as possible, with no guaranteed time.</p>
+
+      <h2 id="problems">Common problems</h2>
+
+      <h3 id="pc-not-found">The PC doesn't appear in the app</h3>
+      <ul>
+        <li>The receiver must be open on the PC.</li>
+        <li>iPhone and PC must be on the same network. Guest networks and some routers isolate devices from each other: use the main network.</li>
+        <li>The network must be <strong>Private</strong> in Windows (see the <a href="guide.html#before">guide</a>).</li>
+        <li>On the iPhone, <em>Settings → Privacy &amp; Security → Local Network</em> must be on for MirrorLoop.</li>
+        <li>Another firewall or antivirus on the PC may block UDP port 7450: allow MirrorLoop on private networks.</li>
+        <li>As a last resort, choose <strong>Enter address…</strong> in the app and type the address shown in the receiver's help (<kbd>F1</kbd>).</li>
+      </ul>
+
+      <h3 id="public-network">The receiver says the network is Public</h3>
+      <p>Windows blocks connections from other devices on Public networks. If it's your home network, set it to Private: <em>Settings → Network &amp; internet → Wi-Fi</em> (or <em>Ethernet</em>) → your network → <em>Network profile type</em> → <strong>Private network</strong>.</p>
+
+      <h3 id="pairing">The code doesn't appear, or the connection is rejected</h3>
+      <ul>
+        <li>The PC waits 60 seconds for you to click <strong>Allow</strong>: after that the request expires. Try again.</li>
+        <li>The receiver shows the reason for the last rejection in orange (for example "rejected on this PC" or "no answer on this PC").</li>
+        <li>Only one pairing request at a time: if another iPhone is pairing, wait for it to finish.</li>
+      </ul>
+
+      <h3 id="not-the-same-pc">"This isn't the PC you paired before"</h3>
+      <p>The PC has a new certificate, which happens after reinstalling Windows or deleting the <code>%LOCALAPPDATA%\MirrorLoop</code> folder. If you know why, pair again. If you don't, don't confirm: another computer might be pretending to be yours.</p>
+
+      <h3 id="no-audio">No sound on the PC</h3>
+      <ul>
+        <li>The iPhone volume must not be at zero: at zero the PC receives no sound. Low is fine.</li>
+        <li>The PC needs a working sound output (speakers or headphones). Check MirrorLoop in the Windows <strong>Volume mixer</strong>.</li>
+      </ul>
+
+      <h3 id="no-audio-obs">No sound in OBS or in the headphones</h3>
+      <ul>
+        <li>To hear it, the MirrorLoop source needs monitoring turned on: <em>Edit → Advanced Audio Properties</em> → <strong>Monitoring Enabled</strong>.</li>
+        <li>In the same window, check that the source's audio <strong>tracks</strong> are ticked, otherwise the sound doesn't reach recordings and streams.</li>
+      </ul>
+
+      <h3 id="no-source">There is no MirrorLoop source in OBS</h3>
+      <ul>
+        <li>Install MirrorLoop choosing <strong>Full installation</strong>, then restart OBS.</li>
+        <li>OBS must be version 31.1 or later.</li>
+        <li><em>Help → Log Files → View Current Log</em> in OBS should show lines starting with <code>[mirrorloop]</code>: if they're missing, the plugin wasn't loaded.</li>
+      </ul>
+
+      <h3 id="stutter">The image freezes or stutters</h3>
+      <p>It's almost always the Wi-Fi. Move the iPhone closer to the router, use 5 GHz, connect the PC with a cable, or choose a lower quality (Full HD or HD). After a freeze the image catches up by itself.</p>
+
+      <h3 id="rotation">The image is sideways</h3>
+      <p>Press <kbd>O</kbd> in the receiver until it's straight, and <kbd>A</kbd> to go back to automatic rotation. It happens with apps that stay upright (like the Home Screen) and with rotation lock on.</p>
+
+      <h3 id="black">The image is black</h3>
+      <p>Protected content (Netflix and similar apps) can't be captured: iOS replaces it with black.</p>
+
+      <h2 id="log">Technical log</h2>
+      <p>For hard problems, a log helps a lot. In the receiver press <kbd>Ctrl</kbd>+<kbd>R</kbd> to start it, reproduce the problem, then press <kbd>Ctrl</kbd>+<kbd>R</kbd> again to stop it. The file <code>registro-….csv</code> is in <code>%LOCALAPPDATA%\MirrorLoop</code>: attach it to your email. It contains only the timing and size of the packets, never images or audio.</p>
+    </main>
+
+    <footer class="piede">
+      <p><a href="privacy.html">Privacy</a> · <a href="support.html">Support</a> · <a href="https://github.com/andreitelea/mirrorloop">Source code on GitHub</a></p>
+      <p>MirrorLoop is open source: MIT license; the OBS plugin is GPL-2.0.</p>
+      <p>iPhone is a trademark of Apple Inc. Windows is a trademark of Microsoft Corporation. MirrorLoop is not affiliated with Apple, Microsoft or the OBS Project.</p>
+    </footer>
+  </div>
+</body>
+</html>

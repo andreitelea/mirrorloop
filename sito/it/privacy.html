@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy · MirrorLoop</title>
+  <meta name="description" content="Informativa sulla privacy di MirrorLoop: l'app non raccoglie dati e non ha server.">
+  <link rel="icon" href="../icona.svg" type="image/svg+xml">
+  <link rel="alternate" hreflang="en" href="https://andreitelea.github.io/mirrorloop/privacy.html">
+  <link rel="alternate" hreflang="it" href="https://andreitelea.github.io/mirrorloop/it/privacy.html">
+  <link rel="stylesheet" href="../stile.css">
+</head>
+<body>
+  <div class="pagina">
+    <header class="testata">
+      <a class="marchio" href="./"><img src="../icona.svg" alt="">MirrorLoop</a>
+      <nav class="menu">
+        <a href="guida.html">Guida</a>
+        <a href="supporto.html">Supporto</a>
+        <a href="../privacy.html" hreflang="en" lang="en">English</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1>Informativa sulla privacy</h1>
+      <p class="sottotitolo">In breve: MirrorLoop non raccoglie dati. Tutto resta tra il tuo iPhone e il tuo PC.</p>
+      <p class="nota">Ultimo aggiornamento: 26 ottobre 2026. Questa informativa vale per l'app MirrorLoop per iPhone, per il programma MirrorLoop per Windows (il "ricevitore") e per il plugin MirrorLoop per OBS Studio.</p>
+
+      <h2>Chi è il responsabile</h2>
+      <p>MirrorLoop è un progetto open source personale di Andrei Telea. Per qualsiasi domanda sulla privacy scrivi a <a href="mailto:andreibusinessworld@gmail.com">andreibusinessworld@gmail.com</a>.</p>
+
+      <h2>Dati raccolti</h2>
+      <p><strong>Nessuno.</strong> MirrorLoop non ha server, account, statistiche, pubblicità, tracciamento né librerie di terzi che raccolgano dati. Niente viene mandato allo sviluppatore o ad altri.</p>
+
+      <h2>Cosa fa MirrorLoop con lo schermo e l'audio</h2>
+      <p>Quando avvii la trasmissione, l'app per iPhone manda l'immagine dello schermo e l'audio dell'iPhone <strong>solo al PC che hai abbinato</strong>, direttamente sulla rete di casa. Il collegamento è cifrato (QUIC con TLS 1.3), e prima della prima trasmissione confermi lo stesso codice sui due dispositivi. Immagine e audio vengono mostrati e suonati sul PC e passati a OBS Studio se usi il plugin; MirrorLoop non li registra e non li conserva. Cosa ne fa OBS (registrazioni, dirette) dipende da te e dai servizi che scegli.</p>
+
+      <h2>Cosa resta sui tuoi dispositivi</h2>
+      <p>Per funzionare, MirrorLoop conserva alcune cose sui tuoi dispositivi. Non escono mai da lì.</p>
+      <p><strong>Sull'iPhone:</strong></p>
+      <ul>
+        <li>una chiave di abbinamento, creata dall'app e protetta dal chip di sicurezza dell'iPhone (Secure Enclave): serve a dimostrare al tuo PC che sta parlando con il tuo iPhone;</li>
+        <li>l'elenco dei PC abbinati (nome e impronta del certificato);</li>
+        <li>le tue impostazioni: il PC o l'indirizzo scelto e la qualità.</li>
+      </ul>
+      <p><strong>Sul PC</strong>, nella cartella <code>%LOCALAPPDATA%\MirrorLoop</code>:</p>
+      <ul>
+        <li>il certificato del ricevitore, che identifica il PC presso i tuoi iPhone;</li>
+        <li>l'elenco degli iPhone abbinati: la loro chiave pubblica, il loro nome come impostato sull'iPhone (per esempio "iPhone di Mario") e la data dell'abbinamento;</li>
+        <li>le tue impostazioni (nome del PC, informazioni mostrate o no);</li>
+        <li>solo se lo attivi con <kbd>Ctrl</kbd>+<kbd>R</kbd>: un registro tecnico con i tempi e le dimensioni dei pacchetti ricevuti, utile per risolvere problemi. Non contiene mai immagini o audio.</li>
+      </ul>
+
+      <h2>Permessi</h2>
+      <ul>
+        <li><strong>Rete locale</strong> (iPhone): per trovare il PC sulla rete di casa e collegarsi.</li>
+        <li><strong>Registrazione dello schermo</strong> (iPhone): iOS chiede la conferma a ogni avvio della trasmissione.</li>
+        <li><strong>Sensore di movimento</strong> (iPhone): usato solo sull'iPhone per capire come lo tieni; al PC arriva solo la rotazione dell'immagine (0, 90, 180 o 270 gradi).</li>
+      </ul>
+
+      <h2>Terze parti</h2>
+      <p>MirrorLoop non condivide niente con terze parti. MirrorLoop si scarica dall'App Store e da GitHub: per il download valgono le loro informative sulla privacy.</p>
+
+      <h2>Come cancellare tutto</h2>
+      <ul>
+        <li><strong>iPhone:</strong> <em>Dimentica i PC abbinati</em> nell'app cancella l'elenco dei PC; eliminare l'app toglie le impostazioni. La chiave di abbinamento oggi resta nel portachiavi dell'iPhone anche dopo aver eliminato l'app (iOS conserva le voci del portachiavi); non contiene niente di personale e funziona solo su quell'iPhone. Una prossima versione la cancellerà insieme ai PC abbinati; fino ad allora si toglie inizializzando l'iPhone (<em>Impostazioni → Generali → Trasferisci o inizializza iPhone</em>).</li>
+        <li><strong>PC:</strong> il tasto <kbd>D</kbd> nel ricevitore cancella l'elenco degli iPhone abbinati. Disinstallare MirrorLoop (<em>Impostazioni → App</em>) toglie il programma ma lascia la cartella <code>%LOCALAPPDATA%\MirrorLoop</code>, così dopo una reinstallazione gli iPhone non devono abbinarsi di nuovo: per cancellare anche quella, scrivi <code>%LOCALAPPDATA%</code> nella barra degli indirizzi di Esplora file ed elimina la cartella <code>MirrorLoop</code>.</li>
+      </ul>
+      <p>Poiché nessun dato arriva allo sviluppatore, da parte nostra non ci sono dati da richiedere, correggere o cancellare.</p>
+
+      <h2>Minori</h2>
+      <p>MirrorLoop non raccoglie dati da nessuno, minori compresi.</p>
+
+      <h2>Modifiche</h2>
+      <p>Se questa informativa cambia, la nuova versione viene pubblicata su questa pagina con una nuova data. La storia delle modifiche è pubblica nel <a href="https://github.com/andreitelea/mirrorloop/commits/main/sito/it/privacy.html">repository del progetto</a>.</p>
+    </main>
+
+    <footer class="piede">
+      <p><a href="privacy.html">Privacy</a> · <a href="supporto.html">Supporto</a> · <a href="https://github.com/andreitelea/mirrorloop">Codice su GitHub</a></p>
+      <p>MirrorLoop è open source: licenza MIT; il plugin per OBS è GPL-2.0.</p>
+      <p>iPhone è un marchio di Apple Inc. Windows è un marchio di Microsoft Corporation. MirrorLoop non è affiliato ad Apple, Microsoft o al progetto OBS.</p>
+    </footer>
+  </div>
+</body>
+</html>
