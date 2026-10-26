@@ -1,0 +1,56 @@
+name: Report a problem · Segnala un problema
+description: Something doesn't work as expected. · Qualcosa non funziona come dovrebbe.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing, check the [common problems](https://andreitelea.github.io/mirrorloop/support.html#problems): many have a quick fix. You can write in English or Italian.
+
+        Prima di scrivere, guarda i [problemi comuni](https://andreitelea.github.io/mirrorloop/it/supporto.html#problemi): molti si risolvono subito. Puoi scrivere in inglese o in italiano.
+  - type: textarea
+    id: cosa
+    attributes:
+      label: What happens · Cosa succede
+      description: Step by step, and what you expected instead. · Passo per passo, e cosa ti aspettavi invece.
+    validations:
+      required: true
+  - type: input
+    id: iphone
+    attributes:
+      label: iPhone model and iOS version · Modello di iPhone e versione di iOS
+      placeholder: iPhone 17 Pro Max, iOS 27.0.1
+    validations:
+      required: true
+  - type: input
+    id: versione
+    attributes:
+      label: MirrorLoop version · Versione di MirrorLoop
+      description: In the app, at the top; on the PC, in Settings → Apps. · Nell'app, in alto; sul PC, in Impostazioni → App.
+      placeholder: "app 0.15, Windows 0.14.0"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version · Versione di Windows
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: input
+    id: obs
+    attributes:
+      label: OBS Studio version (if used) · Versione di OBS Studio (se lo usi)
+      placeholder: "32.2.2"
+  - type: textarea
+    id: rete
+    attributes:
+      label: Network and quality · Rete e qualità
+      description: Wi-Fi 2.4 or 5 GHz, PC on cable or Wi-Fi, quality chosen in the app. · Wi-Fi a 2,4 o 5 GHz, PC con il cavo o in Wi-Fi, qualità scelta nell'app.
+  - type: textarea
+    id: registro
+    attributes:
+      label: Technical log (optional) · Registro tecnico (facoltativo)
+      description: |
+        In the receiver press Ctrl+R, reproduce the problem, press Ctrl+R again and attach the `registro-….csv` file from `%LOCALAPPDATA%\MirrorLoop`. It contains only packet timing and sizes, never images or audio.
+        Nel ricevitore premi Ctrl+R, riproduci il problema, premi di nuovo Ctrl+R e allega il file `registro-….csv` da `%LOCALAPPDATA%\MirrorLoop`. Contiene solo tempi e dimensioni dei pacchetti, mai immagini o audio.

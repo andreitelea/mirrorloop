@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Support and common problems · Supporto e problemi comuni
+    url: https://andreitelea.github.io/mirrorloop/support.html
+    about: Quick fixes, the guide and the support email. · Soluzioni rapide, la guida e l'email del supporto.
+  - name: Security issue · Problema di sicurezza
+    url: https://github.com/andreitelea/mirrorloop/security/advisories/new
+    about: Report it privately, not in a public issue. · Segnalalo in privato, non in una issue pubblica.
