@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MirrorLoop</title>
+  <meta name="description" content="Free, ad-free app that streams your iPhone screen and audio to a Windows PC on your home network, with a source for OBS Studio.">
+  <link rel="icon" href="icona.svg" type="image/svg+xml">
+  <link rel="alternate" hreflang="en" href="https://andreitelea.github.io/mirrorloop/">
+  <link rel="alternate" hreflang="it" href="https://andreitelea.github.io/mirrorloop/it/">
+  <link rel="stylesheet" href="stile.css">
+</head>
+<body>
+  <div class="pagina">
+    <header class="testata">
+      <a class="marchio" href="./"><img src="icona.svg" alt="">MirrorLoop</a>
+      <nav class="lingue"><a href="it/" hreflang="it" lang="it">Italiano</a></nav>
+    </header>
+
+    <main>
+      <section class="apertura">
+        <h1>Your iPhone screen on your PC, ready for OBS.</h1>
+        <p class="sottotitolo">MirrorLoop streams the screen and audio of your iPhone to a Windows PC on your home network. Free, no ads, no servers.</p>
+      </section>
+
+      <p class="avviso"><strong>Preview.</strong> The Windows app and the OBS plugin can be downloaded now. The iPhone app is not available to the public yet: it is being tested with TestFlight and will come to the App Store.</p>
+
+      <div class="pulsanti">
+        <a class="pulsante" href="https://github.com/andreitelea/mirrorloop/releases">Download for Windows</a>
+        <span class="pulsante spento">App Store: coming soon</span>
+      </div>
+
+      <h2>What it does</h2>
+      <ul>
+        <li><strong>Screen and audio</strong> of the iPhone on the PC, in sync, even while the app is in the background.</li>
+        <li>Three quality levels: <strong>HD</strong> (720p, 30 fps), <strong>Full HD</strong> (60 fps) and <strong>Maximum</strong> (the exact resolution of the iPhone screen, 60 fps).</li>
+        <li><strong>Pairing</strong> the first time: the same 6-digit code appears on the iPhone and on the PC, and you confirm it on both. After that, the iPhone reconnects by itself.</li>
+        <li><strong>Encrypted</strong> connection (QUIC), only on your home network.</li>
+        <li>A <strong>"MirrorLoop" source for OBS Studio</strong> with video and audio: no window capture needed.</li>
+      </ul>
+
+      <h2>What you need</h2>
+      <ul>
+        <li>An iPhone with <strong>iOS 27</strong> or later.</li>
+        <li>A PC with <strong>Windows 11</strong> (64-bit).</li>
+        <li>iPhone and PC on the <strong>same home network</strong>, set as a <strong>Private</strong> network in Windows.</li>
+        <li>For live streaming: <strong>OBS Studio 31.1</strong> or later.</li>
+      </ul>
+      <p class="nota">Tip: use 5 GHz Wi-Fi with the iPhone close to the router, and connect the PC with a cable.</p>
+    </main>
+
+    <footer class="piede">
+      <p>MirrorLoop is open source: <a href="https://github.com/andreitelea/mirrorloop">source code on GitHub</a>. MIT license; the OBS plugin is GPL-2.0.</p>
+      <p>iPhone is a trademark of Apple Inc. Windows is a trademark of Microsoft Corporation. MirrorLoop is not affiliated with Apple, Microsoft or the OBS Project.</p>
+    </footer>
+  </div>
+</body>
+</html>

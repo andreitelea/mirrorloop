@@ -1,0 +1,42 @@
+# Pubblica il sito (cartella sito/, pagine HTML scritte a mano) su GitHub Pages:
+# https://andreitelea.github.io/mirrorloop/
+name: Sito
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sito/**"
+      - ".github/workflows/sito.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Una pubblicazione alla volta; quella in corso si lascia finire.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pubblicazione.outputs.page_url }}
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v7
+
+      - name: Prepara il sito
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: sito
+
+      - name: Pubblica su GitHub Pages
+        id: pubblicazione
+        uses: actions/deploy-pages@v5
