@@ -1,6 +1,6 @@
 # Scheda dell'App Store
 
-Testi della pagina di MirrorLoop sull'App Store, da inserire in App Store Connect. Limiti di Apple: nome e sottotitolo 30 caratteri, testo promozionale 170, parole chiave 100 (separate da virgole), descrizione 4000.
+Testi della pagina di MirrorLoop sull'App Store, da inserire in App Store Connect. In inglese il nome "MirrorLoop" da solo è già preso da un altro account, quindi è "MirrorLoop: Screen to PC". Limiti di Apple: nome e sottotitolo 30 caratteri, testo promozionale 170, parole chiave 100 (separate da virgole), descrizione 4000.
 
 ## Dati comuni
 
@@ -14,7 +14,7 @@ Testi della pagina di MirrorLoop sull'App Store, da inserire in App Store Connec
 
 ## Inglese (English, U.S.)
 
-**Nome:** MirrorLoop
+**Nome:** MirrorLoop: Screen to PC
 
 **Sottotitolo:** Screen & audio to PC and OBS
 
