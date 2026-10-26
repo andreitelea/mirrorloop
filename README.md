@@ -1,63 +1,74 @@
-# MirrorLoop
+<p align="center"><img src="sito/icona.svg" width="96" height="96" alt=""></p>
 
-App gratuita, senza pubblicità e senza server, che trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete locale, con integrazione in OBS per le dirette.
+<h1 align="center">MirrorLoop</h1>
 
-> **Stato:** anteprima 0.14.0. Il programma per Windows e il plugin per OBS si scaricano dalla pagina delle [Release](https://github.com/andreitelea/mirrorloop/releases). **L'app per iPhone non è ancora disponibile al pubblico:** per ora è in prova con TestFlight, riservata ai tester interni. Arriverà sull'App Store.
+<p align="center">Your iPhone screen on your PC, ready for OBS.</p>
 
-## Cosa fa
+<p align="center">
+  <a href="https://andreitelea.github.io/mirrorloop/">Website</a> ·
+  <a href="https://andreitelea.github.io/mirrorloop/guide.html">Guide</a> ·
+  <a href="https://github.com/andreitelea/mirrorloop/releases">Download</a> ·
+  <a href="https://andreitelea.github.io/mirrorloop/support.html">Support</a> ·
+  <a href="https://andreitelea.github.io/mirrorloop/privacy.html">Privacy</a>
+</p>
 
-- Trasmette **schermo e audio** dell'iPhone al PC, sincronizzati, anche con l'app in background.
-- Tre qualità: **HD** (720p, 30 fps), **Full HD** (1088p, 60 fps, predefinita) e **Massima** (la risoluzione esatta dello schermo dell'iPhone, 60 fps).
-- **Abbinamento** al primo collegamento: un codice di 6 cifre compare sull'iPhone e sul PC e va confermato su entrambi. Dopo, l'iPhone si ricollega da solo.
-- Collegamento **cifrato** (QUIC), solo sulla rete di casa.
-- **Sorgente "MirrorLoop" per OBS Studio**, con video e audio: niente "Cattura finestra".
+<p align="center">English · <a href="README.it.md">Italiano</a></p>
 
-## Cosa serve
+MirrorLoop streams the screen and audio of your iPhone to a Windows PC on your home network, with a source for OBS Studio for live streaming. Free, no ads, no servers, no accounts.
 
-- iPhone con **iOS 27** o successivo.
-- PC con **Windows 11** a 64 bit.
-- iPhone e PC sulla **stessa rete di casa**, impostata in Windows come rete **Privata** (se è Pubblica il ricevitore lo segnala).
-- Per le dirette: **OBS Studio 31.1** o successivo.
-- Consiglio: Wi-Fi a 5 GHz con l'iPhone vicino al router, e il PC collegato con il cavo. La qualità Massima vuole un buon segnale.
+> **Status:** preview 0.14.0. The Windows app and the OBS plugin can be downloaded from the [Releases](https://github.com/andreitelea/mirrorloop/releases) page. **The iPhone app is not available to the public yet:** it is coming soon to the App Store.
 
-## Installazione sul PC
+<p align="center"><img src="sito/illustrazione.svg" width="560" alt="The iPhone streams to the PC, which shows the image and sends it to OBS"></p>
 
-1. Scarica `MirrorLoop-<versione>-Windows.exe` dall'ultima [Release](https://github.com/andreitelea/mirrorloop/releases).
-2. Aprilo. L'installatore non è ancora firmato digitalmente, quindi Windows può mostrare **"Windows ha protetto il PC"**: scegli *Ulteriori informazioni* → *Esegui comunque*.
-3. Scegli i componenti: il **ricevitore** (sempre) e il **plugin per OBS** (facoltativo; se OBS era aperto, riavvialo dopo l'installazione).
+## What it does
 
-L'installatore aggiunge anche la regola del firewall che apre la porta UDP 7450 **solo sulle reti private**. Si disinstalla da *Impostazioni → App*.
+- Streams the iPhone **screen and audio** to the PC, in sync, even while the app is in the background.
+- Three quality levels: **HD** (720p, 30 fps), **Full HD** (1088p, 60 fps, the default) and **Maximum** (the exact resolution of the iPhone screen, 60 fps).
+- **Pairing** the first time: the same 6-digit code appears on the iPhone and on the PC and is confirmed on both. After that, the iPhone reconnects by itself.
+- **Encrypted** connection (QUIC), only on your home network.
+- **"MirrorLoop" source for OBS Studio**, with video and audio: no window capture needed.
 
-Chi vuole solo il plugin per OBS può scaricare `MirrorLoop-<versione>-plugin-OBS.zip` ed estrarre la cartella `mirrorloop` in `C:\ProgramData\obs-studio\plugins\`.
+## What you need
 
-## Primo collegamento
+- An iPhone with **iOS 27** or later.
+- A PC with **Windows 11** (64-bit).
+- iPhone and PC on the **same home network**, set as a **Private** network in Windows (the receiver warns you if it is Public).
+- For live streaming: **OBS Studio 31.1** or later.
+- Tip: use 5 GHz Wi-Fi with the iPhone close to the router, and connect the PC with a cable. Maximum quality needs a strong signal.
 
-1. Sul PC apri **MirrorLoop** dal menu Start. Premi **F1** per vedere i tasti.
-2. Sull'iPhone apri l'app, scegli il PC nell'elenco e tocca **Avvia la trasmissione**.
-3. Sull'iPhone e sul PC compare lo stesso codice di 6 cifre: se coincide, tocca **Il codice coincide** sull'iPhone e premi **Consenti** sul PC.
-4. In OBS aggiungi una sorgente **MirrorLoop** alla scena.
+## Getting started
 
-Una guida passo passo più completa arriverà con il sito del progetto.
+1. Download `MirrorLoop-<version>-Windows.exe` from the latest [release](https://github.com/andreitelea/mirrorloop/releases) and open it. The installer is not digitally signed yet, so Windows may show **"Windows protected your PC"**: choose *More info* → *Run anyway*. Install the **receiver** and, if you want, the **OBS plugin**.
+2. On the PC, open **MirrorLoop** from the Start menu. Press **F1** to see the keys.
+3. On the iPhone, open the app, choose the PC in the list and tap **Start streaming**.
+4. The same 6-digit code appears on the iPhone and on the PC: if it matches, tap **The code matches** on the iPhone and click **Allow** on the PC.
+5. In OBS, add a **MirrorLoop** source to your scene.
+
+The installer also adds the firewall rule that opens UDP port 7450 **on private networks only**. You can uninstall it from *Settings → Apps*. If you only want the OBS plugin, download `MirrorLoop-<version>-plugin-OBS.zip` and extract the `mirrorloop` folder into `C:\ProgramData\obs-studio\plugins\`.
+
+All the details, OBS audio monitoring included, are in the [step-by-step guide](https://andreitelea.github.io/mirrorloop/guide.html). Something doesn't work? See the [common problems](https://andreitelea.github.io/mirrorloop/support.html#problems) or [open an issue](https://github.com/andreitelea/mirrorloop/issues/new/choose).
 
 ## Privacy
 
-MirrorLoop non ha server e non raccoglie dati: immagini e audio vanno direttamente dall'iPhone al PC, dentro la rete di casa, e non passano da Internet.
+MirrorLoop has no servers and collects no data: images and audio go straight from the iPhone to the PC, inside your home network, and never go through the Internet. Details in the [privacy policy](https://andreitelea.github.io/mirrorloop/privacy.html).
 
-## Come funziona
+## How it works
 
-- **iPhone** (`ios/`): cattura lo schermo con ScreenCaptureKit, comprime il video in H.264 con VideoToolbox e trasmette video e audio con QUIC (Network.framework). Il PC si trova da solo con Bonjour.
-- **PC Windows** (`windows/`): il ricevitore, in C# con .NET 10, decomprime il video con Media Foundation, suona l'audio e mostra l'immagine; scrive immagini e audio in una memoria condivisa per OBS.
-- **OBS** (`obs/`): il plugin legge la memoria condivisa e la offre come sorgente.
+- **iPhone** (`ios/`): captures the screen with ScreenCaptureKit, compresses the video to H.264 with VideoToolbox and sends video and audio over QUIC (Network.framework). It finds the PC by itself with Bonjour.
+- **Windows PC** (`windows/`): the receiver, in C# with .NET 10, decodes the video with Media Foundation, plays the audio and shows the image; it writes images and audio into shared memory for OBS.
+- **OBS** (`obs/`): the plugin reads the shared memory and offers it as a source.
 
-Documenti tecnici: [protocollo di rete](docs/protocollo.md) (compreso l'abbinamento) e [memoria condivisa per OBS](docs/memoria-condivisa.md).
+Technical documents (in Italian): [network protocol](docs/protocollo.md) (pairing included) and [shared memory for OBS](docs/memoria-condivisa.md).
 
-## Per sviluppare
+## Development
 
-- Windows con [SDK di .NET 10](https://dotnet.microsoft.com/download) e Git. Ricevitore e test: `dotnet build windows/MirrorLoop.slnx -c Release` e `dotnet test windows/MirrorLoop.slnx -c Release`.
-- Per il plugin OBS (`obs/`): Visual Studio 2022 (anche solo Build Tools) con il carico di lavoro C++ e CMake 3.30 o successivo; si compila con `cmake --preset windows-x64` e `cmake --build --preset windows-x64` dentro `obs/`.
-- L'app iOS (`ios/`) non richiede un Mac: il progetto Xcode si genera con [XcodeGen](https://github.com/yonaskolb/XcodeGen) e il workflow `.github/workflows/ios.yml` lo compila su macOS con GitHub Actions. Le build del ramo `main` vengono firmate e caricate su TestFlight.
-- **Rilascio per Windows:** la versione è una sola per app, ricevitore e plugin (`ios/project.yml`, `windows/src/MirrorLoop.Ricevitore/MirrorLoop.Ricevitore.csproj`, `obs/buildspec.json`). Pubblicando un tag `v<versione>` il workflow `.github/workflows/rilascio.yml` costruisce l'installatore ([Inno Setup](https://jrsoftware.org/isinfo.php), `windows/installatore/`) e lo zip del plugin e prepara una Release in bozza.
+- Windows with the [.NET 10 SDK](https://dotnet.microsoft.com/download) and Git. Receiver and tests: `dotnet build windows/MirrorLoop.slnx -c Release` and `dotnet test windows/MirrorLoop.slnx -c Release`.
+- For the OBS plugin (`obs/`): Visual Studio 2022 (Build Tools are enough) with the C++ workload and CMake 3.30 or later; build with `cmake --preset windows-x64` and `cmake --build --preset windows-x64` inside `obs/`.
+- The iOS app (`ios/`) doesn't need a Mac: the Xcode project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen) and the `.github/workflows/ios.yml` workflow builds it on macOS with GitHub Actions. Builds from the `main` branch are signed and uploaded to TestFlight.
+- **Windows release:** there is a single version number for app, receiver and plugin (`ios/project.yml`, `windows/src/MirrorLoop.Ricevitore/MirrorLoop.Ricevitore.csproj`, `obs/buildspec.json`). Pushing a `v<version>` tag makes the `.github/workflows/rilascio.yml` workflow build the installer ([Inno Setup](https://jrsoftware.org/isinfo.php), `windows/installatore/`) and the plugin zip, and prepare a draft release.
 
-## Licenza
+The code, comments and technical documents are in Italian.
 
-[MIT](LICENSE), tranne la cartella `obs/` (plugin per OBS Studio), che è [GPL-2.0](obs/LICENSE) come OBS stesso.
+## License
+
+[MIT](LICENSE), except the `obs/` folder (OBS Studio plugin), which is [GPL-2.0](obs/LICENSE) like OBS itself.
