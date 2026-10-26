@@ -13,6 +13,8 @@ Scrive:
       di grigi, iOS la colora con la tinta scelta da chi usa l'iPhone
   windows/src/MirrorLoop.Ricevitore/MirrorLoop.ico                     ricevitore: da 16 a 256 pixel,
       quadrato con gli angoli arrotondati e trasparenti
+  sito/apple-touch-icon.png                                            sito: icona per la schermata
+      Home dell'iPhone (180, opaca: gli angoli li arrotonda iOS)
 """
 import math
 import struct
@@ -22,6 +24,7 @@ from pathlib import Path
 RADICE = Path(__file__).resolve().parent.parent
 ICONE_IOS = RADICE / "ios/MirrorLoop/Assets.xcassets/AppIcon.appiconset"
 ICONA_WINDOWS = RADICE / "windows/src/MirrorLoop.Ricevitore/MirrorLoop.ico"
+ICONA_SITO = RADICE / "sito/apple-touch-icon.png"
 
 # Le misure sono riferite a un'icona di 1024 pixel e si scalano con la misura richiesta.
 BLU = (0x1E, 0x3A, 0x8A)
@@ -130,6 +133,7 @@ def main():
     scrivi(ICONE_IOS / "AppIcon-scura.png", png(disegna(1024, "scura"), "RGBA"))
     scrivi(ICONE_IOS / "AppIcon-tinta.png", png(disegna(1024, "tinta"), "grigio"))
     scrivi(ICONA_WINDOWS, ico([(lato, png(disegna(lato, angoli=ANGOLI_WINDOWS), "RGBA")) for lato in MISURE_WINDOWS]))
+    scrivi(ICONA_SITO, png(disegna(180), "RGB"))
 
 
 main()

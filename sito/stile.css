@@ -65,9 +65,109 @@ header.testata {
 .marchio img { width: 36px; height: 36px; }
 
 nav.menu { display: flex; gap: 16px; font-size: 0.95rem; }
+
+/* Sul telefono i link vanno su una riga loro, sotto il nome. */
+@media (max-width: 520px) {
+  header.testata { flex-wrap: wrap; row-gap: 8px; padding-bottom: 12px; }
+  nav.menu { width: 100%; gap: 20px; padding-top: 10px; border-top: 1px solid var(--bordo); }
+}
 nav.menu a[aria-current="page"] { color: var(--testo); font-weight: 600; text-decoration: none; }
 
-.apertura { padding: 32px 0 8px; }
+/* La home è più larga: apertura su due colonne, passi e schede affiancati. */
+.pagina.larga { max-width: 1040px; }
+
+.apertura {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 32px 0 8px;
+}
+
+.illustrazione { width: 100%; max-width: 480px; height: auto; justify-self: center; }
+
+@media (min-width: 820px) {
+  .apertura { grid-template-columns: 1.1fr 1fr; gap: 40px; padding-top: 48px; }
+}
+
+/* Come funziona: tre passi numerati. */
+ol.passi {
+  list-style: none;
+  counter-reset: passo;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  padding: 0;
+}
+
+ol.passi li {
+  counter-increment: passo;
+  margin: 0;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--fondo-riquadro);
+}
+
+ol.passi li::before {
+  content: counter(passo);
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--sfumatura);
+  color: #fff;
+  font-weight: 700;
+}
+
+ol.passi h3, ul.schede h3, .scaricamento h3 { margin: 12px 0 4px; font-size: 1.05rem; }
+ol.passi p, ul.schede p { margin: 0; color: var(--testo-tenue); }
+
+/* Cosa fa: schede con un'icona a tratto. */
+ul.schede {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+  gap: 16px;
+  padding: 0;
+}
+
+ul.schede li {
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--bordo);
+  border-radius: 12px;
+}
+
+ul.schede svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: var(--accento);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+ul.schede svg .pieno { fill: var(--accento); stroke: none; }
+
+/* Scarica: Windows e iPhone affiancati. */
+.scaricamento {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.scaricamento > div {
+  padding: 4px 20px;
+  border: 1px solid var(--bordo);
+  border-radius: 12px;
+}
+
+.scaricamento h3 { margin-top: 16px; }
+.scaricamento .pulsanti { margin: 12px 0; }
+
+h2[id="download"], h2[id="scarica"] { scroll-margin-top: 16px; }
 
 h1 {
   margin: 32px 0 12px;
@@ -117,6 +217,11 @@ th, td {
 th { color: var(--testo-tenue); font-weight: 600; }
 
 td:first-child { white-space: nowrap; }
+
+@media (max-width: 520px) {
+  table { font-size: 0.88rem; }
+  th, td { padding: 8px 6px; }
+}
 
 kbd, code {
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -176,6 +281,47 @@ ul { padding-left: 1.2em; }
 li { margin: 6px 0; }
 
 .nota { color: var(--testo-tenue); font-size: 0.95rem; }
+
+/* Riquadri nel testo: consigli (colore dell'icona) e avvertenze (giallo, come l'avviso della home). */
+.riquadro {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 4px solid;
+  border-radius: 8px;
+}
+
+.riquadro.consiglio { border-color: var(--accento); background: var(--fondo-riquadro); }
+.riquadro.attenzione { border-color: var(--avviso-bordo); background: var(--avviso); }
+
+/* Istruzioni numerate (guida): il numero in un cerchietto con i colori dell'icona. */
+main > ol:not(.passi) {
+  list-style: none;
+  counter-reset: istruzione;
+  padding-left: 0;
+}
+
+main > ol:not(.passi) > li {
+  counter-increment: istruzione;
+  position: relative;
+  margin: 10px 0;
+  padding-left: 38px;
+}
+
+main > ol:not(.passi) > li::before {
+  content: counter(istruzione);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--sfumatura);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
 
 footer.piede {
   margin: 56px 0 0;

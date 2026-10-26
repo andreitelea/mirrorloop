@@ -5,13 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MirrorLoop</title>
   <meta name="description" content="App gratuita e senza pubblicità che trasmette schermo e audio dell'iPhone a un PC Windows sulla rete di casa, con una sorgente per OBS Studio.">
+  <link rel="canonical" href="https://andreitelea.github.io/mirrorloop/it/">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="MirrorLoop">
+  <meta property="og:title" content="MirrorLoop">
+  <meta property="og:description" content="App gratuita e senza pubblicità che trasmette schermo e audio dell'iPhone a un PC Windows sulla rete di casa, con una sorgente per OBS Studio.">
+  <meta property="og:url" content="https://andreitelea.github.io/mirrorloop/it/">
+  <meta property="og:image" content="https://andreitelea.github.io/mirrorloop/anteprima-it.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="MirrorLoop: lo schermo dell&#x27;iPhone sul PC, pronto per OBS">
+  <meta property="og:locale" content="it_IT">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="../icona.svg" type="image/svg+xml">
   <link rel="alternate" hreflang="en" href="https://andreitelea.github.io/mirrorloop/">
   <link rel="alternate" hreflang="it" href="https://andreitelea.github.io/mirrorloop/it/">
   <link rel="stylesheet" href="../stile.css">
 </head>
 <body>
-  <div class="pagina">
+  <div class="pagina larga">
     <header class="testata">
       <a class="marchio" href="./"><img src="../icona.svg" alt="">MirrorLoop</a>
       <nav class="menu">
@@ -23,26 +36,82 @@
 
     <main>
       <section class="apertura">
-        <h1>Lo schermo dell'iPhone sul PC, pronto per OBS.</h1>
-        <p class="sottotitolo">MirrorLoop trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete di casa. Gratis, senza pubblicità, senza server.</p>
+        <div>
+          <h1>Lo schermo dell'iPhone sul PC, pronto per OBS.</h1>
+          <p class="sottotitolo">MirrorLoop trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete di casa. Gratis, senza pubblicità, senza server.</p>
+          <div class="pulsanti">
+            <a class="pulsante" href="#scarica">Scarica per Windows</a>
+            <a class="pulsante secondario" href="guida.html">Leggi la guida</a>
+          </div>
+        </div>
+        <img class="illustrazione" src="../illustrazione.svg" alt="Un iPhone che manda il suo schermo a un PC con OBS Studio">
       </section>
 
       <p class="avviso"><strong>Anteprima.</strong> Il programma per Windows e il plugin per OBS si possono già scaricare. L'app per iPhone non è ancora disponibile al pubblico: è in prova con TestFlight e arriverà sull'App Store.</p>
 
-      <div class="pulsanti">
-        <a class="pulsante" href="https://github.com/andreitelea/mirrorloop/releases">Scarica per Windows</a>
-        <span class="pulsante spento">App Store: in arrivo</span>
-        <a class="pulsante secondario" href="guida.html">Leggi la guida</a>
-      </div>
+      <h2>Come funziona</h2>
+      <ol class="passi">
+        <li>
+          <h3>L'iPhone trasmette</h3>
+          <p>L'app cattura schermo e audio e li manda sulla rete di casa, cifrati.</p>
+        </li>
+        <li>
+          <h3>Il PC riceve</h3>
+          <p>MirrorLoop per Windows li decomprime e li mostra sincronizzati, con un ritardo minimo.</p>
+        </li>
+        <li>
+          <h3>OBS va in onda</h3>
+          <p>Aggiungi la fonte MirrorLoop alla scena e trasmetti su Twitch, YouTube o dove preferisci.</p>
+        </li>
+      </ol>
 
       <h2>Cosa fa</h2>
-      <ul>
-        <li><strong>Schermo e audio</strong> dell'iPhone sul PC, sincronizzati, anche con l'app in background.</li>
-        <li>Tre qualità: <strong>HD</strong> (720p, 30 fps), <strong>Full HD</strong> (60 fps) e <strong>Massima</strong> (la risoluzione esatta dello schermo dell'iPhone, 60 fps).</li>
-        <li><strong>Abbinamento</strong> la prima volta: lo stesso codice di 6 cifre compare sull'iPhone e sul PC e va confermato su entrambi. Dopo, l'iPhone si ricollega da solo.</li>
-        <li>Collegamento <strong>cifrato</strong> (QUIC), solo sulla rete di casa.</li>
-        <li><strong>Sorgente "MirrorLoop" per OBS Studio</strong>, con video e audio: niente "Cattura finestra".</li>
+      <ul class="schede">
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="2" width="10" height="20" rx="2"/><path d="M17 9a4 4 0 0 1 0 6M20 6a8 8 0 0 1 0 12"/></svg>
+          <h3>Schermo e audio</h3>
+          <p>Sincronizzati, anche con l'app in background.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9v6M10 9v6M6 12h4M14 9v6h1.5a3 3 0 0 0 0-6z"/></svg>
+          <h3>Tre qualità</h3>
+          <p>HD, Full HD a 60 fps, oppure Massima: la risoluzione esatta dello schermo dell'iPhone.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+          <h3>Abbinamento con un codice</h3>
+          <p>Lo stesso codice di 6 cifre sui due schermi, solo la prima volta. Poi si ricollega da solo.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <h3>Cifrato e locale</h3>
+          <p>Tutto resta nella rete di casa: niente server, niente account, nessun dato raccolto.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" class="pieno"/></svg>
+          <h3>Una fonte per OBS</h3>
+          <p>Video e audio direttamente in OBS Studio: niente "Cattura finestra".</p>
+        </li>
       </ul>
+
+      <h2 id="scarica">Scarica</h2>
+      <div class="scaricamento">
+        <div>
+          <h3>Windows</h3>
+          <p class="nota">Windows 11 a 64 bit · versione 0.14.0 (anteprima) · 44 MB<br>Il ricevitore, con il plugin per OBS se lo vuoi.</p>
+          <div class="pulsanti">
+            <a class="pulsante" href="https://github.com/andreitelea/mirrorloop/releases/download/v0.14.0/MirrorLoop-0.14.0-Windows.exe">Scarica l'installatore</a>
+          </div>
+          <p class="nota">Solo il plugin per OBS: <a href="https://github.com/andreitelea/mirrorloop/releases/download/v0.14.0/MirrorLoop-0.14.0-plugin-OBS.zip">file .zip</a> · <a href="https://github.com/andreitelea/mirrorloop/releases">tutte le versioni</a></p>
+        </div>
+        <div>
+          <h3>iPhone</h3>
+          <p class="nota">iOS 27 o successivo.</p>
+          <div class="pulsanti">
+            <span class="pulsante spento">App Store: in arrivo</span>
+          </div>
+        </div>
+      </div>
 
       <h2>Cosa serve</h2>
       <ul>

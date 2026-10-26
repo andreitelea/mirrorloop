@@ -1,0 +1,46 @@
+<!doctype html>
+<!--
+  Immagine di anteprima del sito (quella che compare quando si condivide un link), 1200×630.
+  Si "fotografa" con Edge senza interfaccia, dalla cartella principale del repository:
+    msedge --headless --disable-gpu --hide-scrollbars --user-data-dir=<cartella temporanea>
+           --window-size=1200,630 --screenshot=<repo>\sito\anteprima-en.png "file:///<repo>/grafica/anteprima.html"
+  e con "?it" in fondo all'indirizzo per la versione italiana (sito\anteprima-it.png).
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+    body {
+      display: grid;
+      grid-template-columns: 1fr 520px;
+      align-items: center;
+      gap: 24px;
+      padding: 0 64px;
+      box-sizing: border-box;
+      background: linear-gradient(135deg, #ffffff 0%, #f1edff 100%);
+      color: #1b1b2a;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    .marchio { display: flex; align-items: center; gap: 20px; font-size: 56px; font-weight: 700; }
+    .marchio img { width: 88px; height: 88px; }
+    h1 { margin: 36px 0 20px; font-size: 52px; line-height: 1.12; }
+    p { margin: 0; font-size: 28px; color: #55556a; }
+    .illustrazione { width: 520px; }
+  </style>
+</head>
+<body>
+  <div>
+    <div class="marchio"><img src="../sito/icona.svg" alt="">MirrorLoop</div>
+    <h1 id="titolo">Your iPhone screen on your PC, ready for OBS.</h1>
+    <p id="sottotitolo">Free · no ads · no servers</p>
+  </div>
+  <img class="illustrazione" src="../sito/illustrazione.svg" alt="">
+  <script>
+    if (location.search === "?it") {
+      document.getElementById("titolo").textContent = "Lo schermo dell'iPhone sul PC, pronto per OBS.";
+      document.getElementById("sottotitolo").textContent = "Gratis · senza pubblicità · senza server";
+    }
+  </script>
+</body>
+</html>

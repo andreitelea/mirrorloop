@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Guide · MirrorLoop</title>
   <meta name="description" content="Step-by-step guide to MirrorLoop: install, pair the iPhone with the PC, use the receiver and the MirrorLoop source in OBS Studio.">
+  <link rel="canonical" href="https://andreitelea.github.io/mirrorloop/guide.html">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="MirrorLoop">
+  <meta property="og:title" content="Guide · MirrorLoop">
+  <meta property="og:description" content="Step-by-step guide to MirrorLoop: install, pair the iPhone with the PC, use the receiver and the MirrorLoop source in OBS Studio.">
+  <meta property="og:url" content="https://andreitelea.github.io/mirrorloop/guide.html">
+  <meta property="og:image" content="https://andreitelea.github.io/mirrorloop/anteprima-en.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="MirrorLoop: your iPhone screen on your PC, ready for OBS">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="icona.svg" type="image/svg+xml">
   <link rel="alternate" hreflang="en" href="https://andreitelea.github.io/mirrorloop/guide.html">
   <link rel="alternate" hreflang="it" href="https://andreitelea.github.io/mirrorloop/it/guida.html">
@@ -69,7 +82,7 @@
         <li>The first time, the iPhone and the PC show the <strong>same 6-digit code</strong>. If it matches, tap <strong>The code matches</strong> on the iPhone and click <strong>Allow</strong> on the PC (with the mouse: the keyboard can't allow, so a key pressed by mistake can't either). If the codes are different, cancel and reject.</li>
       </ol>
       <p>That's it: the screen and audio of the iPhone appear on the PC. From now on there is no code: the iPhone reconnects by itself, even if the receiver is closed and reopened or the Wi-Fi drops for a moment. You can switch to other apps: streaming continues in the background.</p>
-      <p class="nota">The PC doesn't appear in the list? Choose <strong>Enter address…</strong> and type the address shown in the receiver's help (<kbd>F1</kbd>). If it still doesn't connect, see <a href="#before">section 1</a> (Private network).</p>
+      <p class="riquadro consiglio">The PC doesn't appear in the list? Choose <strong>Enter address…</strong> and type the address shown in the receiver's help (<kbd>F1</kbd>). If it still doesn't connect, see <a href="#before">section 1</a> (Private network).</p>
 
       <h2 id="receiver">5. Using the receiver</h2>
       <p>The receiver window shows the iPhone screen. The keys:</p>
@@ -101,10 +114,8 @@
       </ol>
 
       <h2 id="audio">7. iPhone audio and notifications</h2>
-      <ul>
-        <li>Keep the iPhone volume <strong>low but not at zero</strong>: at zero the PC receives no sound. At any other level the PC gets the audio at full volume.</li>
-        <li>Turn on a <strong>Focus</strong> (such as <em>Do Not Disturb</em>) so notifications don't end up on stream.</li>
-      </ul>
+      <p class="riquadro attenzione">Keep the iPhone volume <strong>low but not at zero</strong>: at zero the PC receives no sound. At any other level the PC gets the audio at full volume.</p>
+      <p>Turn on a <strong>Focus</strong> (such as <em>Do Not Disturb</em>) so notifications don't end up on stream.</p>
 
       <h2 id="quality">8. Quality and Wi-Fi</h2>
       <table>
@@ -112,9 +123,9 @@
           <tr><th>Quality</th><th>Image</th><th>Data</th><th>When</th></tr>
         </thead>
         <tbody>
-          <tr><td>HD</td><td>720p, 30 fps</td><td>4 Mbit/s</td><td>weak Wi-Fi or far from the router</td></tr>
-          <tr><td>Full HD</td><td>1088p, 60 fps</td><td>10 Mbit/s</td><td>almost always (default)</td></tr>
-          <tr><td>Maximum</td><td>exact screen resolution, 60 fps</td><td>30 Mbit/s</td><td>strong Wi-Fi, iPhone close to the router</td></tr>
+          <tr><td>HD</td><td>720p, 30&nbsp;fps</td><td>4&nbsp;Mbit/s</td><td>weak Wi-Fi or far from the router</td></tr>
+          <tr><td>Full HD</td><td>1088p, 60&nbsp;fps</td><td>10&nbsp;Mbit/s</td><td>almost always (default)</td></tr>
+          <tr><td>Maximum</td><td>exact screen resolution, 60&nbsp;fps</td><td>30&nbsp;Mbit/s</td><td>strong Wi-Fi, iPhone close to the router</td></tr>
         </tbody>
       </table>
       <ul>
