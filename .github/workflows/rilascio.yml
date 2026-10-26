@@ -5,9 +5,6 @@ name: Rilascio Windows
 
 on:
   workflow_dispatch:
-  # Solo per la prova sul ramo di lavoro: da togliere prima di unire a main.
-  push:
-    branches: [installatore]
 
 permissions:
   contents: read
