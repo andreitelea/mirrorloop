@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guide · MirrorLoop</title>
+  <meta name="description" content="Step-by-step guide to MirrorLoop: install, pair the iPhone with the PC, use the receiver and the MirrorLoop source in OBS Studio.">
+  <link rel="icon" href="icona.svg" type="image/svg+xml">
+  <link rel="alternate" hreflang="en" href="https://andreitelea.github.io/mirrorloop/guide.html">
+  <link rel="alternate" hreflang="it" href="https://andreitelea.github.io/mirrorloop/it/guida.html">
+  <link rel="stylesheet" href="stile.css">
+</head>
+<body>
+  <div class="pagina">
+    <header class="testata">
+      <a class="marchio" href="./"><img src="icona.svg" alt="">MirrorLoop</a>
+      <nav class="menu">
+        <a href="guide.html" aria-current="page">Guide</a>
+        <a href="it/guida.html" hreflang="it" lang="it">Italiano</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1>Guide</h1>
+      <p class="sottotitolo">From installation to your first stream in OBS.</p>
+
+      <nav class="indice" aria-label="Contents">
+        <ol>
+          <li><a href="#before">Before you start</a></li>
+          <li><a href="#pc">Install the app on the PC</a></li>
+          <li><a href="#iphone">Install the app on the iPhone</a></li>
+          <li><a href="#pairing">First connection and pairing</a></li>
+          <li><a href="#receiver">Using the receiver</a></li>
+          <li><a href="#obs">Using MirrorLoop in OBS</a></li>
+          <li><a href="#audio">iPhone audio and notifications</a></li>
+          <li><a href="#quality">Quality and Wi-Fi</a></li>
+          <li><a href="#forget">Removing a pairing</a></li>
+          <li><a href="#limits">Good to know</a></li>
+        </ol>
+      </nav>
+
+      <h2 id="before">1. Before you start</h2>
+      <ul>
+        <li>An iPhone with <strong>iOS 27</strong> or later and a PC with <strong>Windows 11</strong> (64-bit).</li>
+        <li>iPhone and PC on the <strong>same home network</strong>. The PC can be on Wi-Fi or connected with a cable to the same router; the cable works best.</li>
+        <li>In Windows the home network must be <strong>Private</strong>: on a Public network Windows blocks the connection, and the receiver shows a warning. To check: <em>Settings → Network &amp; internet → Wi-Fi</em> (or <em>Ethernet</em>) → your network → <em>Network profile type</em> → <strong>Private network</strong>.</li>
+        <li>For live streaming: <strong>OBS Studio 31.1</strong> or later.</li>
+      </ul>
+
+      <h2 id="pc">2. Install the app on the PC</h2>
+      <ol>
+        <li>Download <code>MirrorLoop-&lt;version&gt;-Windows.exe</code> from the <a href="https://github.com/andreitelea/mirrorloop/releases">Releases page</a>.</li>
+        <li>Open it. The installer is not digitally signed yet, so Windows may show <strong>"Windows protected your PC"</strong>: choose <em>More info</em> → <em>Run anyway</em>.</li>
+        <li>Choose <strong>Full installation</strong> (receiver and OBS plugin) or <strong>Receiver only</strong>. If OBS is open, restart it after installing.</li>
+        <li>Optionally tick <strong>Start MirrorLoop when you sign in to Windows</strong>, so the receiver is always ready.</li>
+      </ol>
+      <p>The installer also adds a firewall rule that lets the iPhone reach the receiver (UDP port 7450) <strong>on private networks only</strong>. To uninstall: <em>Settings → Apps</em>.</p>
+
+      <h2 id="iphone">3. Install the app on the iPhone</h2>
+      <p>The iPhone app is coming to the App Store. The first time you open it, iOS asks to let MirrorLoop find devices on your <strong>local network</strong>: allow it, otherwise the app can't find the PC. If you said no, turn it back on in <em>Settings → Privacy &amp; Security → Local Network</em>.</p>
+
+      <h2 id="pairing">4. First connection and pairing</h2>
+      <ol>
+        <li>On the PC, open <strong>MirrorLoop</strong> from the Start menu.</li>
+        <li>On the iPhone, open the app and pick your PC under <strong>Choose the PC</strong>. It appears as "&lt;your name&gt;'s PC".</li>
+        <li>Choose the <strong>Quality</strong> (see <a href="#quality">section 8</a>) and tap <strong>Start streaming</strong>.</li>
+        <li>iOS asks you to confirm sharing the screen: confirm.</li>
+        <li>The first time, the iPhone and the PC show the <strong>same 6-digit code</strong>. If it matches, tap <strong>The code matches</strong> on the iPhone and click <strong>Allow</strong> on the PC (with the mouse: the keyboard can't allow, so a key pressed by mistake can't either). If the codes are different, cancel and reject.</li>
+      </ol>
+      <p>That's it: the screen and audio of the iPhone appear on the PC. From now on there is no code: the iPhone reconnects by itself, even if the receiver is closed and reopened or the Wi-Fi drops for a moment. You can switch to other apps: streaming continues in the background.</p>
+      <p class="nota">The PC doesn't appear in the list? Choose <strong>Enter address…</strong> and type the address shown in the receiver's help (<kbd>F1</kbd>). If it still doesn't connect, see <a href="#before">section 1</a> (Private network).</p>
+
+      <h2 id="receiver">5. Using the receiver</h2>
+      <p>The receiver window shows the iPhone screen. The keys:</p>
+      <table>
+        <tbody>
+          <tr><td><kbd>F1</kbd></td><td>show or hide the help, with the PC addresses</td></tr>
+          <tr><td><kbd>S</kbd></td><td>transmission info (<kbd>Ctrl</kbd>+<kbd>S</kbd>: full statistics)</td></tr>
+          <tr><td><kbd>O</kbd></td><td>rotate the image by 90°</td></tr>
+          <tr><td><kbd>A</kbd></td><td>back to automatic rotation</td></tr>
+          <tr><td><kbd>N</kbd></td><td>name of this PC on the iPhone</td></tr>
+          <tr><td><kbd>D</kbd></td><td>forget the paired iPhones</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>reject a pairing request; close the help</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Rotation.</strong> The iPhone tells the PC how it is being held, using its motion sensor. The sensor can't know when an app stays upright even with the phone sideways (the Home Screen, many social apps) or when rotation lock is on: in those cases press <kbd>O</kbd> until the image is straight, and <kbd>A</kbd> to go back to automatic.</p>
+
+      <h2 id="obs">6. Using MirrorLoop in OBS</h2>
+      <ol>
+        <li>Install with the OBS plugin (<a href="#pc">section 2</a>) and restart OBS.</li>
+        <li>In the <strong>Sources</strong> box, click <strong>+</strong> and choose <strong>MirrorLoop</strong>. It brings both video and audio.</li>
+        <li>To size it: right-click the source → <em>Transform</em> → <em>Fit to screen</em>.</li>
+      </ol>
+      <p>The receiver must be open (it can be minimized). If the iPhone stops streaming, the source empties after a second and comes back by itself.</p>
+      <p>An iPhone screen is not 16:9: with the phone sideways there are bands above and below, and that's normal.</p>
+      <p><strong>Hearing the iPhone in your headphones.</strong> The receiver plays the iPhone audio on the PC, and OBS gets its own copy. To hear it only through OBS:</p>
+      <ol>
+        <li>in OBS, <em>Edit → Advanced Audio Properties</em> → <em>Audio Monitoring</em> of the MirrorLoop source → <strong>Monitor and Output</strong>;</li>
+        <li>in the Windows <strong>Volume mixer</strong>, set MirrorLoop to zero. OBS's copy is taken before that volume, so the stream isn't affected.</li>
+      </ol>
+
+      <h2 id="audio">7. iPhone audio and notifications</h2>
+      <ul>
+        <li>Keep the iPhone volume <strong>low but not at zero</strong>: at zero the PC receives no sound. At any other level the PC gets the audio at full volume.</li>
+        <li>Turn on a <strong>Focus</strong> (such as <em>Do Not Disturb</em>) so notifications don't end up on stream.</li>
+      </ul>
+
+      <h2 id="quality">8. Quality and Wi-Fi</h2>
+      <table>
+        <thead>
+          <tr><th>Quality</th><th>Image</th><th>Data</th><th>When</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>HD</td><td>720p, 30 fps</td><td>4 Mbit/s</td><td>weak Wi-Fi or far from the router</td></tr>
+          <tr><td>Full HD</td><td>1088p, 60 fps</td><td>10 Mbit/s</td><td>almost always (default)</td></tr>
+          <tr><td>Maximum</td><td>exact screen resolution, 60 fps</td><td>30 Mbit/s</td><td>strong Wi-Fi, iPhone close to the router</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Use <strong>5 GHz Wi-Fi</strong> and keep the iPhone close to the router; connect the PC with a cable.</li>
+        <li>When the Wi-Fi stalls (for example walking away from the router), the image freezes for a moment and then catches up by itself. If it happens often, choose a lower quality.</li>
+        <li>All data stays on your home network: it doesn't use your internet upload, which stays free for the live stream.</li>
+      </ul>
+
+      <h2 id="forget">9. Removing a pairing</h2>
+      <ul>
+        <li>On the iPhone: <strong>Forget paired PCs</strong>.</li>
+        <li>On the PC: key <kbd>D</kbd> in the receiver.</li>
+      </ul>
+      <p>The next connection asks for the code again, on both sides. If you reinstall MirrorLoop on the PC, the iPhone warns that it isn't the PC paired before: that's expected, pair again.</p>
+
+      <h2 id="limits">10. Good to know</h2>
+      <ul>
+        <li>Protected content (Netflix and similar apps) stays black: iOS doesn't let it be captured.</li>
+        <li>The red recording indicator of iOS at the top of the screen also appears in the image.</li>
+        <li>The receiver needs a sound output on the PC (speakers or headphones, even muted in the Volume mixer): it's what keeps time for the audio sent to OBS.</li>
+      </ul>
+    </main>
+
+    <footer class="piede">
+      <p>MirrorLoop is open source: <a href="https://github.com/andreitelea/mirrorloop">source code on GitHub</a>. MIT license; the OBS plugin is GPL-2.0.</p>
+      <p>iPhone is a trademark of Apple Inc. Windows is a trademark of Microsoft Corporation. MirrorLoop is not affiliated with Apple, Microsoft or the OBS Project.</p>
+    </footer>
+  </div>
+</body>
+</html>

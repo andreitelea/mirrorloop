@@ -64,21 +64,74 @@ header.testata {
 
 .marchio img { width: 36px; height: 36px; }
 
-nav.lingue a { font-size: 0.95rem; }
+nav.menu { display: flex; gap: 16px; font-size: 0.95rem; }
+nav.menu a[aria-current="page"] { color: var(--testo); font-weight: 600; text-decoration: none; }
 
 .apertura { padding: 32px 0 8px; }
 
-.apertura h1 {
-  margin: 0 0 12px;
+h1 {
+  margin: 32px 0 12px;
   font-size: clamp(1.9rem, 6vw, 2.8rem);
   line-height: 1.15;
 }
 
-.apertura p.sottotitolo {
+.apertura h1 { margin-top: 0; }
+
+.sottotitolo {
   margin: 0;
   color: var(--testo-tenue);
   font-size: 1.15rem;
 }
+
+/* Indice della guida. */
+nav.indice {
+  margin: 24px 0;
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: var(--fondo-riquadro);
+}
+
+nav.indice ol { margin: 0; padding-left: 1.4em; }
+nav.indice li { margin: 4px 0; }
+
+/* Le ancore non finiscono attaccate al bordo della finestra. */
+h2[id] { scroll-margin-top: 16px; }
+
+/* Tabelle strette: sul telefono scorrono dentro il loro riquadro, non la pagina. */
+table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.95rem;
+}
+
+th, td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--bordo);
+  text-align: left;
+  vertical-align: top;
+}
+
+th { color: var(--testo-tenue); font-weight: 600; }
+
+td:first-child { white-space: nowrap; }
+
+kbd, code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.88em;
+}
+
+kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--bordo);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--fondo-riquadro);
+}
+
+code { overflow-wrap: anywhere; }
 
 .avviso {
   margin: 24px 0;

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guida · MirrorLoop</title>
+  <meta name="description" content="Guida passo passo a MirrorLoop: installazione, abbinamento di iPhone e PC, ricevitore e sorgente MirrorLoop in OBS Studio.">
+  <link rel="icon" href="../icona.svg" type="image/svg+xml">
+  <link rel="alternate" hreflang="en" href="https://andreitelea.github.io/mirrorloop/guide.html">
+  <link rel="alternate" hreflang="it" href="https://andreitelea.github.io/mirrorloop/it/guida.html">
+  <link rel="stylesheet" href="../stile.css">
+</head>
+<body>
+  <div class="pagina">
+    <header class="testata">
+      <a class="marchio" href="./"><img src="../icona.svg" alt="">MirrorLoop</a>
+      <nav class="menu">
+        <a href="guida.html" aria-current="page">Guida</a>
+        <a href="../guide.html" hreflang="en" lang="en">English</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1>Guida</h1>
+      <p class="sottotitolo">Dall'installazione alla prima diretta in OBS.</p>
+
+      <nav class="indice" aria-label="Indice">
+        <ol>
+          <li><a href="#prima">Prima di iniziare</a></li>
+          <li><a href="#pc">Installare il programma sul PC</a></li>
+          <li><a href="#iphone">Installare l'app sull'iPhone</a></li>
+          <li><a href="#abbinamento">Primo collegamento e abbinamento</a></li>
+          <li><a href="#ricevitore">Usare il ricevitore</a></li>
+          <li><a href="#obs">Usare MirrorLoop in OBS</a></li>
+          <li><a href="#audio">Audio e notifiche dell'iPhone</a></li>
+          <li><a href="#qualita">Qualità e Wi-Fi</a></li>
+          <li><a href="#dimentica">Togliere un abbinamento</a></li>
+          <li><a href="#limiti">Da sapere</a></li>
+        </ol>
+      </nav>
+
+      <h2 id="prima">1. Prima di iniziare</h2>
+      <ul>
+        <li>Un iPhone con <strong>iOS 27</strong> o successivo e un PC con <strong>Windows 11</strong> a 64 bit.</li>
+        <li>iPhone e PC sulla <strong>stessa rete di casa</strong>. Il PC può usare il Wi-Fi o il cavo verso lo stesso router; con il cavo va meglio.</li>
+        <li>In Windows la rete di casa deve essere <strong>Privata</strong>: su una rete Pubblica Windows blocca il collegamento, e il ricevitore lo segnala. Per controllare: <em>Impostazioni → Rete e Internet → Wi-Fi</em> (o <em>Ethernet</em>) → la tua rete → <em>Tipo di profilo di rete</em> → <strong>Rete privata</strong>.</li>
+        <li>Per le dirette: <strong>OBS Studio 31.1</strong> o successivo.</li>
+      </ul>
+
+      <h2 id="pc">2. Installare il programma sul PC</h2>
+      <ol>
+        <li>Scarica <code>MirrorLoop-&lt;versione&gt;-Windows.exe</code> dalla <a href="https://github.com/andreitelea/mirrorloop/releases">pagina delle Release</a>.</li>
+        <li>Aprilo. L'installatore non è ancora firmato digitalmente, quindi Windows può mostrare <strong>"Windows ha protetto il PC"</strong>: scegli <em>Ulteriori informazioni</em> → <em>Esegui comunque</em>.</li>
+        <li>Scegli <strong>Installazione completa</strong> (ricevitore e plugin per OBS) oppure <strong>Solo il ricevitore</strong>. Se OBS era aperto, riavvialo dopo l'installazione.</li>
+        <li>Se vuoi, spunta <strong>Avvia MirrorLoop all'accesso a Windows</strong>, così il ricevitore è sempre pronto.</li>
+      </ol>
+      <p>L'installatore aggiunge anche la regola del firewall che lascia arrivare l'iPhone al ricevitore (porta UDP 7450) <strong>solo sulle reti private</strong>. Per disinstallare: <em>Impostazioni → App</em>.</p>
+
+      <h2 id="iphone">3. Installare l'app sull'iPhone</h2>
+      <p>L'app per iPhone arriverà sull'App Store. La prima volta che la apri, iOS chiede di lasciare che MirrorLoop trovi i dispositivi sulla <strong>rete locale</strong>: consenti, altrimenti l'app non trova il PC. Se hai detto di no, riattivalo in <em>Impostazioni → Privacy e sicurezza → Rete locale</em>.</p>
+
+      <h2 id="abbinamento">4. Primo collegamento e abbinamento</h2>
+      <ol>
+        <li>Sul PC apri <strong>MirrorLoop</strong> dal menu Start.</li>
+        <li>Sull'iPhone apri l'app e scegli il tuo PC in <strong>Scegli il PC</strong>. Compare come "PC di &lt;tuo nome&gt;".</li>
+        <li>Scegli la <strong>Qualità</strong> (vedi il <a href="#qualita">capitolo 8</a>) e tocca <strong>Avvia la trasmissione</strong>.</li>
+        <li>iOS chiede di confermare la condivisione dello schermo: conferma.</li>
+        <li>La prima volta l'iPhone e il PC mostrano lo <strong>stesso codice di 6 cifre</strong>. Se coincide, tocca <strong>Il codice coincide</strong> sull'iPhone e fai clic su <strong>Consenti</strong> sul PC (con il mouse: dalla tastiera non si può consentire, così nemmeno un tasto premuto per sbaglio). Se i codici sono diversi, annulla e rifiuta.</li>
+      </ol>
+      <p>Fatto: lo schermo e l'audio dell'iPhone compaiono sul PC. Da qui in poi niente codice: l'iPhone si ricollega da solo, anche se chiudi e riapri il ricevitore o il Wi-Fi si interrompe per un attimo. Puoi passare ad altre app: la trasmissione continua in background.</p>
+      <p class="nota">Il PC non compare nell'elenco? Scegli <strong>Indirizzo a mano…</strong> e scrivi l'indirizzo che il ricevitore mostra nell'aiuto (<kbd>F1</kbd>). Se ancora non si collega, vedi il <a href="#prima">capitolo 1</a> (rete Privata).</p>
+
+      <h2 id="ricevitore">5. Usare il ricevitore</h2>
+      <p>La finestra del ricevitore mostra lo schermo dell'iPhone. I tasti:</p>
+      <table>
+        <tbody>
+          <tr><td><kbd>F1</kbd></td><td>mostra o nasconde l'aiuto, con gli indirizzi del PC</td></tr>
+          <tr><td><kbd>S</kbd></td><td>informazioni sulla trasmissione (<kbd>Ctrl</kbd>+<kbd>S</kbd>: statistiche complete)</td></tr>
+          <tr><td><kbd>O</kbd></td><td>ruota l'immagine di 90°</td></tr>
+          <tr><td><kbd>A</kbd></td><td>torna alla rotazione automatica</td></tr>
+          <tr><td><kbd>N</kbd></td><td>nome di questo PC sull'iPhone</td></tr>
+          <tr><td><kbd>D</kbd></td><td>dimentica gli iPhone abbinati</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>rifiuta una richiesta di abbinamento; chiude l'aiuto</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Rotazione.</strong> L'iPhone dice al PC come è tenuto, grazie al sensore di movimento. Il sensore non può sapere quando un'app resta dritta anche con il telefono girato (la schermata Home, molte app social) o quando il blocco della rotazione è attivo: in questi casi premi <kbd>O</kbd> finché l'immagine è dritta, e <kbd>A</kbd> per tornare all'automatico.</p>
+
+      <h2 id="obs">6. Usare MirrorLoop in OBS</h2>
+      <ol>
+        <li>Installa con il plugin per OBS (<a href="#pc">capitolo 2</a>) e riavvia OBS.</li>
+        <li>Nel riquadro <strong>Fonti</strong> fai clic su <strong>+</strong> e scegli <strong>MirrorLoop</strong>. Porta sia il video sia l'audio.</li>
+        <li>Per adattarla: clic destro sulla fonte → <em>Trasforma</em> → <em>Adatta allo schermo</em>.</li>
+      </ol>
+      <p>Il ricevitore deve essere aperto (anche ridotto a icona). Se l'iPhone smette di trasmettere, la fonte si svuota dopo un secondo e riparte da sola.</p>
+      <p>Lo schermo dell'iPhone non è 16:9: con il telefono in orizzontale restano delle bande sopra e sotto, ed è normale.</p>
+      <p><strong>Sentire l'iPhone in cuffia.</strong> Il ricevitore suona l'audio dell'iPhone sul PC, e OBS ne riceve una copia sua. Per sentirlo solo da OBS:</p>
+      <ol>
+        <li>in OBS, <em>Modifica → Proprietà audio avanzate</em> → <em>Monitoraggio audio</em> della fonte MirrorLoop → <strong>Monitora l'audio e invia all'uscita</strong>;</li>
+        <li>nel <strong>Mixer volume</strong> di Windows porta MirrorLoop a zero. La copia per OBS è presa prima di quel volume, quindi la diretta non cambia.</li>
+      </ol>
+
+      <h2 id="audio">7. Audio e notifiche dell'iPhone</h2>
+      <ul>
+        <li>Tieni il volume dell'iPhone <strong>basso ma non a zero</strong>: a zero il PC non riceve l'audio. A qualsiasi altro livello il PC lo riceve a volume pieno.</li>
+        <li>Attiva una <strong>Full immersion</strong> (per esempio <em>Non disturbare</em>), così le notifiche non finiscono in diretta.</li>
+      </ul>
+
+      <h2 id="qualita">8. Qualità e Wi-Fi</h2>
+      <table>
+        <thead>
+          <tr><th>Qualità</th><th>Immagine</th><th>Dati</th><th>Quando</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>HD</td><td>720p, 30 fps</td><td>4 Mbit/s</td><td>Wi-Fi debole o lontano dal router</td></tr>
+          <tr><td>Full HD</td><td>1088p, 60 fps</td><td>10 Mbit/s</td><td>quasi sempre (predefinita)</td></tr>
+          <tr><td>Massima</td><td>risoluzione esatta dello schermo, 60 fps</td><td>30 Mbit/s</td><td>Wi-Fi forte, iPhone vicino al router</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Usa il <strong>Wi-Fi a 5 GHz</strong> e tieni l'iPhone vicino al router; collega il PC con il cavo.</li>
+        <li>Quando il Wi-Fi si inceppa (per esempio allontanandoti dal router) l'immagine si ferma un attimo e poi si rimette in pari da sola. Se succede spesso, scegli una qualità più bassa.</li>
+        <li>Tutti i dati restano nella rete di casa: non usano l'upload di Internet, che resta libero per la diretta.</li>
+      </ul>
+
+      <h2 id="dimentica">9. Togliere un abbinamento</h2>
+      <ul>
+        <li>Sull'iPhone: <strong>Dimentica i PC abbinati</strong>.</li>
+        <li>Sul PC: tasto <kbd>D</kbd> nel ricevitore.</li>
+      </ul>
+      <p>Al collegamento successivo serve di nuovo il codice, da tutte e due le parti. Se reinstalli MirrorLoop sul PC, l'iPhone avvisa che non è il PC abbinato prima: è normale, abbinalo di nuovo.</p>
+
+      <h2 id="limiti">10. Da sapere</h2>
+      <ul>
+        <li>I contenuti protetti (Netflix e app simili) restano neri: iOS non ne permette la cattura.</li>
+        <li>L'indicatore rosso di registrazione di iOS in cima allo schermo compare anche nell'immagine.</li>
+        <li>Il ricevitore ha bisogno di un'uscita audio sul PC (casse o cuffie, anche a zero nel Mixer volume): è lei a scandire il tempo dell'audio mandato a OBS.</li>
+      </ul>
+    </main>
+
+    <footer class="piede">
+      <p>MirrorLoop è open source: <a href="https://github.com/andreitelea/mirrorloop">codice su GitHub</a>. Licenza MIT; il plugin per OBS è GPL-2.0.</p>
+      <p>iPhone è un marchio di Apple Inc. Windows è un marchio di Microsoft Corporation. MirrorLoop non è affiliato ad Apple, Microsoft o al progetto OBS.</p>
+    </footer>
+  </div>
+</body>
+</html>
