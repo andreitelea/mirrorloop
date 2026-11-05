@@ -7,7 +7,8 @@
 <p align="center">
   <a href="https://andreitelea.github.io/mirrorloop/it/">Sito</a> ·
   <a href="https://andreitelea.github.io/mirrorloop/it/guida.html">Guida</a> ·
-  <a href="https://github.com/andreitelea/mirrorloop/releases">Download</a> ·
+  <a href="https://apps.apple.com/app/id6825028097">App Store</a> ·
+  <a href="https://github.com/andreitelea/mirrorloop/releases">Download per Windows</a> ·
   <a href="https://andreitelea.github.io/mirrorloop/it/supporto.html">Supporto</a> ·
   <a href="https://andreitelea.github.io/mirrorloop/it/privacy.html">Privacy</a>
 </p>
@@ -16,7 +17,7 @@
 
 MirrorLoop trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete di casa, con una sorgente per OBS Studio per le dirette. Gratis, senza pubblicità, senza server e senza account.
 
-> **Stato:** anteprima 0.14.0. Il programma per Windows e il plugin per OBS si scaricano dalla pagina delle [Release](https://github.com/andreitelea/mirrorloop/releases). **L'app per iPhone non è ancora disponibile al pubblico:** arriverà presto sull'App Store.
+> **Stato:** l'app per iPhone è sull'[App Store](https://apps.apple.com/app/id6825028097) (versione 0.15). Il programma per Windows e il plugin per OBS sono in anteprima (0.14.0) e si scaricano dalla pagina delle [Release](https://github.com/andreitelea/mirrorloop/releases).
 
 <p align="center"><img src="sito/illustrazione.svg" width="560" alt="L'iPhone trasmette al PC, che mostra l'immagine e la passa a OBS"></p>
 
@@ -40,7 +41,7 @@ MirrorLoop trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete
 
 1. Scarica `MirrorLoop-<versione>-Windows.exe` dall'ultima [Release](https://github.com/andreitelea/mirrorloop/releases) e aprilo. L'installatore non è ancora firmato digitalmente, quindi Windows può mostrare **"Windows ha protetto il PC"**: scegli *Ulteriori informazioni* → *Esegui comunque*. Installa il **ricevitore** e, se vuoi, il **plugin per OBS**.
 2. Sul PC apri **MirrorLoop** dal menu Start. Premi **F1** per vedere i tasti.
-3. Sull'iPhone apri l'app, scegli il PC nell'elenco e tocca **Avvia la trasmissione**.
+3. Sull'iPhone installa MirrorLoop dall'[App Store](https://apps.apple.com/app/id6825028097), aprila, scegli il PC nell'elenco e tocca **Avvia la trasmissione**.
 4. Sull'iPhone e sul PC compare lo stesso codice di 6 cifre: se coincide, tocca **Il codice coincide** sull'iPhone e premi **Consenti** sul PC.
 5. In OBS aggiungi una sorgente **MirrorLoop** alla scena.
 
