@@ -17,6 +17,8 @@ Scrive:
       Home dell'iPhone (180, opaca: gli angoli li arrotonda iOS)
   windows/msix/Assets/StoreLogo.png, Square44x44Logo.png, Square150x150Logo.png
       pacchetto MSIX del Microsoft Store: 50, 44 e 150 pixel, angoli arrotondati come il ricevitore
+  windows/msix/scheda/icona-300.png                                    scheda del Microsoft Store:
+      "1:1 App tile icon" da 300 pixel, da caricare in Partner Center (non va nel pacchetto)
 """
 import math
 import struct
@@ -28,6 +30,7 @@ ICONE_IOS = RADICE / "ios/MirrorLoop/Assets.xcassets/AppIcon.appiconset"
 ICONA_WINDOWS = RADICE / "windows/src/MirrorLoop.Ricevitore/MirrorLoop.ico"
 ICONA_SITO = RADICE / "sito/apple-touch-icon.png"
 ICONE_MSIX = RADICE / "windows/msix/Assets"
+ICONA_SCHEDA_STORE = RADICE / "windows/msix/scheda/icona-300.png"
 
 # Le misure sono riferite a un'icona di 1024 pixel e si scalano con la misura richiesta.
 BLU = (0x1E, 0x3A, 0x8A)
@@ -141,6 +144,8 @@ def main():
     ICONE_MSIX.mkdir(parents=True, exist_ok=True)
     for nome, lato in MISURE_MSIX.items():
         scrivi(ICONE_MSIX / f"{nome}.png", png(disegna(lato, angoli=ANGOLI_WINDOWS), "RGBA"))
+    ICONA_SCHEDA_STORE.parent.mkdir(parents=True, exist_ok=True)
+    scrivi(ICONA_SCHEDA_STORE, png(disegna(300, angoli=ANGOLI_WINDOWS), "RGBA"))
 
 
 # Solo se lanciato come script: chi lo importa (per riusarne il disegno) non riscrive le icone.
