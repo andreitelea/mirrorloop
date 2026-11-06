@@ -17,7 +17,7 @@
 
 MirrorLoop streams the screen and audio of your iPhone to a Windows PC on your home network, with a source for OBS Studio for live streaming. Free, no ads, no servers, no accounts.
 
-> **Status:** the iPhone app is on the [App Store](https://apps.apple.com/app/id6825028097) (version 0.15). The Windows app and the OBS plugin are a preview (0.14.0), from the [Releases](https://github.com/andreitelea/mirrorloop/releases) page.
+> **Status:** the iPhone app is on the [App Store](https://apps.apple.com/app/id6825028097) (version 0.15). The Windows app and the OBS plugin (version 0.14.0) are on the [Releases](https://github.com/andreitelea/mirrorloop/releases) page.
 
 <p align="center"><img src="sito/illustrazione.svg" width="560" alt="The iPhone streams to the PC, which shows the image and sends it to OBS"></p>
 

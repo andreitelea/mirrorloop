@@ -17,7 +17,7 @@
 
 MirrorLoop trasmette lo schermo e l'audio dell'iPhone a un PC Windows sulla rete di casa, con una sorgente per OBS Studio per le dirette. Gratis, senza pubblicità, senza server e senza account.
 
-> **Stato:** l'app per iPhone è sull'[App Store](https://apps.apple.com/app/id6825028097) (versione 0.15). Il programma per Windows e il plugin per OBS sono in anteprima (0.14.0) e si scaricano dalla pagina delle [Release](https://github.com/andreitelea/mirrorloop/releases).
+> **Stato:** l'app per iPhone è sull'[App Store](https://apps.apple.com/app/id6825028097) (versione 0.15). Il programma per Windows e il plugin per OBS (versione 0.14.0) si scaricano dalla pagina delle [Release](https://github.com/andreitelea/mirrorloop/releases).
 
 <p align="center"><img src="sito/illustrazione.svg" width="560" alt="L'iPhone trasmette al PC, che mostra l'immagine e la passa a OBS"></p>
 
