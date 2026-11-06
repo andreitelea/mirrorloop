@@ -11,9 +11,10 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap desktop2 rescap">
+  IgnorableNamespaces="uap desktop desktop2 rescap">
 
   <Identity
     Name="MirrorLoop.Prova"
@@ -45,6 +46,13 @@
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <!-- Avvio all'accesso a Windows, spento come la casella dell'installatore classico: chi lo
+             vuole lo accende in Impostazioni → App → Avvio (o in Gestione attività → App di avvio). -->
+        <desktop:Extension Category="windows.startupTask" Executable="MirrorLoop.Ricevitore.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="AvvioMirrorLoop" Enabled="false" DisplayName="MirrorLoop" />
+        </desktop:Extension>
+      </Extensions>
     </Application>
   </Applications>
 
