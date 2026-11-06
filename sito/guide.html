@@ -62,6 +62,15 @@
       </ul>
 
       <h2 id="pc">2. Install the app on the PC</h2>
+      <p>There are two ways, with the same app: from the <strong>Microsoft Store</strong> (recommended: no Windows warnings and automatic updates) or with the <strong>installer from this website</strong>. Keep only one: if both are installed, the receiver reminds you.</p>
+      <h3 id="pc-store">From the Microsoft Store</h3>
+      <ol>
+        <li>Open <a href="https://apps.microsoft.com/detail/ID_DELLO_STORE">MirrorLoop in the Microsoft Store</a> and click <strong>Install</strong> (it's free).</li>
+        <li>Open <strong>MirrorLoop</strong> from the Start menu. If OBS Studio is installed, the receiver offers to install the <strong>OBS plugin</strong>: close OBS and click <strong>Install</strong>. You can also do it later with the <kbd>P</kbd> key, which updates it too.</li>
+        <li>If you want the receiver to be always ready: <em>Settings → Apps → Startup</em> → turn on <strong>MirrorLoop</strong>.</li>
+      </ol>
+      <p>Windows adds the firewall rule for the iPhone (UDP port 7450, <strong>private networks only</strong>) when it installs the app. To uninstall: first remove the plugin with <kbd>Shift</kbd>+<kbd>P</kbd> in the receiver (Windows doesn't remove it by itself), then <em>Settings → Apps</em>.</p>
+      <h3 id="pc-sito">With the installer from this website</h3>
       <ol>
         <li>Download <code>MirrorLoop-&lt;version&gt;-Windows.exe</code> from the <a href="https://github.com/andreitelea/mirrorloop/releases">Releases page</a>.</li>
         <li>Open it. The installer is not digitally signed yet, so Windows may show <strong>"Windows protected your PC"</strong>: choose <em>More info</em> → <em>Run anyway</em>.</li>
@@ -94,6 +103,7 @@
           <tr><td><kbd>A</kbd></td><td>back to automatic rotation</td></tr>
           <tr><td><kbd>N</kbd></td><td>name of this PC on the iPhone</td></tr>
           <tr><td><kbd>D</kbd></td><td>forget the paired iPhones</td></tr>
+          <tr><td><kbd>P</kbd></td><td>Microsoft Store version only: install or update the OBS plugin (<kbd>Shift</kbd>+<kbd>P</kbd>: remove it)</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>reject a pairing request; close the help</td></tr>
         </tbody>
       </table>
@@ -101,7 +111,7 @@
 
       <h2 id="obs">6. Using MirrorLoop in OBS</h2>
       <ol>
-        <li>Install with the OBS plugin (<a href="#pc">section 2</a>) and restart OBS.</li>
+        <li>Install the OBS plugin (<a href="#pc">section 2</a>: with the installer from this website, or with the <kbd>P</kbd> key in the Microsoft Store version) and restart OBS.</li>
         <li>In the <strong>Sources</strong> box, click <strong>+</strong> and choose <strong>MirrorLoop</strong>. It brings both video and audio.</li>
         <li>To size it: right-click the source → <em>Transform</em> → <em>Fit to screen</em>.</li>
       </ol>
