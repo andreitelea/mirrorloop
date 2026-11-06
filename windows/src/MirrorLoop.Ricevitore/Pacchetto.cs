@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace MirrorLoop.Ricevitore;
@@ -23,6 +24,31 @@ public static unsafe partial class Pacchetto
     public static string? NomeFamiglia => Famiglia.Value;
 
     public static bool Impacchettato => NomeFamiglia is not null;
+
+    /// <summary>
+    /// Dove si trova davvero un file che il ricevitore ha scritto in %LOCALAPPDATA%, per dirlo a chi
+    /// lo cerca con Esplora file (i registri di Ctrl+R).
+    /// </summary>
+    public static string PercorsoVisibile(string percorso) =>
+        PercorsoVisibile(percorso, NomeFamiglia, Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+
+    /// <summary>
+    /// In un pacchetto, i file nuovi scritti in %LOCALAPPDATA% finiscono in una cartella privata del
+    /// pacchetto (…\Packages\&lt;famiglia&gt;\LocalCache\Local\…), che il programma vede al posto di
+    /// quella vera ma Esplora file no. Succede solo se la cartella MirrorLoop non esisteva già (chi
+    /// arriva dalla versione classica usa quella vera: provato il 06/11/2026). Se il file c'è nella
+    /// cartella privata si indica quella, altrimenti il percorso com'è.
+    /// </summary>
+    internal static string PercorsoVisibile(string percorso, string? famiglia, string localAppData)
+    {
+        if (famiglia is null)
+            return percorso;
+        string relativo = Path.GetRelativePath(localAppData, percorso);
+        if (relativo.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relativo))
+            return percorso;
+        string privato = Path.Combine(localAppData, "Packages", famiglia, "LocalCache", "Local", relativo);
+        return File.Exists(privato) ? privato : percorso;
+    }
 
     private static string? LeggiFamiglia()
     {

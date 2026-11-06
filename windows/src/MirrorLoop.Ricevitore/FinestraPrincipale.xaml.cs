@@ -700,10 +700,12 @@ public partial class FinestraPrincipale : Window
         }
     }
 
+    // Il percorso dove Esplora file trova davvero il registro (nella versione dello Store può essere
+    // nella cartella privata del pacchetto).
     private string DescriviRegistro() =>
-        _registro.Attivo
-            ? string.Format(Testi.RegistroAttivo, _registro.Righe, _registro.Percorso)
-            : _registro.Percorso is string ultimo ? string.Format(Testi.RegistroSpentoUltimo, ultimo) : Testi.RegistroSpento;
+        _registro.Percorso is not string percorso ? Testi.RegistroSpento
+        : _registro.Attivo ? string.Format(Testi.RegistroAttivo, _registro.Righe, Pacchetto.PercorsoVisibile(percorso))
+        : string.Format(Testi.RegistroSpentoUltimo, Pacchetto.PercorsoVisibile(percorso));
 
     protected override void OnClosing(CancelEventArgs e)
     {
