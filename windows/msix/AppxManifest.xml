@@ -4,9 +4,9 @@
   Il pacchetto contiene il ricevitore pubblicato (con .NET incluso), le icone in Assets\ e il
   plugin per OBS in obs-plugin\, che il ricevitore copierà nella cartella dei plugin di OBS.
   Nello Store il pacchetto lo firma Microsoft: a noi non serve firmarlo.
-  Identity (Name, Publisher) e PublisherDisplayName vanno presi da Partner Center
-  (Gestione prodotto → Identità del prodotto) quando il nome è prenotato: finché non ci sono,
-  valori di prova. La versione ha sempre quattro numeri e l'ultimo a 0 (regola dello Store).
+  Identity (Name, Publisher) e PublisherDisplayName sono quelli assegnati da Partner Center al nome
+  prenotato (Gestione prodotto → Identità del prodotto): non vanno cambiati, altrimenti lo Store
+  rifiuta il pacchetto. La versione ha sempre quattro numeri e l'ultimo a 0 (regola dello Store).
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -17,14 +17,14 @@
   IgnorableNamespaces="uap desktop desktop2 rescap">
 
   <Identity
-    Name="MirrorLoop.Prova"
-    Publisher="CN=MirrorLoop Prova"
+    Name="AndreiNicolaeTelea.MirrorLoop"
+    Publisher="CN=7BB1EBD0-36C0-4536-80B9-0BC2820ADD9B"
     Version="0.15.0.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
     <DisplayName>MirrorLoop</DisplayName>
-    <PublisherDisplayName>Andrei Telea</PublisherDisplayName>
+    <PublisherDisplayName>Andrei Nicolae Telea</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
