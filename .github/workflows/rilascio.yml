@@ -1,7 +1,10 @@
 # Costruisce l'installatore di MirrorLoop per Windows: ricevitore con .NET incluso, plugin per OBS e
-# installatore Inno Setup (windows/installatore/MirrorLoop.iss), più lo zip del solo plugin.
+# installatore Inno Setup (windows/installatore/MirrorLoop.iss), più lo zip del solo plugin e il
+# pacchetto MSIX per il Microsoft Store (windows/msix).
 # A mano: i file restano come artefatto dell'esecuzione. Con un tag "v<versione>" (es. v0.14.0):
 # anche una GitHub Release in bozza, visibile a tutti solo dopo averla pubblicata a mano dal sito.
+# Il pacchetto MSIX non va nella Release (non firmato, si installa solo dallo Store): si carica a
+# mano in Partner Center dall'artefatto "MirrorLoop-<versione>-Store".
 name: Rilascio Windows
 
 on:
@@ -36,8 +39,11 @@ jobs:
           $ricevitore = ($progetto.Project.PropertyGroup | Where-Object { $_.Version }).Version
           $plugin = (Get-Content obs/buildspec.json -Raw | ConvertFrom-Json).version
           $app = [regex]::Match((Get-Content ios/project.yml -Raw), 'MARKETING_VERSION: "([^"]+)"').Groups[1].Value
-          "ricevitore $ricevitore · plugin $plugin · app $app"
-          if ($ricevitore -ne $plugin -or $ricevitore -ne $app) {
+          # Lo Store vuole quattro numeri con l'ultimo a 0.
+          [xml]$manifest = Get-Content windows/msix/AppxManifest.xml
+          $store = $manifest.Package.Identity.Version
+          "ricevitore $ricevitore · plugin $plugin · app $app · Store $store"
+          if ($ricevitore -ne $plugin -or $ricevitore -ne $app -or $store -ne "$ricevitore.0") {
             Write-Output "::error::Le versioni non coincidono"
             exit 1
           }
@@ -89,6 +95,38 @@ jobs:
         with:
           name: MirrorLoop-${{ steps.versione.outputs.numero }}-Windows
           path: ${{ runner.temp }}/installatore/*
+          if-no-files-found: error
+
+      # Lo stesso ricevitore e lo stesso plugin dell'installatore, con le icone e la descrizione del
+      # pacchetto. Il plugin va in obs-plugin\mirrorloop: lo copia il ricevitore in OBS (tasto P).
+      # Non firmato: lo firma Microsoft quando lo pubblica nello Store.
+      - name: Costruisci il pacchetto MSIX per lo Store
+        run: |
+          $versione = "${{ steps.versione.outputs.numero }}"
+          $layout = "${{ runner.temp }}\msix"
+          Copy-Item -Recurse "${{ runner.temp }}\ricevitore" $layout
+          Copy-Item -Recurse windows/msix/Assets "$layout\Assets"
+          $plugin = "$layout\obs-plugin\mirrorloop"
+          New-Item -ItemType Directory -Force "$plugin\bin\64bit" | Out-Null
+          Copy-Item "${{ runner.temp }}\plugin\mirrorloop\bin\64bit\mirrorloop.dll" "$plugin\bin\64bit"
+          Copy-Item -Recurse "${{ runner.temp }}\plugin\mirrorloop\data" "$plugin\data"
+          Copy-Item obs/LICENSE "$plugin\LICENSE-GPL-2.0.txt"
+          Copy-Item LICENSE "$layout\LICENSE.txt"
+          Copy-Item windows/msix/AppxManifest.xml $layout
+          # MakeAppx del Windows SDK più recente sull'immagine.
+          $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" |
+            Sort-Object { [version]$_.Directory.Parent.Name } | Select-Object -Last 1
+          "MakeAppx: $($makeappx.FullName)"
+          New-Item -ItemType Directory -Force "${{ runner.temp }}\store" | Out-Null
+          & $makeappx.FullName pack /d $layout /p "${{ runner.temp }}\store\MirrorLoop-$versione.msix" /o /h SHA256
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem "${{ runner.temp }}\store" | Select-Object Name, Length
+
+      - name: Pubblica il pacchetto MSIX come artefatto
+        uses: actions/upload-artifact@v7
+        with:
+          name: MirrorLoop-${{ steps.versione.outputs.numero }}-Store
+          path: ${{ runner.temp }}/store/*.msix
           if-no-files-found: error
 
   # Lavoro a parte perché è l'unico che può scrivere nel repository: la compilazione qui sopra, che

@@ -15,6 +15,8 @@ Scrive:
       quadrato con gli angoli arrotondati e trasparenti
   sito/apple-touch-icon.png                                            sito: icona per la schermata
       Home dell'iPhone (180, opaca: gli angoli li arrotonda iOS)
+  windows/msix/Assets/StoreLogo.png, Square44x44Logo.png, Square150x150Logo.png
+      pacchetto MSIX del Microsoft Store: 50, 44 e 150 pixel, angoli arrotondati come il ricevitore
 """
 import math
 import struct
@@ -25,6 +27,7 @@ RADICE = Path(__file__).resolve().parent.parent
 ICONE_IOS = RADICE / "ios/MirrorLoop/Assets.xcassets/AppIcon.appiconset"
 ICONA_WINDOWS = RADICE / "windows/src/MirrorLoop.Ricevitore/MirrorLoop.ico"
 ICONA_SITO = RADICE / "sito/apple-touch-icon.png"
+ICONE_MSIX = RADICE / "windows/msix/Assets"
 
 # Le misure sono riferite a un'icona di 1024 pixel e si scalano con la misura richiesta.
 BLU = (0x1E, 0x3A, 0x8A)
@@ -34,6 +37,7 @@ RAGGIO_PUNTO, BORDO_PUNTO = 92.0, 26.0
 ANGOLO_PUNTO = math.radians(-45)    # in alto a destra
 ANGOLI_WINDOWS = 0.2                # raggio degli angoli, in proporzione al lato
 MISURE_WINDOWS = (16, 20, 24, 32, 40, 48, 64, 96, 128, 256)
+MISURE_MSIX = {"StoreLogo": 50, "Square44x44Logo": 44, "Square150x150Logo": 150}
 
 
 def copertura(distanza_dal_bordo):
@@ -134,6 +138,11 @@ def main():
     scrivi(ICONE_IOS / "AppIcon-tinta.png", png(disegna(1024, "tinta"), "grigio"))
     scrivi(ICONA_WINDOWS, ico([(lato, png(disegna(lato, angoli=ANGOLI_WINDOWS), "RGBA")) for lato in MISURE_WINDOWS]))
     scrivi(ICONA_SITO, png(disegna(180), "RGB"))
+    ICONE_MSIX.mkdir(parents=True, exist_ok=True)
+    for nome, lato in MISURE_MSIX.items():
+        scrivi(ICONE_MSIX / f"{nome}.png", png(disegna(lato, angoli=ANGOLI_WINDOWS), "RGBA"))
 
 
-main()
+# Solo se lanciato come script: chi lo importa (per riusarne il disegno) non riscrive le icone.
+if __name__ == "__main__":
+    main()
