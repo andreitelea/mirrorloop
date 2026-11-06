@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifesto di Windows del ricevitore (incluso nell'exe al momento della compilazione).
+  Serve soprattutto per il DPI: con "PerMonitorV2" Windows avvisa il ricevitore quando la finestra
+  passa a un monitor con un ridimensionamento diverso (per esempio 150% e 100%) e WPF la ridisegna
+  nitida; senza, Windows la ingrandisce a pixel e la sfoca. Lo segnala anche il Windows App
+  Certification Kit (controllo "Supporto DPI elevato").
+-->
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="MirrorLoop.Ricevitore" />
+
+  <!-- Permessi normali dell'utente: niente richiesta di amministratore. -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 e Windows 11 (lo stesso identificativo). -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <!-- dpiAware è per le versioni di Windows che non conoscono dpiAwareness. -->
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+    </windowsSettings>
+  </application>
+</assembly>

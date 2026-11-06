@@ -45,6 +45,8 @@
     <NeutralLanguage>en</NeutralLanguage>
     <!-- L'icona del programma (Esplora file, barra delle applicazioni), generata da grafica/icona.py. -->
     <ApplicationIcon>MirrorLoop.ico</ApplicationIcon>
+    <!-- Il manifesto di Windows: DPI per monitor (PerMonitorV2). -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Nome e versione scritti nel file (Proprietà → Dettagli, Gestione attività, firma del codice).
          Un solo numero per tutto MirrorLoop: lo stesso di MARKETING_VERSION in ios/project.yml e di
          "version" in obs/buildspec.json. -->

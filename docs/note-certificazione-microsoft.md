@@ -23,4 +23,7 @@ The package contains our OBS Studio plugin (open source, GPL-2.0) in obs-plugin\
 STARTUP
 A startup task is declared but disabled; the user can turn it on in Settings > Apps > Startup.
 
+WACK
+The "Blocked executables" warnings of the Windows App Certification Kit come from the .NET runtime libraries included in the package; the app never starts other processes.
+
 Source code: https://github.com/andreitelea/mirrorloop
