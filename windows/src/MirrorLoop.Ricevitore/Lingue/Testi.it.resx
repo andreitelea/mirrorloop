@@ -393,4 +393,58 @@ Impostala come Privata: Impostazioni → Rete e Internet → (la tua rete) → T
   <data name="RifiutoNuoviNonAmmessi" xml:space="preserve">
     <value>questo ricevitore non accetta telefoni nuovi</value>
   </data>
+  <data name="AiutoP" xml:space="preserve">
+    <value>installa o aggiorna il plugin per OBS (Maiusc+P lo toglie)</value>
+  </data>
+  <data name="PluginTitolo" xml:space="preserve">
+    <value>Plugin per OBS</value>
+  </data>
+  <data name="PluginDaInstallare" xml:space="preserve">
+    <value>Per usare la sorgente MirrorLoop in OBS Studio serve il plugin. Installarlo adesso? Verrà copiato in {0}. Se OBS è aperto, chiudilo prima.</value>
+  </data>
+  <data name="PluginDaAggiornare" xml:space="preserve">
+    <value>C'è una versione nuova del plugin per OBS. Aggiornarlo adesso? Se OBS è aperto, chiudilo prima.</value>
+  </data>
+  <data name="PluginAggiornato" xml:space="preserve">
+    <value>Il plugin per OBS è installato e aggiornato. Maiusc+P lo toglie.</value>
+  </data>
+  <data name="PluginInstallato" xml:space="preserve">
+    <value>Plugin installato. Apri OBS Studio e aggiungi la sorgente "MirrorLoop" alla scena.</value>
+  </data>
+  <data name="PluginOccupato" xml:space="preserve">
+    <value>OBS Studio è aperto e sta usando il plugin. Chiudi OBS e riprova.</value>
+  </data>
+  <data name="PluginNonPermesso" xml:space="preserve">
+    <value>Il plugin è stato installato dall'installatore classico di MirrorLoop e questa versione non può modificarlo. Aggiornalo o toglilo con l'installatore classico del sito, oppure disinstalla la versione classica e riprova.</value>
+  </data>
+  <data name="PluginErrore" xml:space="preserve">
+    <value>Non è riuscito: {0}</value>
+  </data>
+  <data name="PluginDomandaRimuovi" xml:space="preserve">
+    <value>Togliere il plugin per OBS? La sorgente MirrorLoop sparirà da OBS. Prima chiudi OBS.</value>
+  </data>
+  <data name="PluginRimosso" xml:space="preserve">
+    <value>Plugin per OBS tolto.</value>
+  </data>
+  <data name="PluginNonInstallato" xml:space="preserve">
+    <value>Il plugin per OBS non è installato.</value>
+  </data>
+  <data name="PluginInstalla" xml:space="preserve">
+    <value>Installa</value>
+  </data>
+  <data name="PluginAggiorna" xml:space="preserve">
+    <value>Aggiorna</value>
+  </data>
+  <data name="PluginRimuovi" xml:space="preserve">
+    <value>Togli</value>
+  </data>
+  <data name="NonOra" xml:space="preserve">
+    <value>Non ora</value>
+  </data>
+  <data name="Chiudi" xml:space="preserve">
+    <value>Chiudi</value>
+  </data>
+  <data name="Riprova" xml:space="preserve">
+    <value>Riprova</value>
+  </data>
 </root>

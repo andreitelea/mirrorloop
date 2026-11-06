@@ -22,6 +22,18 @@ public sealed class ImpostazioniTest : IDisposable
     }
 
     [Fact]
+    public void IlNonOraDelPluginSiRitrovaDopoLaRiapertura()
+    {
+        Assert.Null(new Impostazioni(_cartella, "PC di Andrei").PluginObsNonOra);
+
+        new Impostazioni(_cartella, "PC di Andrei").CambiaPluginObsNonOra("ABC123");
+
+        var riaperte = new Impostazioni(_cartella, "PC di Andrei");
+        Assert.Equal("ABC123", riaperte.PluginObsNonOra);
+        Assert.Equal("PC di Andrei", riaperte.NomePC);
+    }
+
+    [Fact]
     public void IlNomeSceltoSiRitrovaAncheDopoLaRiapertura()
     {
         new Impostazioni(_cartella, "PC di Andrei").CambiaNomePC("  PC dello   studio ");

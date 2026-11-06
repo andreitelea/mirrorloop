@@ -31,7 +31,8 @@ public sealed unsafe partial class Impostazioni
     private sealed record Dati(
         [property: JsonPropertyName("nomePC")] string? NomePC,
         [property: JsonPropertyName("statisticheVisibili")] bool StatisticheVisibili = false,
-        [property: JsonPropertyName("informazioniVisibili")] bool InformazioniVisibili = false);
+        [property: JsonPropertyName("informazioniVisibili")] bool InformazioniVisibili = false,
+        [property: JsonPropertyName("pluginObsNonOra")] string? PluginObsNonOra = null);
 
     private static readonly JsonSerializerOptions Formato = new() { WriteIndented = true };
 
@@ -77,6 +78,15 @@ public sealed unsafe partial class Impostazioni
 
     /// <summary>Lancia IOException o UnauthorizedAccessException se non si può scrivere.</summary>
     public void CambiaInformazioniVisibili(bool visibili) => Salva(_dati with { InformazioniVisibili = visibili });
+
+    /// <summary>
+    /// L'impronta del plugin per OBS a cui si è risposto "Non ora" (versione dello Store): per quella
+    /// versione il ricevitore non lo propone più all'avvio, per una nuova sì.
+    /// </summary>
+    public string? PluginObsNonOra => _dati.PluginObsNonOra;
+
+    /// <summary>Lancia IOException o UnauthorizedAccessException se non si può scrivere.</summary>
+    public void CambiaPluginObsNonOra(string? impronta) => Salva(_dati with { PluginObsNonOra = impronta });
 
     /// <summary>
     /// Rende il nome adatto all'annuncio: il punto separerebbe le etichette nel nome completo che si

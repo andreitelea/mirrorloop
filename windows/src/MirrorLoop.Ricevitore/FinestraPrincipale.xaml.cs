@@ -32,6 +32,12 @@ public partial class FinestraPrincipale : Window
     // sparire l'avviso senza riavviare.
     private readonly DispatcherTimer _controlloRete = new() { Interval = TimeSpan.FromSeconds(5) };
     private readonly Impostazioni _impostazioni = new();
+    // Solo nella versione dello Store: il plugin per OBS che il ricevitore si porta dietro.
+    private readonly PluginObs? _pluginObs = PluginObs.DelPacchetto();
+    // Cosa fa il pulsante principale del riquadro del plugin, e se "Chiudi" vale come "Non ora"
+    // (solo per la proposta fatta da sola all'avvio).
+    private AzionePlugin _azionePlugin;
+    private bool _propostaPluginAllAvvio;
     // Null solo mentre si cambia nome (il vecchio annuncio si toglie, il nuovo non c'è ancora).
     private AnnuncioBonjour? _annuncio;
     private bool _cambioNomeInCorso;
@@ -127,6 +133,8 @@ public partial class FinestraPrincipale : Window
         _ = _ricezione.EseguiAsync(_stop.Token);
         _riproduzione.Avvia(_stop.Token);
         _presentazione.Avvia(_stop.Token);
+
+        ProponiPluginObsAllAvvio();
     }
 
     /// <summary>I testi fissi della finestra, nella lingua di Windows (Lingue\Testi*.resx).</summary>
@@ -147,6 +155,8 @@ public partial class FinestraPrincipale : Window
         TestoAiutoN.Text = Testi.AiutoN;
         TestoAiutoD.Text = Testi.AiutoD;
         TestoAiutoEsc.Text = Testi.AiutoEsc;
+        TestoAiutoP.Text = Testi.AiutoP;
+        TastoAiutoP.Visibility = TestoAiutoP.Visibility = _pluginObs is null ? Visibility.Collapsed : Visibility.Visible;
         TestoAbbinamentoTitolo.Text = Testi.AbbinamentoTitolo;
         TestoAbbinamentoIstruzioni.Text = Testi.AbbinamentoIstruzioni;
         PulsanteConsenti.Content = Testi.Consenti;
@@ -402,10 +412,19 @@ public partial class FinestraPrincipale : Window
         {
             _ = CambiaNomePCAsync();
         }
+        else if (e.Key == Key.P && _pluginObs is not null && _consenso is null)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Shift)
+                ChiediRimozionePlugin(_pluginObs);
+            else
+                MostraStatoPlugin(_pluginObs, _pluginObs.Controlla(), allAvvio: false);
+        }
         else if (e.Key == Key.Escape)
         {
             if (_consenso is not null)
                 _consenso.TrySetResult(false);
+            else if (RiquadroPluginObs.Visibility == Visibility.Visible)
+                ChiudiRiquadroPlugin();
             else
                 RiquadroAiuto.Visibility = Visibility.Collapsed;
         }
@@ -540,8 +559,10 @@ public partial class FinestraPrincipale : Window
         CodiceAbbinamento.Text = richiesta.CodiceLeggibile;
         _scadenzaConsenso = DateTime.UtcNow + _ricezione.AttesaConsenso;
         AggiornaScadenza();
-        // Stesso posto al centro della finestra: l'aiuto lascia il posto alla richiesta.
+        // Stesso posto al centro della finestra: l'aiuto (e il plugin, che si può riprendere con P)
+        // lasciano il posto alla richiesta.
         RiquadroAiuto.Visibility = Visibility.Collapsed;
+        RiquadroPluginObs.Visibility = Visibility.Collapsed;
         RiquadroAbbinamento.Visibility = Visibility.Visible;
         _contoAllaRovescia.Start();
         // Chi sta al PC deve vederla: se la finestra è ridotta a icona la si riapre. Se Windows non
@@ -558,6 +579,92 @@ public partial class FinestraPrincipale : Window
         _consenso = null;
         RiquadroAbbinamento.Visibility = Visibility.Collapsed;
         _contoAllaRovescia.Stop();
+    }
+
+    private enum AzionePlugin { Nessuna, Installa, Rimuovi }
+
+    /// <summary>
+    /// Versione dello Store: se OBS c'è e il plugin manca o è vecchio, lo propone (una volta per
+    /// versione del plugin, se si risponde "Non ora").
+    /// </summary>
+    private void ProponiPluginObsAllAvvio()
+    {
+        if (_pluginObs is null || !_pluginObs.ObsUsato || _impostazioni.PluginObsNonOra == _pluginObs.Impronta)
+            return;
+        PluginObs.Stato stato = _pluginObs.Controlla();
+        if (stato != PluginObs.Stato.Aggiornato)
+            MostraStatoPlugin(_pluginObs, stato, allAvvio: true);
+    }
+
+    private void MostraStatoPlugin(PluginObs plugin, PluginObs.Stato stato, bool allAvvio)
+    {
+        switch (stato)
+        {
+            case PluginObs.Stato.Mancante:
+                MostraRiquadroPlugin(string.Format(Testi.PluginDaInstallare, plugin.Destinazione), AzionePlugin.Installa, Testi.PluginInstalla, Testi.NonOra);
+                break;
+            case PluginObs.Stato.Diverso:
+                MostraRiquadroPlugin(Testi.PluginDaAggiornare, AzionePlugin.Installa, Testi.PluginAggiorna, Testi.NonOra);
+                break;
+            default:
+                MostraRiquadroPlugin(Testi.PluginAggiornato, AzionePlugin.Nessuna, null, Testi.Chiudi);
+                break;
+        }
+        _propostaPluginAllAvvio = allAvvio;
+    }
+
+    private void ChiediRimozionePlugin(PluginObs plugin)
+    {
+        if (plugin.Controlla() == PluginObs.Stato.Mancante)
+            MostraRiquadroPlugin(Testi.PluginNonInstallato, AzionePlugin.Nessuna, null, Testi.Chiudi);
+        else
+            MostraRiquadroPlugin(Testi.PluginDomandaRimuovi, AzionePlugin.Rimuovi, Testi.PluginRimuovi, Testi.Annulla);
+    }
+
+    private void MostraRiquadroPlugin(string messaggio, AzionePlugin azione, string? testoAzione, string testoChiudi)
+    {
+        _azionePlugin = azione;
+        _propostaPluginAllAvvio = false;
+        TestoPluginTitolo.Text = Testi.PluginTitolo;
+        TestoPluginMessaggio.Text = messaggio;
+        PulsantePluginAzione.Content = testoAzione;
+        PulsantePluginAzione.Visibility = azione == AzionePlugin.Nessuna ? Visibility.Collapsed : Visibility.Visible;
+        PulsantePluginChiudi.Content = testoChiudi;
+        RiquadroAiuto.Visibility = Visibility.Collapsed;
+        RiquadroPluginObs.Visibility = Visibility.Visible;
+    }
+
+    private void SuAzionePlugin(object sender, RoutedEventArgs e)
+    {
+        if (_pluginObs is null)
+            return;
+        AzionePlugin azione = _azionePlugin;
+        PluginObs.Esito esito = azione == AzionePlugin.Rimuovi ? _pluginObs.Rimuovi() : _pluginObs.Installa();
+        if (esito == PluginObs.Esito.Riuscito)
+        {
+            MostraRiquadroPlugin(azione == AzionePlugin.Rimuovi ? Testi.PluginRimosso : Testi.PluginInstallato,
+                AzionePlugin.Nessuna, null, Testi.Chiudi);
+            return;
+        }
+        string motivo = esito switch
+        {
+            PluginObs.Esito.Occupato => Testi.PluginOccupato,
+            PluginObs.Esito.NonPermesso => Testi.PluginNonPermesso,
+            _ => string.Format(Testi.PluginErrore, _pluginObs.UltimoErrore),
+        };
+        // Stessa azione con "Riprova": chiuso OBS, basta un clic.
+        MostraRiquadroPlugin(motivo, azione, Testi.Riprova, Testi.Chiudi);
+    }
+
+    private void SuChiudiPlugin(object sender, RoutedEventArgs e) => ChiudiRiquadroPlugin();
+
+    private void ChiudiRiquadroPlugin()
+    {
+        // "Non ora" alla proposta dell'avvio: per questa versione del plugin non la si ripete.
+        if (_propostaPluginAllAvvio && _pluginObs is not null)
+            RicordaScelta(() => _impostazioni.CambiaPluginObsNonOra(_pluginObs.Impronta));
+        _propostaPluginAllAvvio = false;
+        RiquadroPluginObs.Visibility = Visibility.Collapsed;
     }
 
     private void AggiornaScadenza()

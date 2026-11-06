@@ -150,7 +150,7 @@
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
-                        <RowDefinition /><RowDefinition /><RowDefinition />
+                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Text="F1" Foreground="White" FontFamily="Consolas" />
                     <TextBlock x:Name="TestoAiutoF1" Grid.Row="0" Grid.Column="1" />
@@ -166,6 +166,9 @@
                     <TextBlock x:Name="TestoAiutoD" Grid.Row="5" Grid.Column="1" />
                     <TextBlock Grid.Row="6" Text="Esc" Foreground="White" FontFamily="Consolas" />
                     <TextBlock x:Name="TestoAiutoEsc" Grid.Row="6" Grid.Column="1" />
+                    <!-- Solo nella versione dello Store, che installa da sé il plugin per OBS. -->
+                    <TextBlock x:Name="TastoAiutoP" Grid.Row="7" Text="P" Foreground="White" FontFamily="Consolas" Visibility="Collapsed" />
+                    <TextBlock x:Name="TestoAiutoP" Grid.Row="7" Grid.Column="1" TextWrapping="Wrap" Visibility="Collapsed" />
                 </Grid>
                 <Border BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="0,1,0,0" Margin="0,14,0,0" Padding="0,12,0,0">
                     <TextBlock x:Name="TestoAiutoIndirizzo" Foreground="#B9B4CC" FontSize="15" TextWrapping="Wrap" />
@@ -193,6 +196,26 @@
                     <Button x:Name="PulsanteConsenti" Click="SuConsenti" Focusable="False" Style="{StaticResource PulsantePrincipale}"
                             MinWidth="130" Margin="0,0,12,0" FontSize="16" />
                     <Button x:Name="PulsanteRifiuta" Click="SuRifiuta" Focusable="False"
+                            MinWidth="130" FontSize="16" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Versione dello Store: proposta di installare, aggiornare o togliere il plugin per OBS, e
+             com'è andata. Compare all'avvio se manca o è vecchio, e con il tasto P (Maiusc+P per togliere). -->
+        <Border x:Name="RiquadroPluginObs" Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Padding="36,28" CornerRadius="12" Background="{StaticResource Riquadro}"
+                BorderBrush="{StaticResource BordoRiquadro}" BorderThickness="1">
+            <StackPanel MinWidth="380" MaxWidth="560">
+                <TextBlock x:Name="TestoPluginTitolo" Foreground="White" FontSize="22" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+                <TextBlock x:Name="TestoPluginMessaggio" Style="{StaticResource TestoRiquadro}" FontSize="16" Margin="0,14,0,0"
+                           TextWrapping="Wrap" TextAlignment="Center" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,22,0,0">
+                    <Button x:Name="PulsantePluginAzione" Click="SuAzionePlugin" Focusable="False" Style="{StaticResource PulsantePrincipale}"
+                            MinWidth="130" Margin="0,0,12,0" FontSize="16" />
+                    <Button x:Name="PulsantePluginChiudi" Click="SuChiudiPlugin" Focusable="False"
                             MinWidth="130" FontSize="16" />
                 </StackPanel>
             </StackPanel>
