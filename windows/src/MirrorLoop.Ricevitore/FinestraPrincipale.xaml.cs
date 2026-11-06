@@ -134,7 +134,21 @@ public partial class FinestraPrincipale : Window
         _riproduzione.Avvia(_stop.Token);
         _presentazione.Avvia(_stop.Token);
 
+        MostraAvvisoDueVersioni();
         ProponiPluginObsAllAvvio();
+    }
+
+    /// <summary>Si guarda una volta all'avvio: chi disinstalla l'altra versione poi riapre questa.</summary>
+    private void MostraAvvisoDueVersioni()
+    {
+        string? avviso = AltraVersione.Trova() switch
+        {
+            AltraVersione.Quale.Classica => Testi.AvvisoAncheClassica,
+            AltraVersione.Quale.Store => Testi.AvvisoAncheStore,
+            _ => null,
+        };
+        TestoAvvisoDueVersioni.Text = avviso ?? "";
+        RiquadroAvvisoDueVersioni.Visibility = avviso is null ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>I testi fissi della finestra, nella lingua di Windows (Lingue\Testi*.resx).</summary>

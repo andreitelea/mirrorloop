@@ -447,4 +447,10 @@ Impostala come Privata: Impostazioni → Rete e Internet → (la tua rete) → T
   <data name="Riprova" xml:space="preserve">
     <value>Riprova</value>
   </data>
+  <data name="AvvisoAncheClassica" xml:space="preserve">
+    <value>Su questo PC c'è anche MirrorLoop installato dal sito. Tienine uno solo: disinstalla l'altro da Impostazioni → App → App installate.</value>
+  </data>
+  <data name="AvvisoAncheStore" xml:space="preserve">
+    <value>Su questo PC c'è anche MirrorLoop del Microsoft Store. Tienine uno solo: disinstalla l'altro da Impostazioni → App → App installate.</value>
+  </data>
 </root>

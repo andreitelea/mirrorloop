@@ -120,6 +120,11 @@
         <!-- Avviso se la rete di casa è impostata come Pubblica (il firewall lascia passare l'iPhone
              solo sulle reti private). -->
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12,12,12,16">
+            <!-- Le due versioni di MirrorLoop (sito e Microsoft Store) sullo stesso PC: meglio una sola. -->
+            <Border x:Name="RiquadroAvvisoDueVersioni" Visibility="Collapsed" Margin="0,0,0,10" MaxWidth="760"
+                    Padding="18,12" CornerRadius="10" Background="#E0402A00" BorderBrush="#FFB000" BorderThickness="1">
+                <TextBlock x:Name="TestoAvvisoDueVersioni" Foreground="#FFD27F" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" />
+            </Border>
             <Border x:Name="RiquadroAvvisoRete" Visibility="Collapsed" Margin="0,0,0,10"
                     Padding="18,12" CornerRadius="10" Background="#E0402A00" BorderBrush="#FFB000" BorderThickness="1">
                 <TextBlock x:Name="TestoAvvisoRete" Foreground="#FFD27F" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" />
