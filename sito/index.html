@@ -100,7 +100,7 @@
           <div class="pulsanti">
             <a class="pulsante" href="https://github.com/andreitelea/mirrorloop/releases/download/v0.14.0/MirrorLoop-0.14.0-Windows.exe">Download the installer</a>
           </div>
-          <p class="nota">Only the OBS plugin: <a href="https://github.com/andreitelea/mirrorloop/releases/download/v0.14.0/MirrorLoop-0.14.0-plugin-OBS.zip">.zip file</a> · <a href="https://github.com/andreitelea/mirrorloop/releases">all versions</a></p>
+          <p class="nota">Only the OBS plugin: <a href="https://github.com/andreitelea/mirrorloop/releases/download/v0.14.0/MirrorLoop-0.14.0-plugin-OBS.zip">.zip file</a> · <a href="https://github.com/andreitelea/mirrorloop/releases">all versions</a> · <a href="#code-signing-policy">code signing policy</a></p>
         </div>
         <div>
           <h3>iPhone</h3>
@@ -119,6 +119,16 @@
         <li>For live streaming: <strong>OBS Studio 31.1</strong> or later.</li>
       </ul>
       <p class="nota">Tip: use 5 GHz Wi-Fi with the iPhone close to the router, and connect the PC with a cable.</p>
+
+      <h2 id="code-signing-policy">Code signing policy</h2>
+      <p>Free code signing provided by <a href="https://about.signpath.io/">SignPath.io</a>, certificate by <a href="https://signpath.org/">SignPath Foundation</a>.</p>
+      <p class="nota">Signing is being set up: version 0.14.0 and earlier are not signed yet.</p>
+      <ul>
+        <li><strong>What is signed:</strong> the Windows installer, the receiver and the OBS plugin, built by GitHub Actions from the <a href="https://github.com/andreitelea/mirrorloop">source code</a> in this project's repository. Libraries from other projects are included as their authors publish them (the .NET runtime is signed by Microsoft).</li>
+        <li><strong>Committers and reviewers:</strong> <a href="https://github.com/andreitelea">Andrei Telea</a></li>
+        <li><strong>Approvers:</strong> <a href="https://github.com/andreitelea">Andrei Telea</a>. Every release is approved by hand before it is signed.</li>
+        <li><strong>Privacy:</strong> while it is running, the receiver announces itself on your home network (Bonjour) so the iPhone can find it, and it exchanges screen and audio only with the iPhone you paired with it. It sends nothing to the developer or to other servers. Details in the <a href="privacy.html">privacy policy</a>.</li>
+      </ul>
     </main>
 
     <footer class="piede">
