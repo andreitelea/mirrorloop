@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Descrizione del pacchetto MSIX di MirrorLoop per il Microsoft Store.
+  Il pacchetto contiene il ricevitore pubblicato (con .NET incluso), le icone in Assets\ e il
+  plugin per OBS in obs-plugin\, che il ricevitore copierà nella cartella dei plugin di OBS.
+  Nello Store il pacchetto lo firma Microsoft: a noi non serve firmarlo.
+  Identity (Name, Publisher) e PublisherDisplayName vanno presi da Partner Center
+  (Gestione prodotto → Identità del prodotto) quando il nome è prenotato: finché non ci sono,
+  valori di prova. La versione ha sempre quattro numeri e l'ultimo a 0 (regola dello Store).
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap desktop2 rescap">
+
+  <Identity
+    Name="MirrorLoop.Prova"
+    Publisher="CN=MirrorLoop Prova"
+    Version="0.15.0.0"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>MirrorLoop</DisplayName>
+    <PublisherDisplayName>Andrei Telea</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <!-- Windows 11 (build 22000): il ricevitore usa QUIC, che .NET supporta solo da Windows 11. -->
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22000.0" MaxVersionTested="10.0.26200.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="it-it" />
+  </Resources>
+
+  <Applications>
+    <Application Id="MirrorLoop" Executable="MirrorLoop.Ricevitore.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="MirrorLoop"
+        Description="Receiver for the MirrorLoop iPhone app: shows the iPhone screen and audio on this PC and in OBS Studio."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png" />
+    </Application>
+  </Applications>
+
+  <!-- La stessa regola dell'installatore classico: UDP 7450 in entrata, solo reti private.
+       La crea Windows all'installazione del pacchetto e la toglie alla disinstallazione. -->
+  <Extensions>
+    <desktop2:Extension Category="windows.firewallRules">
+      <desktop2:FirewallRules Executable="MirrorLoop.Ricevitore.exe">
+        <desktop2:Rule Direction="in" IPProtocol="UDP" Profile="private" LocalPortMin="7450" LocalPortMax="7450" />
+      </desktop2:FirewallRules>
+    </desktop2:Extension>
+  </Extensions>
+
+  <Capabilities>
+    <!-- Un programma Windows classico (WPF) che gira con i permessi normali dell'utente. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
