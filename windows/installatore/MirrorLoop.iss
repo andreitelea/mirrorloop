@@ -72,6 +72,10 @@ it.AvvioAutomatico=Avvia MirrorLoop all'accesso a Windows
 en.AvvioAutomatico=Start MirrorLoop when you sign in to Windows
 it.ConfiguraFirewall=Configurazione del firewall (solo reti private)...
 en.ConfiguraFirewall=Configuring the firewall (private networks only)...
+it.RiepilogoFirewall=Firewall di Windows:
+en.RiepilogoFirewall=Windows Firewall:
+it.RegolaFirewall=regola "MirrorLoop" che accetta il ricevitore sulla porta UDP 7450, solo nelle reti private (si toglie con la disinstallazione)
+en.RegolaFirewall="MirrorLoop" rule allowing the receiver on UDP port 7450, private networks only (removed when uninstalling)
 
 [Types]
 Name: "completa"; Description: "{cm:InstallazioneCompleta}"
@@ -107,3 +111,32 @@ Filename: "{app}\{#Eseguibile}"; Description: "{cm:LaunchProgram,MirrorLoop}"; F
 
 [UninstallRun]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""MirrorLoop"""; Flags: runhidden; RunOnceId: "RegolaFirewall"
+
+[Code]
+// Chi installa deve sapere prima che cosa cambia nel sistema (lo chiedono anche le regole di
+// SignPath Foundation per la firma): la regola del firewall compare nel riepilogo della pagina
+// "Pronto per l'installazione", insieme alle altre scelte.
+function AggiungiParte(Testo, Parte, NewLine: String): String;
+begin
+  Result := Testo;
+  if Parte <> '' then
+  begin
+    if Result <> '' then
+      Result := Result + NewLine + NewLine;
+    Result := Result + Parte;
+  end;
+end;
+
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
+  MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+begin
+  // Le parti standard nell'ordine in cui Inno Setup le mostra da solo.
+  Result := AggiungiParte('', MemoUserInfoInfo, NewLine);
+  Result := AggiungiParte(Result, MemoDirInfo, NewLine);
+  Result := AggiungiParte(Result, MemoTypeInfo, NewLine);
+  Result := AggiungiParte(Result, MemoComponentsInfo, NewLine);
+  Result := AggiungiParte(Result, MemoGroupInfo, NewLine);
+  Result := AggiungiParte(Result, MemoTasksInfo, NewLine);
+  Result := AggiungiParte(Result,
+    CustomMessage('RiepilogoFirewall') + NewLine + Space + CustomMessage('RegolaFirewall'), NewLine);
+end;
