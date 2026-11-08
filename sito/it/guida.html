@@ -62,6 +62,15 @@
       </ul>
 
       <h2 id="pc">2. Installare il programma sul PC</h2>
+      <p>Ci sono due modi, con lo stesso programma: dal <strong>Microsoft Store</strong> (consigliato: niente avvisi di Windows e aggiornamenti automatici) oppure con l'<strong>installatore del sito</strong>. Tienine uno solo: se ci sono tutti e due, il ricevitore te lo ricorda.</p>
+      <h3 id="pc-store">Dal Microsoft Store</h3>
+      <ol>
+        <li>Apri <a href="https://apps.microsoft.com/detail/9P56GN3X6FGX">MirrorLoop nel Microsoft Store</a> e fai clic su <strong>Installa</strong> (è gratis).</li>
+        <li>Apri <strong>MirrorLoop</strong> dal menu Start. Se OBS Studio è installato, il ricevitore propone di installare il <strong>plugin per OBS</strong>: chiudi OBS e fai clic su <strong>Installa</strong>. Puoi farlo anche più tardi con il tasto <kbd>P</kbd>, che serve anche ad aggiornarlo.</li>
+        <li>Se vuoi che il ricevitore sia sempre pronto: <em>Impostazioni → App → Avvio</em> → accendi <strong>MirrorLoop</strong>.</li>
+      </ol>
+      <p>La regola del firewall per l'iPhone (porta UDP 7450, <strong>solo reti private</strong>) la aggiunge Windows con l'installazione. Per disinstallare: prima togli il plugin con <kbd>Maiusc</kbd>+<kbd>P</kbd> nel ricevitore (Windows non lo toglie da solo), poi <em>Impostazioni → App</em>.</p>
+      <h3 id="pc-sito">Con l'installatore del sito</h3>
       <ol>
         <li>Scarica <code>MirrorLoop-&lt;versione&gt;-Windows.exe</code> dalla <a href="https://github.com/andreitelea/mirrorloop/releases">pagina delle Release</a>.</li>
         <li>Aprilo. L'installatore non è ancora firmato digitalmente, quindi Windows può mostrare <strong>"Windows ha protetto il PC"</strong>: scegli <em>Ulteriori informazioni</em> → <em>Esegui comunque</em>.</li>
@@ -94,6 +103,7 @@
           <tr><td><kbd>A</kbd></td><td>torna alla rotazione automatica</td></tr>
           <tr><td><kbd>N</kbd></td><td>nome di questo PC sull'iPhone</td></tr>
           <tr><td><kbd>D</kbd></td><td>dimentica gli iPhone abbinati</td></tr>
+          <tr><td><kbd>P</kbd></td><td>solo nella versione del Microsoft Store: installa o aggiorna il plugin per OBS (<kbd>Maiusc</kbd>+<kbd>P</kbd>: lo toglie)</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>rifiuta una richiesta di abbinamento; chiude l'aiuto</td></tr>
         </tbody>
       </table>
@@ -101,7 +111,7 @@
 
       <h2 id="obs">6. Usare MirrorLoop in OBS</h2>
       <ol>
-        <li>Installa con il plugin per OBS (<a href="#pc">capitolo 2</a>) e riavvia OBS.</li>
+        <li>Installa il plugin per OBS (<a href="#pc">capitolo 2</a>: con l'installatore del sito, o con il tasto <kbd>P</kbd> nella versione del Microsoft Store) e riavvia OBS.</li>
         <li>Nel riquadro <strong>Fonti</strong> fai clic su <strong>+</strong> e scegli <strong>MirrorLoop</strong>. Porta sia il video sia l'audio.</li>
         <li>Per adattarla: clic destro sulla fonte → <em>Trasforma</em> → <em>Adatta allo schermo</em>.</li>
       </ol>
