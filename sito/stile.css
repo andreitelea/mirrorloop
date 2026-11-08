@@ -272,9 +272,11 @@ code { overflow-wrap: anywhere; }
 /* Badge ufficiale di Apple: va usato com'è, alto almeno 40 px, con uno spazio libero
    di un quarto della sua altezza intorno (Apple, "Marketing Resources and Identity Guidelines"):
    con 48 px sono 12 px, garantiti dai margini di .pulsanti. */
-.badge-app-store { display: inline-block; line-height: 0; }
+/* Badge ufficiali di Apple e Microsoft, ospitati nel sito e mai modificati: solo l'altezza, con le
+   proporzioni originali (regole di tutte e due). */
+.badge-app-store, .badge-microsoft-store { display: inline-block; line-height: 0; }
 
-.badge-app-store img { height: 48px; width: auto; }
+.badge-app-store img, .badge-microsoft-store img { height: 48px; width: auto; }
 
 h2 { margin: 40px 0 12px; font-size: 1.45rem; }
 

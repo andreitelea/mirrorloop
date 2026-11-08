@@ -8,6 +8,7 @@
   <a href="https://andreitelea.github.io/mirrorloop/">Website</a> ·
   <a href="https://andreitelea.github.io/mirrorloop/guide.html">Guide</a> ·
   <a href="https://apps.apple.com/app/id6825028097">App Store</a> ·
+  <a href="https://apps.microsoft.com/detail/9P56GN3X6FGX">Microsoft Store</a> ·
   <a href="https://github.com/andreitelea/mirrorloop/releases">Download for Windows</a> ·
   <a href="https://andreitelea.github.io/mirrorloop/support.html">Support</a> ·
   <a href="https://andreitelea.github.io/mirrorloop/privacy.html">Privacy</a>
@@ -17,7 +18,7 @@
 
 MirrorLoop streams the screen and audio of your iPhone to a Windows PC on your home network, with a source for OBS Studio for live streaming. Free, no ads, no servers, no accounts.
 
-> **Status:** the iPhone app is on the [App Store](https://apps.apple.com/app/id6825028097) (version 0.15). The Windows app and the OBS plugin (version 0.14.0) are on the [Releases](https://github.com/andreitelea/mirrorloop/releases) page.
+> **Status:** the iPhone app is on the [App Store](https://apps.apple.com/app/id6825028097) (version 0.15). The Windows app, with the OBS plugin, is on the [Microsoft Store](https://apps.microsoft.com/detail/9P56GN3X6FGX) (version 0.15); the classic installer and the plugin alone (version 0.14.0) are on the [Releases](https://github.com/andreitelea/mirrorloop/releases) page.
 
 <p align="center"><img src="sito/illustrazione.svg" width="560" alt="The iPhone streams to the PC, which shows the image and sends it to OBS"></p>
 
@@ -39,7 +40,7 @@ MirrorLoop streams the screen and audio of your iPhone to a Windows PC on your h
 
 ## Getting started
 
-1. Download `MirrorLoop-<version>-Windows.exe` from the latest [release](https://github.com/andreitelea/mirrorloop/releases) and open it. The installer is not digitally signed yet, so Windows may show **"Windows protected your PC"**: choose *More info* → *Run anyway*. Install the **receiver** and, if you want, the **OBS plugin**.
+1. Install **MirrorLoop for Windows** from the [Microsoft Store](https://apps.microsoft.com/detail/9P56GN3X6FGX): open it and accept the offer to install the **OBS plugin** (or press P later). Or download `MirrorLoop-<version>-Windows.exe` from the latest [release](https://github.com/andreitelea/mirrorloop/releases) and open it. The installer is not digitally signed yet, so Windows may show **"Windows protected your PC"**: choose *More info* → *Run anyway*. Install the **receiver** and, if you want, the **OBS plugin**.
 2. On the PC, open **MirrorLoop** from the Start menu. Press **F1** to see the keys.
 3. On the iPhone, install MirrorLoop from the [App Store](https://apps.apple.com/app/id6825028097), open it, choose the PC in the list and tap **Start streaming**.
 4. The same 6-digit code appears on the iPhone and on the PC: if it matches, tap **The code matches** on the iPhone and click **Allow** on the PC.
